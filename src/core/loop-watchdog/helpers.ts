@@ -2,6 +2,8 @@
  * Loop watchdog helper functions
  */
 
+import { isFiniteNumber } from '@utils/number';
+
 /**
  * Validate watchdog input parameters
  * @throws {Error} If inputs are invalid
@@ -11,11 +13,11 @@ export function validateWatchdogInputs(
   lastWatchdogPet: number,
   context: string
 ): void {
-  if (!Number.isFinite(nowSec) || nowSec < 0) {
-    throw new Error(`${context}: nowSec must be a non-negative finite number, got ${nowSec}`);
+  if (!isFiniteNumber(nowSec) || nowSec < 0) {
+    throw new Error(context + ": nowSec must be a non-negative finite number, got " + nowSec);
   }
-  if (!Number.isFinite(lastWatchdogPet) || lastWatchdogPet < 0) {
-    throw new Error(`${context}: lastWatchdogPet must be a non-negative finite number, got ${lastWatchdogPet}`);
+  if (!isFiniteNumber(lastWatchdogPet) || lastWatchdogPet < 0) {
+    throw new Error(context + ": lastWatchdogPet must be a non-negative finite number, got " + lastWatchdogPet);
   }
 }
 
@@ -24,7 +26,7 @@ export function validateWatchdogInputs(
  * @throws {Error} If timeout is invalid
  */
 export function validateTimeout(timeoutSec: number, context: string): void {
-  if (!Number.isFinite(timeoutSec) || timeoutSec <= 0) {
-    throw new Error(`${context}: timeoutSec must be a positive finite number, got ${timeoutSec}`);
+  if (!isFiniteNumber(timeoutSec) || timeoutSec <= 0) {
+    throw new Error(context + ": timeoutSec must be a positive finite number, got " + timeoutSec);
   }
 }

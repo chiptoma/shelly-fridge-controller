@@ -41,7 +41,7 @@ export function setRelay(
       if (error_code !== 0) {
         // Log errors if no callback provided
         if (!callback) {
-          console.error(`[Relay] Failed to set relay to ${desiredOn ? 'ON' : 'OFF'}: Error ${error_code} - ${error_message}`);
+          console.error("[Relay] Failed to set relay to " + (desiredOn ? "ON" : "OFF") + ": Error " + error_code + " - " + error_message);
         }
       }
 

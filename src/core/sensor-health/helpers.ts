@@ -15,18 +15,18 @@ import type { NoReadingResult, StuckSensorResult, SensorHealthConfig } from './t
  */
 export function validateSensorHealthConfig(config: SensorHealthConfig): void {
   if (config.SENSOR_NO_READING_SEC <= 0) {
-    throw new Error(`SENSOR_NO_READING_SEC must be positive, got ${config.SENSOR_NO_READING_SEC}`);
+    throw new Error("SENSOR_NO_READING_SEC must be positive, got " + config.SENSOR_NO_READING_SEC);
   }
   if (config.SENSOR_CRITICAL_FAILURE_SEC <= config.SENSOR_NO_READING_SEC) {
     throw new Error(
-      `SENSOR_CRITICAL_FAILURE_SEC (${config.SENSOR_CRITICAL_FAILURE_SEC}) must be greater than SENSOR_NO_READING_SEC (${config.SENSOR_NO_READING_SEC})`
+      "SENSOR_CRITICAL_FAILURE_SEC (" + config.SENSOR_CRITICAL_FAILURE_SEC + ") must be greater than SENSOR_NO_READING_SEC (" + config.SENSOR_NO_READING_SEC + ")"
     );
   }
   if (config.SENSOR_STUCK_SEC <= 0) {
-    throw new Error(`SENSOR_STUCK_SEC must be positive, got ${config.SENSOR_STUCK_SEC}`);
+    throw new Error("SENSOR_STUCK_SEC must be positive, got " + config.SENSOR_STUCK_SEC);
   }
   if (config.SENSOR_STUCK_EPSILON_C < 0) {
-    throw new Error(`SENSOR_STUCK_EPSILON_C must be non-negative, got ${config.SENSOR_STUCK_EPSILON_C}`);
+    throw new Error("SENSOR_STUCK_EPSILON_C must be non-negative, got " + config.SENSOR_STUCK_EPSILON_C);
   }
 }
 
@@ -62,7 +62,7 @@ export function checkNoReading(
   const duration = nowSec - lastReadTimeSec;
   return {
     offline: duration > noReadingSec,
-    duration
+    duration: duration
   };
 }
 
@@ -111,7 +111,7 @@ export function checkStuckSensor(
   const duration = nowSec - lastChangeTimeSec;
   return {
     stuck: duration > stuckSec,
-    duration,
+    duration: duration,
     changed: false
   };
 }

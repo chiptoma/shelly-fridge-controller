@@ -29,32 +29,36 @@ interface BufferedMessage {
  *
  * @param shellyApi - Shelly API object
  * @param config - Slack configuration with KVS key name
- * @returns Promise that resolves with webhook URL or null if not found
+ * @param callback - Called with webhook URL or null if not found
  *
  * @example
  * ```typescript
- * const url = await loadWebhookUrl(Shelly, { webhookKvsKey: "slack_webhook", ... });
+ * loadWebhookUrl(Shelly, config, function(url) {
+ *   if (url) console.log('Loaded:', url);
+ * });
  * ```
  */
-export function loadWebhookUrl(shellyApi: ShellyAPI, config: SlackSinkConfig): Promise<string | null> {
-  return new Promise(function(resolve) {
-    if (!config.webhookKvsKey) {
-      resolve(null);
-      return;
-    }
+export function loadWebhookUrl(
+  shellyApi: ShellyAPI,
+  config: SlackSinkConfig,
+  callback: (url: string | null) => void
+): void {
+  if (!config.webhookKvsKey) {
+    callback(null);
+    return;
+  }
 
-    try {
-      shellyApi.call<KVSGetResult>('KVS.Get', { key: config.webhookKvsKey }, function(result, error_code, _error_message) {
-        if (error_code === 0 && result && result.value) {
-          resolve(result.value);
-        } else {
-          resolve(null);
-        }
-      });
-    } catch (_err) {
-      resolve(null);
-    }
-  });
+  try {
+    shellyApi.call<KVSGetResult>('KVS.Get', { key: config.webhookKvsKey }, function(result, error_code, _error_message) {
+      if (error_code === 0 && result && result.value) {
+        callback(result.value);
+      } else {
+        callback(null);
+      }
+    });
+  } catch (_err) {
+    callback(null);
+  }
 }
 
 /**
@@ -191,7 +195,7 @@ export function createSlackSink(
       return;
     }
 
-    loadWebhookUrl(shellyApi, config).then(function(url) {
+    loadWebhookUrl(shellyApi, config, function(url) {
       webhookUrl = url;
       initialized = true;
       if (url) {

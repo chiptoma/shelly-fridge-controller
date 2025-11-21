@@ -57,6 +57,14 @@ describe('compressor-timing', () => {
     it('should throw on negative duration', () => {
       expect(() => checkMinOn(true, false, 1000, 900, -180)).toThrow();
     });
+
+    it('should throw on NaN lastTime', () => {
+      expect(() => checkMinOn(true, false, 1000, NaN, 180)).toThrow();
+    });
+
+    it('should throw on negative lastTime', () => {
+      expect(() => checkMinOn(true, false, 1000, -100, 180)).toThrow();
+    });
   });
 
   describe('checkMinOff', () => {

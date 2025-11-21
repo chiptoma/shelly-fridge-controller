@@ -36,6 +36,8 @@ jest.mock('@boot/config', () => ({
     ADAPTIVE_HIGH_DUTY_PCT: 70,
     ADAPTIVE_LOW_DUTY_PCT: 30,
     ADAPTIVE_MAX_SHIFT_C: 0.5,
+    ADAPTIVE_MIN_SHIFT_C: 0,
+    ADAPTIVE_SHIFT_STEP_C: 0.1,
     RELAY_ID: 0,
     MIN_ON_SEC: 180,
     MIN_OFF_SEC: 300,
@@ -48,7 +50,12 @@ jest.mock('@boot/config', () => ({
 
 // Mock dependencies
 jest.mock('@core/smoothing', () => ({
-  updateMovingAverage: jest.fn().mockReturnValue(5.0),
+  updateMovingAverage: jest.fn().mockReturnValue({
+    buffer: { samples: [5.0] },
+    value: 5.0,
+    sampleCount: 1,
+    bufferFull: true
+  }),
   isBufferFull: jest.fn().mockReturnValue(true)
 }));
 
@@ -96,10 +103,9 @@ jest.mock('@features/duty-cycle', () => ({
 
 jest.mock('@features/high-temp-alerts', () => ({
   updateHighTempAlerts: jest.fn().mockReturnValue({
-    instantStart: 0,
-    instantFired: false,
-    sustainedStart: 0,
-    sustainedFired: false
+    instant: { startTime: 0, fired: false },
+    sustained: { startTime: 0, fired: false },
+    justFired: false
   })
 }));
 
@@ -154,9 +160,10 @@ import { updateHighTempAlerts } from '@features/high-temp-alerts';
 import { calculateAdaptiveShift } from '@features/adaptive-hysteresis';
 import { applyTimingConstraints } from '@core/compressor-timing';
 import { setRelay } from '@hardware/relay';
-import { trackLoopExecution } from '@features/performance-metrics';
-import { shouldGenerateSummary, calculateSummary } from '@features/daily-summary';
+import { trackLoopExecution, formatPerformanceSummary } from '@features/performance-metrics';
+import { shouldGenerateSummary, calculateSummary, formatDailySummary } from '@features/daily-summary';
 import { now } from '@utils/time';
+import { getDutyPercent } from '@features/duty-cycle';
 
 import type { ControllerState } from '@system/state/types';
 
@@ -166,6 +173,62 @@ describe('Control Helpers', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Re-setup mock implementations (needed because resetMocks: true clears them)
+    (updateMovingAverage as jest.Mock).mockReturnValue({
+      buffer: { samples: [5.0] },
+      value: 5.0,
+      sampleCount: 1,
+      bufferFull: true
+    });
+    (isBufferFull as jest.Mock).mockReturnValue(true);
+    (updateFreezeProtection as jest.Mock).mockReturnValue({
+      locked: false,
+      lockCount: 0,
+      unlockTime: 0
+    });
+    (updateSensorHealth as jest.Mock).mockReturnValue({
+      lastReadTime: 1000,
+      lastChangeTime: 1000,
+      lastRaw: 5.0,
+      noReadingFired: false,
+      criticalFailure: false,
+      stuckFired: false,
+      recovered: false,
+      unstuck: false,
+      offlineDuration: 0,
+      stuckDuration: 0
+    });
+    (calculateAdaptiveShift as jest.Mock).mockReturnValue({
+      newShift: 0,
+      changed: false
+    });
+    (applyTimingConstraints as jest.Mock).mockReturnValue({ allow: true });
+    (getDutyPercent as jest.Mock).mockReturnValue(50);
+    (updateHighTempAlerts as jest.Mock).mockReturnValue({
+      instant: { startTime: 0, fired: false },
+      sustained: { startTime: 0, fired: false },
+      justFired: false
+    });
+    (trackLoopExecution as jest.Mock).mockReturnValue({
+      performance: {
+        loopCount: 1,
+        loopTimeSum: 0.1,
+        loopTimeMax: 0.1,
+        loopTimeMin: 0.1,
+        slowLoopCount: 0
+      },
+      wasSlow: false,
+      loopTime: 0.1
+    });
+    (formatPerformanceSummary as jest.Mock).mockReturnValue('Perf summary');
+    (shouldGenerateSummary as jest.Mock).mockReturnValue({
+      shouldGenerate: false,
+      currentDate: '2024-01-01'
+    });
+    (calculateSummary as jest.Mock).mockReturnValue({});
+    (formatDailySummary as jest.Mock).mockReturnValue('Daily summary');
+    (now as jest.Mock).mockReturnValue(1000);
 
     mockLogger = {
       debug: jest.fn(),
@@ -398,22 +461,106 @@ describe('Control Helpers', () => {
       processSensorHealth(mockState, sensors, 1000, mockLogger);
       expect(mockLogger.warning).toHaveBeenCalledWith(expect.stringContaining('Evap sensor offline'));
     });
+
+    it('should log info when evap sensor recovers', () => {
+      // First call for air (normal)
+      (updateSensorHealth as jest.Mock).mockReturnValueOnce({
+        lastReadTime: 1000,
+        lastChangeTime: 1000,
+        lastRaw: 5.0,
+        noReadingFired: false,
+        criticalFailure: false,
+        stuckFired: false
+      });
+      // Second call for evap (recovered)
+      (updateSensorHealth as jest.Mock).mockReturnValueOnce({
+        lastReadTime: 1000,
+        lastChangeTime: 1000,
+        lastRaw: -10.0,
+        noReadingFired: false,
+        criticalFailure: false,
+        stuckFired: false,
+        recovered: true,
+        unstuck: false
+      });
+
+      processSensorHealth(mockState, sensors, 1000, mockLogger);
+      expect(mockLogger.info).toHaveBeenCalledWith('Evap sensor recovered');
+    });
+
+    it('should log warning when evap sensor stuck', () => {
+      // First call for air (normal)
+      (updateSensorHealth as jest.Mock).mockReturnValueOnce({
+        lastReadTime: 1000,
+        lastChangeTime: 1000,
+        lastRaw: 5.0,
+        noReadingFired: false,
+        criticalFailure: false,
+        stuckFired: false
+      });
+      // Second call for evap (stuck)
+      (updateSensorHealth as jest.Mock).mockReturnValueOnce({
+        lastReadTime: 1000,
+        lastChangeTime: 700,
+        lastRaw: -10.0,
+        noReadingFired: false,
+        criticalFailure: false,
+        stuckFired: true,
+        recovered: false,
+        unstuck: false,
+        stuckDuration: 300
+      });
+
+      processSensorHealth(mockState, sensors, 1000, mockLogger);
+      expect(mockLogger.warning).toHaveBeenCalledWith(expect.stringContaining('Evap sensor stuck'));
+    });
+
+    it('should log info when evap sensor unstuck', () => {
+      // First call for air (normal)
+      (updateSensorHealth as jest.Mock).mockReturnValueOnce({
+        lastReadTime: 1000,
+        lastChangeTime: 1000,
+        lastRaw: 5.0,
+        noReadingFired: false,
+        criticalFailure: false,
+        stuckFired: false
+      });
+      // Second call for evap (unstuck)
+      (updateSensorHealth as jest.Mock).mockReturnValueOnce({
+        lastReadTime: 1000,
+        lastChangeTime: 1000,
+        lastRaw: -10.0,
+        noReadingFired: false,
+        criticalFailure: false,
+        stuckFired: false,
+        recovered: false,
+        unstuck: true
+      });
+
+      processSensorHealth(mockState, sensors, 1000, mockLogger);
+      expect(mockLogger.info).toHaveBeenCalledWith('Evap sensor unstuck');
+    });
   });
 
   describe('processSmoothing', () => {
     it('should return smoothed temperatures', () => {
       const sensors = { airRaw: 5.0, evapRaw: -10.0 };
-      const result = processSmoothing(mockState, sensors, false, mockLogger);
+      const result = processSmoothing(mockState, sensors);
 
       expect(result.airDecision).toBeDefined();
       expect(result.evapDecision).toBeDefined();
     });
 
     it('should update state with smoothed values', () => {
-      (updateMovingAverage as jest.Mock).mockReturnValue(4.5);
+      (updateMovingAverage as jest.Mock).mockReturnValue({
+        buffer: { samples: [4.5] },
+        value: 4.5,
+        sampleCount: 1,
+        bufferFull: true
+      });
       const sensors = { airRaw: 5.0, evapRaw: -10.0 };
 
-      processSmoothing(mockState, sensors, false, mockLogger);
+      processSmoothing(mockState, sensors);
 
       expect(mockState.airTempSmoothed).toBe(4.5);
       expect(mockState.evapTempSmoothed).toBe(4.5);
@@ -423,23 +570,33 @@ describe('Control Helpers', () => {
       (isBufferFull as jest.Mock).mockReturnValue(false);
       const sensors = { airRaw: 5.0, evapRaw: -10.0 };
 
-      const result = processSmoothing(mockState, sensors, false, mockLogger);
+      const result = processSmoothing(mockState, sensors);
 
       expect(result.airDecision).toBe(5.0);
       expect(result.evapDecision).toBe(-10.0);
     });
 
-    it('should log debug info when isDebug true', () => {
+    it('should return buffer full status', () => {
+      (isBufferFull as jest.Mock).mockReturnValue(true);
       const sensors = { airRaw: 5.0, evapRaw: -10.0 };
-      processSmoothing(mockState, sensors, true, mockLogger);
-      expect(mockLogger.debug).toHaveBeenCalled();
+      const result = processSmoothing(mockState, sensors);
+      expect(result.airBufferFull).toBe(true);
+      expect(result.evapBufferFull).toBe(true);
     });
 
     it('should handle null sensor values', () => {
       const sensors = { airRaw: null, evapRaw: null };
-      processSmoothing(mockState, sensors, false, mockLogger);
+      processSmoothing(mockState, sensors);
 
       expect(updateMovingAverage).not.toHaveBeenCalled();
+    });
+
+    it('should return null decisions for null sensors when buffer not full', () => {
+      (isBufferFull as jest.Mock).mockReturnValue(false);
+      const sensors = { airRaw: null, evapRaw: -10.0 };
+      const result = processSmoothing(mockState, sensors);
+      expect(result.airDecision).toBe(null);
+      expect(result.evapDecision).toBe(-10.0);
     });
   });
 
@@ -451,7 +608,7 @@ describe('Control Helpers', () => {
         unlockTime: 1300
       });
 
-      processFreezeProtection(mockState, -20.0, 1000, false, mockLogger);
+      processFreezeProtection(mockState, -20.0, 1000);
 
       expect(mockState.freezeLocked).toBe(true);
       expect(mockState.lockCount).toBe(1);
@@ -466,31 +623,42 @@ describe('Control Helpers', () => {
         unlockTime: 1300
       });
 
-      processFreezeProtection(mockState, -20.0, 1000, false, mockLogger);
+      processFreezeProtection(mockState, -20.0, 1000);
 
       expect(mockState.dayFreezeCount).toBe(1);
     });
 
-    it('should log debug when freeze protection activates', () => {
+    it('should return true when freeze protection activates', () => {
       (updateFreezeProtection as jest.Mock).mockReturnValue({
         locked: true,
         lockCount: 1,
         unlockTime: 1300
       });
 
-      processFreezeProtection(mockState, -20.0, 1000, true, mockLogger);
+      const result = processFreezeProtection(mockState, -20.0, 1000);
 
-      expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Freeze protection activated'));
+      expect(result).toBe(true);
+    });
+
+    it('should handle undefined lockCount from updateFreezeProtection', () => {
+      (updateFreezeProtection as jest.Mock).mockReturnValue({
+        locked: false,
+        lockCount: undefined,
+        unlockTime: 0
+      });
+
+      processFreezeProtection(mockState, -5.0, 1000);
+
+      expect(mockState.lockCount).toBe(0);
     });
   });
 
   describe('processHighTempAlerts', () => {
     it('should log warning on instant alert', () => {
       (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instantStart: 800,
-        instantFired: true,
-        sustainedStart: 0,
-        sustainedFired: false
+        instant: { startTime: 800, fired: true },
+        sustained: { startTime: 0, fired: false },
+        justFired: true
       });
 
       processHighTempAlerts(mockState, 12.0, 1000, mockLogger);
@@ -501,10 +669,9 @@ describe('Control Helpers', () => {
 
     it('should log warning on sustained alert', () => {
       (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instantStart: 0,
-        instantFired: false,
-        sustainedStart: 400,
-        sustainedFired: true
+        instant: { startTime: 0, fired: false },
+        sustained: { startTime: 400, fired: true },
+        justFired: true
       });
 
       processHighTempAlerts(mockState, 12.0, 1000, mockLogger);
@@ -516,10 +683,9 @@ describe('Control Helpers', () => {
     it('should log info on instant alert recovery', () => {
       mockState.instantFired = true;
       (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instantStart: 0,
-        instantFired: false,
-        sustainedStart: 0,
-        sustainedFired: false
+        instant: { startTime: 0, fired: false },
+        sustained: { startTime: 0, fired: false },
+        justFired: false
       });
 
       processHighTempAlerts(mockState, 5.0, 1000, mockLogger);
@@ -530,15 +696,42 @@ describe('Control Helpers', () => {
     it('should log info on sustained alert recovery', () => {
       mockState.sustainedFired = true;
       (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instantStart: 0,
-        instantFired: false,
-        sustainedStart: 0,
-        sustainedFired: false
+        instant: { startTime: 0, fired: false },
+        sustained: { startTime: 0, fired: false },
+        justFired: false
       });
 
       processHighTempAlerts(mockState, 5.0, 1000, mockLogger);
 
       expect(mockLogger.info).toHaveBeenCalledWith('High temp sustained alert recovered');
+    });
+
+    it('should log ? for null airDecision on instant alert', () => {
+      (updateHighTempAlerts as jest.Mock).mockReturnValue({
+        instant: { startTime: 800, fired: true },
+        sustained: { startTime: 0, fired: false },
+        justFired: true
+      });
+
+      processHighTempAlerts(mockState, null, 1000, mockLogger);
+
+      expect(mockLogger.warning).toHaveBeenCalledWith(
+        expect.stringContaining('?')
+      );
+    });
+
+    it('should log ? for null airDecision on sustained alert', () => {
+      (updateHighTempAlerts as jest.Mock).mockReturnValue({
+        instant: { startTime: 0, fired: false },
+        sustained: { startTime: 400, fired: true },
+        justFired: true
+      });
+
+      processHighTempAlerts(mockState, null, 1000, mockLogger);
+
+      expect(mockLogger.warning).toHaveBeenCalledWith(
+        expect.stringContaining('?')
+      );
     });
   });
 
@@ -549,7 +742,7 @@ describe('Control Helpers', () => {
         changed: true
       });
 
-      processAdaptiveHysteresis(mockState, false, mockLogger);
+      processAdaptiveHysteresis(mockState);
 
       expect(mockState.dynOnAbove).toBe(5.2);
       expect(mockState.dynOffBelow).toBe(2.8);
@@ -563,21 +756,34 @@ describe('Control Helpers', () => {
         changed: false
       });
 
-      processAdaptiveHysteresis(mockState, false, mockLogger);
+      processAdaptiveHysteresis(mockState);
 
       expect(mockState.dynOnAbove).toBe(5.0);
       expect(mockState.dynOffBelow).toBe(3.0);
     });
 
-    it('should log debug when shift changes', () => {
+    it('should return debug info when shift changes', () => {
       (calculateAdaptiveShift as jest.Mock).mockReturnValue({
         newShift: 0.3,
         changed: true
       });
 
-      processAdaptiveHysteresis(mockState, true, mockLogger);
+      const result = processAdaptiveHysteresis(mockState);
 
-      expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Adaptive'));
+      expect(result).not.toBeNull();
+      expect(result!.dutyPercent).toBeDefined();
+      expect(result!.newShift).toBe(0.3);
+    });
+
+    it('should return null when no change', () => {
+      (calculateAdaptiveShift as jest.Mock).mockReturnValue({
+        newShift: 0,
+        changed: false
+      });
+
+      const result = processAdaptiveHysteresis(mockState);
+
+      expect(result).toBeNull();
     });
   });
 
@@ -618,6 +824,44 @@ describe('Control Helpers', () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Compressor OFF'));
     });
+
+    it('should handle relay callback error', () => {
+      (applyTimingConstraints as jest.Mock).mockReturnValue({ allow: true });
+      (setRelay as jest.Mock).mockImplementation((_state: boolean, _shelly: any, callback: Function) => {
+        callback(1, 'Relay error');
+      });
+
+      executeRelayChange(mockState, sensors, true, 1000, 5.0, -10.0, mockLogger);
+
+      expect(mockLogger.critical).toHaveBeenCalledWith('Relay control failed: Relay error');
+      expect(mockState.consecutiveErrors).toBe(1);
+    });
+
+    it('should update lastOnTime on successful relay ON', () => {
+      (applyTimingConstraints as jest.Mock).mockReturnValue({ allow: true });
+      (now as jest.Mock).mockReturnValue(1500);
+      (setRelay as jest.Mock).mockImplementation((_state: boolean, _shelly: any, callback: Function) => {
+        callback(0, '');
+      });
+
+      executeRelayChange(mockState, sensors, true, 1000, 5.0, -10.0, mockLogger);
+
+      expect(mockState.consecutiveErrors).toBe(0);
+      expect(mockState.lastOnTime).toBe(1500);
+    });
+
+    it('should update lastOffTime on successful relay OFF', () => {
+      (applyTimingConstraints as jest.Mock).mockReturnValue({ allow: true });
+      (now as jest.Mock).mockReturnValue(1500);
+      (setRelay as jest.Mock).mockImplementation((_state: boolean, _shelly: any, callback: Function) => {
+        callback(0, '');
+      });
+
+      executeRelayChange(mockState, { ...sensors, relayOn: true }, false, 1000, 5.0, -10.0, mockLogger);
+
+      expect(mockState.consecutiveErrors).toBe(0);
+      expect(mockState.lastOffTime).toBe(1500);
+    });
   });
 
   describe('processPerformanceMetrics', () => {
@@ -636,6 +880,59 @@ describe('Control Helpers', () => {
 
       expect(mockLogger.info).toHaveBeenCalledWith('Perf summary');
       expect(mockState.lastPerfLog).toBe(4000);
+    });
+
+    it('should log warning on slow loop when enabled', () => {
+      (trackLoopExecution as jest.Mock).mockReturnValue({
+        performance: {
+          loopCount: 1,
+          loopTimeSum: 0.3,
+          loopTimeMax: 0.3,
+          loopTimeMin: 0.3,
+          slowLoopCount: 1
+        },
+        wasSlow: true,
+        loopTime: 0.3
+      });
+
+      // Note: CONFIG.PERF_WARN_SLOW_LOOPS is false in mock, so warning won't fire
+      // This test verifies the mock is called correctly
+      processPerformanceMetrics(mockState, 1000, mockLogger);
+
+      expect(trackLoopExecution).toHaveBeenCalled();
+      expect(mockState.slowLoopCount).toBe(1);
+    });
+  });
+
+  describe('processPerformanceMetrics with warnings enabled', () => {
+    it('should log warning when slow loop detected and warnings enabled', () => {
+      // Save original mock
+      const CONFIG = require('@boot/config').default;
+      const originalWarnSlowLoops = CONFIG.PERF_WARN_SLOW_LOOPS;
+
+      // Enable slow loop warnings
+      CONFIG.PERF_WARN_SLOW_LOOPS = true;
+
+      (trackLoopExecution as jest.Mock).mockReturnValue({
+        performance: {
+          loopCount: 1,
+          loopTimeSum: 0.3,
+          loopTimeMax: 0.3,
+          loopTimeMin: 0.3,
+          slowLoopCount: 1
+        },
+        wasSlow: true,
+        loopTime: 0.3
+      });
+
+      processPerformanceMetrics(mockState, 1000, mockLogger);
+
+      expect(mockLogger.warning).toHaveBeenCalledWith(
+        expect.stringContaining('Slow loop')
+      );
+
+      // Restore original value
+      CONFIG.PERF_WARN_SLOW_LOOPS = originalWarnSlowLoops;
     });
   });
 

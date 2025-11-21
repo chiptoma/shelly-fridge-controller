@@ -111,19 +111,17 @@ export function applyTimingConstraints(
   const minOffCheck = checkMinOff(relayOn, wantCool, now, state.lastOffTime, config.MIN_OFF_SEC);
 
   if (!minOnCheck.allow) {
-    return {
-      ...minOnCheck,
+    return Object.assign({}, minOnCheck, {
       allow: false,
       reason: TIMING_CONSTRAINTS.MIN_ON
-    };
+    });
   }
 
   if (!minOffCheck.allow) {
-    return {
-      ...minOffCheck,
+    return Object.assign({}, minOffCheck, {
       allow: false,
       reason: TIMING_CONSTRAINTS.MIN_OFF
-    };
+    });
   }
 
   return { allow: true };

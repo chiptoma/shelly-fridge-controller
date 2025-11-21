@@ -422,6 +422,31 @@ describe('Daily Summary', () => {
       expect(result.evapAvg).toBeNull();
       expect(result.dutyPct).toBe(0);
     });
+
+    it('should handle zero total time (both on and off are zero)', () => {
+      const state: DailyState = {
+        dayOnSec: 0,
+        dayOffSec: 0,
+        dayAirMin: null,
+        dayAirMax: null,
+        dayAirSum: 0,
+        dayAirCount: 0,
+        dayEvapMin: null,
+        dayEvapMax: null,
+        dayEvapSum: 0,
+        dayEvapCount: 0,
+        freezeCount: 0,
+        highTempCount: 0
+      };
+
+      const result = calculateSummary(state);
+
+      expect(result.onHours).toBe(0);
+      expect(result.offHours).toBe(0);
+      expect(result.dutyPct).toBe(0);  // Should not divide by zero
+      expect(result.airAvg).toBeNull();
+      expect(result.evapAvg).toBeNull();
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════
@@ -445,12 +470,12 @@ describe('Daily Summary', () => {
         highTempCount: 0
       };
 
-      updateDailyStats(state, 5.0, null);
+      const result = updateDailyStats(state, 5.0, null);
 
-      expect(state.dayAirMin).toBe(5.0);
-      expect(state.dayAirMax).toBe(5.0);
-      expect(state.dayAirSum).toBe(5.0);
-      expect(state.dayAirCount).toBe(1);
+      expect(result.dayAirMin).toBe(5.0);
+      expect(result.dayAirMax).toBe(5.0);
+      expect(result.dayAirSum).toBe(5.0);
+      expect(result.dayAirCount).toBe(1);
     });
 
     it('should handle null readings', () => {
@@ -469,12 +494,89 @@ describe('Daily Summary', () => {
         highTempCount: 0
       };
 
-      updateDailyStats(state, null, null);
+      const result = updateDailyStats(state, null, null);
 
       // Should remain unchanged
-      expect(state.dayAirMin).toBe(4.0);
-      expect(state.dayAirMax).toBe(6.0);
-      expect(state.dayAirCount).toBe(2);
+      expect(result.dayAirMin).toBe(4.0);
+      expect(result.dayAirMax).toBe(6.0);
+      expect(result.dayAirCount).toBe(2);
+    });
+
+    it('should return unchanged state when dailyState is null', () => {
+      const result = updateDailyStats(null as any, 5.0, -10.0);
+      expect(result).toBeNull();
+    });
+
+    it('should update min when current is lower than existing', () => {
+      const state: DailyState = {
+        dayAirMin: 5.0,
+        dayAirMax: 6.0,
+        dayAirSum: 11,
+        dayAirCount: 2,
+        dayEvapMin: -8.0,
+        dayEvapMax: -6.0,
+        dayEvapSum: -14,
+        dayEvapCount: 2,
+        dayOnSec: 0,
+        dayOffSec: 0,
+        freezeCount: 0,
+        highTempCount: 0
+      };
+
+      const result = updateDailyStats(state, 3.0, -10.0);
+
+      expect(result.dayAirMin).toBe(3.0);
+      expect(result.dayAirMax).toBe(6.0);
+      expect(result.dayEvapMin).toBe(-10.0);
+      expect(result.dayEvapMax).toBe(-6.0);
+    });
+
+    it('should update max when current is higher than existing', () => {
+      const state: DailyState = {
+        dayAirMin: 4.0,
+        dayAirMax: 6.0,
+        dayAirSum: 10,
+        dayAirCount: 2,
+        dayEvapMin: -10.0,
+        dayEvapMax: -8.0,
+        dayEvapSum: -18,
+        dayEvapCount: 2,
+        dayOnSec: 0,
+        dayOffSec: 0,
+        freezeCount: 0,
+        highTempCount: 0
+      };
+
+      const result = updateDailyStats(state, 8.0, -5.0);
+
+      expect(result.dayAirMin).toBe(4.0);
+      expect(result.dayAirMax).toBe(8.0);
+      expect(result.dayEvapMin).toBe(-10.0);
+      expect(result.dayEvapMax).toBe(-5.0);
+    });
+
+    it('should not update min/max when current is between existing', () => {
+      const state: DailyState = {
+        dayAirMin: 4.0,
+        dayAirMax: 6.0,
+        dayAirSum: 10,
+        dayAirCount: 2,
+        dayEvapMin: -10.0,
+        dayEvapMax: -8.0,
+        dayEvapSum: -18,
+        dayEvapCount: 2,
+        dayOnSec: 0,
+        dayOffSec: 0,
+        freezeCount: 0,
+        highTempCount: 0
+      };
+
+      const result = updateDailyStats(state, 5.0, -9.0);
+
+      expect(result.dayAirMin).toBe(4.0);
+      expect(result.dayAirMax).toBe(6.0);
+      expect(result.dayEvapMin).toBe(-10.0);
+      expect(result.dayEvapMax).toBe(-8.0);
     });
   });
 
@@ -499,10 +601,10 @@ describe('Daily Summary', () => {
         highTempCount: 0
       };
 
-      updateDailyRuntime(state, 10, true);
+      const result = updateDailyRuntime(state, 10, true);
 
-      expect(state.dayOnSec).toBe(110);
-      expect(state.dayOffSec).toBe(50);
+      expect(result.dayOnSec).toBe(110);
+      expect(result.dayOffSec).toBe(50);
     });
 
     it('should accumulate OFF time when relay is off', () => {
@@ -521,10 +623,10 @@ describe('Daily Summary', () => {
         highTempCount: 0
       };
 
-      updateDailyRuntime(state, 10, false);
+      const result = updateDailyRuntime(state, 10, false);
 
-      expect(state.dayOnSec).toBe(100);
-      expect(state.dayOffSec).toBe(60);
+      expect(result.dayOnSec).toBe(100);
+      expect(result.dayOffSec).toBe(60);
     });
 
     it('should not update with zero or negative delta', () => {
@@ -543,11 +645,11 @@ describe('Daily Summary', () => {
         highTempCount: 0
       };
 
-      updateDailyRuntime(state, 0, true);
-      expect(state.dayOnSec).toBe(100);
+      const result1 = updateDailyRuntime(state, 0, true);
+      expect(result1.dayOnSec).toBe(100);
 
-      updateDailyRuntime(state, -5, true);
-      expect(state.dayOnSec).toBe(100);
+      const result2 = updateDailyRuntime(state, -5, true);
+      expect(result2.dayOnSec).toBe(100);
     });
   });
 });

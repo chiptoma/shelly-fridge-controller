@@ -17,11 +17,11 @@ export interface SmoothingConfig {
 }
 
 /**
- * Smoothing buffer state (immutable)
+ * Smoothing buffer state (mutable for memory efficiency)
  */
 export interface SmoothingBufferState {
   /** Array of temperature readings */
-  readonly samples: readonly number[];
+  samples: number[];
 }
 
 /**

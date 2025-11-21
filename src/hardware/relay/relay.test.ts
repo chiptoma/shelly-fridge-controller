@@ -141,6 +141,23 @@ describe('Relay Control', () => {
         consoleErrorSpy.mockRestore();
       });
 
+      it('should log error with OFF state when no callback provided', () => {
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+        const mockShelly = {
+          call: jest.fn((_method, _params, callback) => {
+            callback(null, -103, 'Device not found');
+          })
+        } as unknown as ShellyAPI;
+
+        setRelay(false, mockShelly);
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[Relay] Failed to set relay to OFF: Error -103 - Device not found')
+        );
+
+        consoleErrorSpy.mockRestore();
+      });
+
       it('should not log error when success and no callback', () => {
         const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
         const mockShelly = {

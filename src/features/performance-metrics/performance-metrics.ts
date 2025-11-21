@@ -4,6 +4,7 @@
  */
 
 import type { PerformanceState, LoopTrackingResult } from './types';
+import { isFiniteNumber } from '@utils/number';
 
 const MS_PER_SECOND = 1000;
 const PERCENT_MULTIPLIER = 100;
@@ -51,7 +52,7 @@ export function trackLoopExecution(
   slowThresholdMs: number
 ): LoopTrackingResult {
   // Validate inputs
-  if (!Number.isFinite(loopStartSec) || !Number.isFinite(loopEndSec)) {
+  if (!isFiniteNumber(loopStartSec) || !isFiniteNumber(loopEndSec)) {
     return {
       performance,
       wasSlow: false,

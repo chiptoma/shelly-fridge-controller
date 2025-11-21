@@ -13,7 +13,6 @@
  */
 
 import type { LogLevel, LogLevels, Logger, LoggerConfig, LoggerDependencies, InitMessage, SinkWithLevel } from './types';
-import { formatLogMessage, shouldLog } from './helpers';
 
 /**
  * Create a logger instance
@@ -56,31 +55,36 @@ export function createLogger(
   const demoteHours = config.demoteHours;
   const timeSource = dependencies.timeSource;
   const sinks: SinkWithLevel[] = dependencies.sinks || [];
+  const startTime = timeSource(); // Track when logger was created for uptime calculation
 
   /**
-   * Internal log function
+   * Internal log function - inlined for minimal call stack depth on Shelly
    * @param level - Log level (0-3)
    * @param msg - Message to log
    */
   function log(level: LogLevel, msg: string) {
-    // Get current uptime
-    const uptime = timeSource();
-
-    // Check if message should be logged (level + auto-demotion)
-    if (!shouldLog(level, {
-      currentLevel: currentLevel,
-      uptime: uptime,
-      demoteHours: demoteHours
-    }, logLevels)) {
+    // Inline level check (from shouldLog)
+    if (level < currentLevel) {
       return;
     }
 
-    // Format message with level tag
-    const formattedMessage = formatLogMessage(level, msg, logLevels);
+    // Inline auto-demotion check
+    if (level === logLevels.INFO && currentLevel > logLevels.DEBUG && demoteHours > 0) {
+      const uptime = timeSource() - startTime;
+      if (uptime > demoteHours * 3600) {
+        return;
+      }
+    }
+
+    // Inline message formatting (from formatLogMessage)
+    let tag = "[DEBUG]    ";
+    if (level === logLevels.INFO) tag = "ℹ️ [INFO]     ";
+    if (level === logLevels.WARNING) tag = "⚠️ [WARNING]  ";
+    if (level === logLevels.CRITICAL) tag = "🚨 [CRITICAL] ";
+    const formattedMessage = tag + msg;
 
     // Write to sinks that meet the level threshold
     for (let i = 0; i < sinks.length; i++) {
-      // Filter by per-sink minLevel (before buffering)
       if (level < sinks[i].minLevel) {
         continue;
       }

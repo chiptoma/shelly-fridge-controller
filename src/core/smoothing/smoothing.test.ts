@@ -13,14 +13,15 @@ describe('smoothing', () => {
     loopPeriodMs: 1000
   };
 
-  describe('updateMovingAverage (immutable)', () => {
-    it('should return new buffer without mutating input', () => {
+  describe('updateMovingAverage (mutable)', () => {
+    it('should mutate buffer in place for memory efficiency', () => {
       const buffer = createEmptyBuffer();
       const result = updateMovingAverage(buffer, 10.0, defaultConfig);
 
       expect(result.value).toBe(10.0);
       expect(result.buffer.samples).toEqual([10.0]);
-      expect(buffer.samples).toEqual([]); // Original unchanged
+      expect(buffer.samples).toEqual([10.0]); // Buffer is mutated in place
+      expect(result.buffer).toBe(buffer); // Same reference
     });
 
     it('should calculate average of multiple values', () => {

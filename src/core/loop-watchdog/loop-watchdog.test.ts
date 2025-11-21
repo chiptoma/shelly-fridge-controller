@@ -57,6 +57,14 @@ describe('loop-watchdog', () => {
     it('should throw on negative timeout', () => {
       expect(() => isWatchdogStarved(1000, 1010, -30)).toThrow();
     });
+
+    it('should throw on NaN lastWatchdogPet', () => {
+      expect(() => isWatchdogStarved(NaN, 1010, 30)).toThrow();
+    });
+
+    it('should throw on negative lastWatchdogPet', () => {
+      expect(() => isWatchdogStarved(-100, 1010, 30)).toThrow();
+    });
   });
 
   describe('getTimeSinceLastPet', () => {

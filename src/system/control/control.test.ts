@@ -198,6 +198,45 @@ describe('Control Loop', () => {
       run(mockController);
       expect(mockLogger.debug).not.toHaveBeenCalled();
     });
+
+    it('should log debug info with null air sensor value', () => {
+      mockController.isDebug = true;
+      (readAllSensors as jest.Mock).mockReturnValue({
+        airRaw: null,
+        evapRaw: -10.0,
+        relayOn: false
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('n/a')
+      );
+    });
+
+    it('should log debug info with null evap sensor value', () => {
+      mockController.isDebug = true;
+      (readAllSensors as jest.Mock).mockReturnValue({
+        airRaw: 5.0,
+        evapRaw: null,
+        relayOn: false
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('n/a')
+      );
+    });
+
+    it('should log debug info with relay ON', () => {
+      mockController.isDebug = true;
+      (readAllSensors as jest.Mock).mockReturnValue({
+        airRaw: 5.0,
+        evapRaw: -10.0,
+        relayOn: true
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Relay=ON')
+      );
+    });
   });
 
   describe('sensor health processing', () => {
@@ -248,6 +287,22 @@ describe('Control Loop', () => {
       run(mockController);
 
       expect(mockLogger.critical).toHaveBeenCalled();
+      expect(mockController.state.consecutiveErrors).toBe(1);
+    });
+
+    it('should log critical error when relay stuck OFF->ON', () => {
+      (validateRelayState as jest.Mock).mockReturnValue({
+        valid: false,
+        stuck: true,
+        intended: false,
+        reported: true,
+        elapsed: 15
+      });
+      run(mockController);
+
+      expect(mockLogger.critical).toHaveBeenCalledWith(
+        expect.stringContaining('OFF')
+      );
       expect(mockController.state.consecutiveErrors).toBe(1);
     });
   });

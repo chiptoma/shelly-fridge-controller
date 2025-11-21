@@ -49,7 +49,9 @@
       "@validation": ["src/validation/index.ts"],
       "@validation/*": ["src/validation/*"],
       "@logging": ["src/logging/index.ts"],
-      "@logging/*": ["src/logging/*"]
+      "@logging/*": ["src/logging/*"],
+      "@events": ["src/events/index.ts"],
+      "@events/*": ["src/events/*"]
     }
   },
   "include": [

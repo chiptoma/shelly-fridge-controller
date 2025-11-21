@@ -8,6 +8,7 @@
 
 import type { FridgeConfig } from '$types/config';
 import type { AdaptiveShiftResult } from './types';
+import { isFiniteNumber } from '@utils/number';
 
 /**
  * Calculate adaptive hysteresis shift based on duty cycle
@@ -39,7 +40,7 @@ export function calculateAdaptiveShift(
   config: FridgeConfig
 ): AdaptiveShiftResult {
   // Validate inputs
-  if (!Number.isFinite(dutyPercent) || !Number.isFinite(currentShift)) {
+  if (!isFiniteNumber(dutyPercent) || !isFiniteNumber(currentShift)) {
     return { changed: false, newShift: currentShift };
   }
 

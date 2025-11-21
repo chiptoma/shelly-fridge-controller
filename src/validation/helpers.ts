@@ -4,6 +4,7 @@
  */
 
 import type { ValidationError, ValidationWarning } from './types';
+import { isFiniteNumber, isInteger } from '@utils/number';
 
 // ═══════════════════════════════════════════════════════════════
 // ERROR AND WARNING BUILDERS
@@ -81,7 +82,7 @@ export function validateNumberRange(
   if (value === undefined) return;
 
   // Check for NaN and Infinity (invalid numeric values)
-  if (!Number.isFinite(value)) {
+  if (!isFiniteNumber(value)) {
     addError(
       errors,
       field,
@@ -139,7 +140,7 @@ export function validateIntegerRange(
   if (value === undefined) return;
 
   // Check if integer
-  if (!Number.isInteger(value)) {
+  if (!isInteger(value)) {
     addError(errors, field, `${field} must be an integer (got ${value})`);
     return;
   }

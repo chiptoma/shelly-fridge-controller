@@ -15,7 +15,7 @@ import type { FreezeState, FreezeConfig, ReleaseDecision } from './types';
 export function validateFreezeConfig(config: FreezeConfig): void {
   if (config.FREEZE_PROTECTION_START_C >= config.FREEZE_PROTECTION_STOP_C) {
     throw new Error(
-      `Invalid freeze config: START_C (${config.FREEZE_PROTECTION_START_C}) must be less than STOP_C (${config.FREEZE_PROTECTION_STOP_C})`
+      "Invalid freeze config: START_C (" + config.FREEZE_PROTECTION_START_C + ") must be less than STOP_C (" + config.FREEZE_PROTECTION_STOP_C + ")"
     );
   }
   if (config.FREEZE_LOCK_HYSTERESIS_C < 0 || config.FREEZE_RECOVERY_HYSTERESIS_C < 0) {

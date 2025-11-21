@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SHELLY_MAX_SIZE_KB = 100; // Shelly device script size limit
-const scriptPath = path.join(__dirname, 'script.js');
+const scriptPath = process.argv[2] || path.join(__dirname, 'script.js');
 
 console.log('🔍 Validating Shelly script output...\n');
 

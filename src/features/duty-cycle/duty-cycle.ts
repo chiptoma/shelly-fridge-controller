@@ -6,6 +6,7 @@
  */
 
 import type { DutyCycleState } from './types';
+import { isFiniteNumber } from '@utils/number';
 
 /**
  * Update duty cycle accumulators
@@ -19,7 +20,7 @@ export function updateDutyCycle(
   dt: number,
   relayOn: boolean
 ): DutyCycleState {
-  if (!dutyState || dt <= 0 || !Number.isFinite(dt)) {
+  if (!dutyState || dt <= 0 || !isFiniteNumber(dt)) {
     return dutyState;
   }
 
@@ -37,7 +38,7 @@ export function updateDutyCycle(
  * @returns Duty cycle percentage (0-100)
  */
 export function getDutyPercent(onSec: number, offSec: number): number {
-  if (!Number.isFinite(onSec) || !Number.isFinite(offSec)) {
+  if (!isFiniteNumber(onSec) || !isFiniteNumber(offSec)) {
     return 0;
   }
 

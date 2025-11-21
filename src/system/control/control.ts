@@ -45,7 +45,7 @@ export function run(controller: Controller): void {
     state.lastLoopTime = t;
 
     if (isDebug) {
-      logger.debug("Loop: t=" + t + "s, airRaw=" + (sensors.airRaw !== null ? sensors.airRaw.toFixed(1) : "n/a") + ", evapRaw=" + (sensors.evapRaw !== null ? sensors.evapRaw.toFixed(1) : "n/a") + ", relay=" + (sensors.relayOn ? "ON" : "OFF"));
+      logger.debug("Loop t=" + t + "s | Raw: air=" + (sensors.airRaw !== null ? sensors.airRaw.toFixed(1) + "C" : "n/a") + " evap=" + (sensors.evapRaw !== null ? sensors.evapRaw.toFixed(1) + "C" : "n/a") + " | Relay=" + (sensors.relayOn ? "ON" : "OFF"));
     }
 
     // Sensor health monitoring
@@ -56,12 +56,25 @@ export function run(controller: Controller): void {
     }
 
     // Smoothing
-    const smoothingResult = processSmoothing(state, sensors, isDebug, logger);
+    const smoothingResult = processSmoothing(state, sensors);
     const airDecision = smoothingResult.airDecision;
     const evapDecision = smoothingResult.evapDecision;
 
+    if (isDebug) {
+      const airMsg = smoothingResult.airBufferFull
+        ? "air=" + (airDecision !== null ? airDecision.toFixed(1) + "C" : "n/a") + " (smoothed from " + (sensors.airRaw !== null ? sensors.airRaw.toFixed(1) + "C" : "n/a") + ")"
+        : "air=" + (sensors.airRaw !== null ? sensors.airRaw.toFixed(1) + "C" : "n/a") + " (raw, buffer filling)";
+      const evapMsg = smoothingResult.evapBufferFull
+        ? "evap=" + (evapDecision !== null ? evapDecision.toFixed(1) + "C" : "n/a") + " (smoothed from " + (sensors.evapRaw !== null ? sensors.evapRaw.toFixed(1) + "C" : "n/a") + ")"
+        : "evap=" + (sensors.evapRaw !== null ? sensors.evapRaw.toFixed(1) + "C" : "n/a") + " (raw, buffer filling)";
+      logger.debug("Decision: " + airMsg + ", " + evapMsg);
+    }
+
     // Freeze protection
-    processFreezeProtection(state, evapDecision, t, isDebug, logger);
+    const freezeActivated = processFreezeProtection(state, evapDecision, t);
+    if (freezeActivated && isDebug) {
+      logger.debug("Freeze protection activated: count=" + state.dayFreezeCount);
+    }
 
     // High temp alerts
     if (CONFIG.FEATURE_HIGH_TEMP_ALERTS) {
@@ -70,7 +83,10 @@ export function run(controller: Controller): void {
 
     // Adaptive hysteresis
     if (CONFIG.FEATURE_ADAPTIVE_HYSTERESIS) {
-      processAdaptiveHysteresis(state, isDebug, logger);
+      const adaptiveResult = processAdaptiveHysteresis(state);
+      if (adaptiveResult && isDebug) {
+        logger.debug("Adaptive: duty=" + adaptiveResult.dutyPercent.toFixed(1) + "%, shift=" + adaptiveResult.newShift.toFixed(2) + "C");
+      }
     }
 
     // Validate relay state

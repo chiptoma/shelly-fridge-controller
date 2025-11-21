@@ -139,46 +139,54 @@ export function processSensorHealth(
  */
 export function processSmoothing(
   state: ControllerState,
-  sensors: { airRaw: number | null; evapRaw: number | null },
-  isDebug: boolean,
-  logger: Logger
-): { airDecision: number | null; evapDecision: number | null } {
+  sensors: { airRaw: number | null; evapRaw: number | null }
+): { airDecision: number | null; evapDecision: number | null; airBufferFull: boolean; evapBufferFull: boolean } {
   let airSmoothed = state.airTempSmoothed;
   let evapSmoothed = state.evapTempSmoothed;
 
+  const airConfig = { windowSizeSec: CONFIG.AIR_SENSOR_SMOOTHING_SEC, loopPeriodMs: CONFIG.LOOP_PERIOD_MS };
+  const evapConfig = { windowSizeSec: CONFIG.EVAP_SENSOR_SMOOTHING_SEC, loopPeriodMs: CONFIG.LOOP_PERIOD_MS };
+
+  // Use mutable buffers directly - no array copies
+  const airBuffer = { samples: state.airTempBuffer };
+  const evapBuffer = { samples: state.evapTempBuffer };
+
+  let airBufferFull = false;
+  let evapBufferFull = false;
+
   if (sensors.airRaw !== null) {
-    airSmoothed = updateMovingAverage(state.airTempBuffer, sensors.airRaw, CONFIG.AIR_SENSOR_SMOOTHING_SEC, CONFIG.LOOP_PERIOD_MS);
+    const result = updateMovingAverage(airBuffer, sensors.airRaw, airConfig);
+    airSmoothed = result.value;
     state.airTempSmoothed = airSmoothed;
+    airBufferFull = result.bufferFull;
+  } else {
+    airBufferFull = isBufferFull(airBuffer, airConfig);
   }
 
   if (sensors.evapRaw !== null) {
-    evapSmoothed = updateMovingAverage(state.evapTempBuffer, sensors.evapRaw, CONFIG.EVAP_SENSOR_SMOOTHING_SEC, CONFIG.LOOP_PERIOD_MS);
+    const result = updateMovingAverage(evapBuffer, sensors.evapRaw, evapConfig);
+    evapSmoothed = result.value;
     state.evapTempSmoothed = evapSmoothed;
+    evapBufferFull = result.bufferFull;
+  } else {
+    evapBufferFull = isBufferFull(evapBuffer, evapConfig);
   }
-
-  const airBufferFull = isBufferFull(state.airTempBuffer, CONFIG.AIR_SENSOR_SMOOTHING_SEC, CONFIG.LOOP_PERIOD_MS);
-  const evapBufferFull = isBufferFull(state.evapTempBuffer, CONFIG.EVAP_SENSOR_SMOOTHING_SEC, CONFIG.LOOP_PERIOD_MS);
 
   const airDecision = airBufferFull ? airSmoothed : sensors.airRaw;
   const evapDecision = evapBufferFull ? evapSmoothed : sensors.evapRaw;
 
-  if (isDebug) {
-    logger.debug("Smoothing: air=" + (airDecision !== null ? airDecision.toFixed(1) : "n/a") + " (" + (airBufferFull ? "smoothed" : "raw") + "), evap=" + (evapDecision !== null ? evapDecision.toFixed(1) : "n/a") + " (" + (evapBufferFull ? "smoothed" : "raw") + ")");
-  }
-
-  return { airDecision, evapDecision };
+  return { airDecision: airDecision, evapDecision: evapDecision, airBufferFull: airBufferFull, evapBufferFull: evapBufferFull };
 }
 
 /**
  * Process freeze protection
+ * @returns true if freeze protection was just activated
  */
 export function processFreezeProtection(
   state: ControllerState,
   evapDecision: number | null,
-  t: number,
-  isDebug: boolean,
-  logger: Logger
-): void {
+  t: number
+): boolean {
   const freezeUpdate = updateFreezeProtection(evapDecision, t, {
     locked: state.freezeLocked,
     lockCount: state.lockCount,
@@ -192,10 +200,9 @@ export function processFreezeProtection(
 
   if (state.lockCount > previousLockCount) {
     state.dayFreezeCount++;
-    if (isDebug) {
-      logger.debug("Freeze protection activated: count=" + state.dayFreezeCount);
-    }
+    return true;
   }
+  return false;
 }
 
 /**
@@ -218,43 +225,41 @@ export function processHighTempAlerts(
   const prevSustained = state.sustainedFired;
 
   const result = updateHighTempAlerts(airDecision, t, {
-    instantStart: state.instantStart,
-    instantFired: state.instantFired,
-    sustainedStart: state.sustainedStart,
-    sustainedFired: state.sustainedFired
+    instant: { startTime: state.instantStart, fired: state.instantFired },
+    sustained: { startTime: state.sustainedStart, fired: state.sustainedFired },
+    justFired: false
   }, alertConfig);
 
-  state.instantStart = result.instantStart;
-  state.instantFired = result.instantFired;
-  state.sustainedStart = result.sustainedStart;
-  state.sustainedFired = result.sustainedFired;
+  state.instantStart = result.instant.startTime;
+  state.instantFired = result.instant.fired;
+  state.sustainedStart = result.sustained.startTime;
+  state.sustainedFired = result.sustained.fired;
 
-  if (result.instantFired && !prevInstant) {
+  if (result.instant.fired && !prevInstant) {
     logger.warning("HIGH TEMP INSTANT: " + (airDecision !== null ? airDecision.toFixed(1) : "?") + "C exceeded " + CONFIG.HIGH_TEMP_INSTANT_THRESHOLD_C + "C for " + CONFIG.HIGH_TEMP_INSTANT_DELAY_SEC + "s");
     state.dayHighTempCount++;
   }
 
-  if (result.sustainedFired && !prevSustained) {
+  if (result.sustained.fired && !prevSustained) {
     logger.warning("HIGH TEMP SUSTAINED: " + (airDecision !== null ? airDecision.toFixed(1) : "?") + "C exceeded " + CONFIG.HIGH_TEMP_SUSTAINED_THRESHOLD_C + "C for " + (CONFIG.HIGH_TEMP_SUSTAINED_DELAY_SEC / 60).toFixed(0) + "min");
     state.dayHighTempCount++;
   }
 
-  if (!result.instantFired && prevInstant) {
+  if (!result.instant.fired && prevInstant) {
     logger.info("High temp instant alert recovered");
   }
-  if (!result.sustainedFired && prevSustained) {
+  if (!result.sustained.fired && prevSustained) {
     logger.info("High temp sustained alert recovered");
   }
 }
 
 /**
  * Process adaptive hysteresis
+ * @returns debug info if changed, null otherwise
  */
 export function processAdaptiveHysteresis(
-  state: ControllerState,
-  isDebug: boolean,
-  logger: Logger
-): void {
+  state: ControllerState
+): { dutyPercent: number; newShift: number } | null {
   const dutyPercent = getDutyPercent(state.dutyOnSec, state.dutyOffSec);
   const baseOnAbove = CONFIG.SETPOINT_C + CONFIG.HYSTERESIS_C;
   const baseOffBelow = CONFIG.SETPOINT_C - CONFIG.HYSTERESIS_C;
@@ -265,11 +270,9 @@ export function processAdaptiveHysteresis(
   if (result.changed) {
     state.dynOnAbove = baseOnAbove + result.newShift;
     state.dynOffBelow = baseOffBelow - result.newShift;
-
-    if (isDebug) {
-      logger.debug("Adaptive: duty=" + dutyPercent.toFixed(1) + "%, shift=" + result.newShift.toFixed(2) + "C");
-    }
+    return { dutyPercent: dutyPercent, newShift: result.newShift };
   }
+  return null;
 }
 
 /**

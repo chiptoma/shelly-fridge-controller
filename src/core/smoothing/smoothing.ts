@@ -40,14 +40,14 @@ export function createEmptyBuffer(): SmoothingBufferState {
 }
 
 /**
- * Update moving average buffer with new value (IMMUTABLE)
+ * Update moving average buffer with new value (MUTABLE)
  *
- * Returns a new buffer and smoothed value without mutating the input.
+ * Mutates the buffer in-place for memory efficiency on constrained devices.
  *
- * @param buffer - Current buffer state
+ * @param buffer - Current buffer state (will be mutated)
  * @param newValue - New temperature reading to add
  * @param config - Smoothing configuration
- * @returns Smoothing result with new buffer and value
+ * @returns Smoothing result with same buffer reference
  * @throws {Error} If inputs are invalid
  */
 export function updateMovingAverage(
@@ -60,23 +60,26 @@ export function updateMovingAverage(
 
   const maxSamples = getMaxSamples(config.windowSizeSec, config.loopPeriodMs);
 
-  // Create new samples array (immutable)
-  let newSamples = [...buffer.samples, newValue];
+  // Add new value to end
+  buffer.samples.push(newValue);
 
-  // Trim from front if exceeding max
-  if (newSamples.length > maxSamples) {
-    newSamples = newSamples.slice(newSamples.length - maxSamples);
+  // Remove from front if exceeding max (shift is O(n) but n is small ~6)
+  while (buffer.samples.length > maxSamples) {
+    buffer.samples.shift();
   }
 
-  // Calculate average
-  const sum = newSamples.reduce((a, b) => a + b, 0);
-  const average = sum / newSamples.length;
+  // Calculate average - manual sum for Shelly compatibility
+  let sum = 0;
+  for (let j = 0; j < buffer.samples.length; j++) {
+    sum += buffer.samples[j];
+  }
+  const average = sum / buffer.samples.length;
 
   return {
-    buffer: { samples: newSamples },
+    buffer: buffer,
     value: average,
-    sampleCount: newSamples.length,
-    bufferFull: newSamples.length >= maxSamples
+    sampleCount: buffer.samples.length,
+    bufferFull: buffer.samples.length >= maxSamples
   };
 }
 

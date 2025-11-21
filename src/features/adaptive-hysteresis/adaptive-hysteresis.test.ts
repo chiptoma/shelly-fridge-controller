@@ -137,5 +137,20 @@ describe('calculateAdaptiveShift', () => {
       expect(result.changed).toBe(true);
       expect(result.newShift).toBe(0.6);
     });
+
+    it('should use defaults when optional config properties are undefined', () => {
+      // Create config without ADAPTIVE_MIN_SHIFT_C and ADAPTIVE_SHIFT_STEP_C
+      const config = {
+        ADAPTIVE_HIGH_DUTY_PCT: 70,
+        ADAPTIVE_LOW_DUTY_PCT: 30,
+        ADAPTIVE_MAX_SHIFT_C: 1.0,
+      } as FridgeConfig;
+
+      // Low duty should use default step of 0.1
+      const result = calculateAdaptiveShift(20, 0.5, config);
+
+      expect(result.changed).toBe(true);
+      expect(result.newShift).toBe(0.4);
+    });
   });
 });

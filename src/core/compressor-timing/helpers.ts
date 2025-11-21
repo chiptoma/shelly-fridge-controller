@@ -4,6 +4,7 @@
  */
 
 import type { TimingCheckResult } from './types';
+import { isFiniteNumber } from '@utils/number';
 
 /**
  * Generic timing constraint checker
@@ -26,11 +27,17 @@ export function checkTimingConstraint(
     return { allow: true };
   }
 
-  return {
+  // Build result object without computed property name for Shelly ES5 compatibility
+  const result: TimingCheckResult = {
     allow: false,
-    remainingSec: requiredTime - elapsedTime,
-    [timestampField]: referenceTime + requiredTime
+    remainingSec: requiredTime - elapsedTime
   };
+  if (timestampField === 'canTurnOffAt') {
+    result.canTurnOffAt = referenceTime + requiredTime;
+  } else {
+    result.canTurnOnAt = referenceTime + requiredTime;
+  }
+  return result;
 }
 
 /**
@@ -45,13 +52,13 @@ export function validateTimingInputs(
   minDuration: number,
   context: string
 ): void {
-  if (!Number.isFinite(now) || now < 0) {
-    throw new Error(`${context}: now must be a non-negative finite number, got ${now}`);
+  if (!isFiniteNumber(now) || now < 0) {
+    throw new Error(context + ": now must be a non-negative finite number, got " + now);
   }
-  if (!Number.isFinite(lastTime) || lastTime < 0) {
-    throw new Error(`${context}: lastTime must be a non-negative finite number, got ${lastTime}`);
+  if (!isFiniteNumber(lastTime) || lastTime < 0) {
+    throw new Error(context + ": lastTime must be a non-negative finite number, got " + lastTime);
   }
-  if (!Number.isFinite(minDuration) || minDuration <= 0) {
-    throw new Error(`${context}: minDuration must be a positive finite number, got ${minDuration}`);
+  if (!isFiniteNumber(minDuration) || minDuration <= 0) {
+    throw new Error(context + ": minDuration must be a positive finite number, got " + minDuration);
   }
 }

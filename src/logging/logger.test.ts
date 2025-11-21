@@ -147,7 +147,10 @@ describe('createLogger', () => {
 
   describe('auto-demotion', () => {
     test('should demote INFO after demoteHours', () => {
-      mockTimeSource.mockReturnValue(25 * 3600); // 25 hours
+      // First call is at logger creation (startTime), second is when logging
+      mockTimeSource
+        .mockReturnValueOnce(0) // startTime
+        .mockReturnValueOnce(25 * 3600); // 25 hours later when logging
       mockSink.minLevel = LOG_LEVELS.INFO;
 
       const logger = createLogger(
@@ -162,7 +165,10 @@ describe('createLogger', () => {
     });
 
     test('should not demote WARNING after demoteHours', () => {
-      mockTimeSource.mockReturnValue(25 * 3600);
+      // First call is at logger creation (startTime), second is when logging
+      mockTimeSource
+        .mockReturnValueOnce(0) // startTime
+        .mockReturnValueOnce(25 * 3600); // 25 hours later when logging
       mockSink.minLevel = LOG_LEVELS.INFO;
 
       const logger = createLogger(

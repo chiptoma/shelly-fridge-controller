@@ -214,6 +214,8 @@ export const USER_CONFIG: Readonly<FridgeUserConfig> = {
   ADAPTIVE_HIGH_DUTY_PCT: 70,
   ADAPTIVE_LOW_DUTY_PCT: 30,
   ADAPTIVE_MAX_SHIFT_C: 0.5,
+  ADAPTIVE_MIN_SHIFT_C: 0,
+  ADAPTIVE_SHIFT_STEP_C: 0.1,
 
   // WATCHDOG_TIMEOUT_SEC
   //   Role: Maximum allowed time between healthy loop iterations.
@@ -285,13 +287,13 @@ export const USER_CONFIG: Readonly<FridgeUserConfig> = {
   //   Role: Minimum log severity sent to Console (0=DEBUG..3=CRITICAL).
   //   Critical: Must be one of the LOG_LEVELS values.
   //   Recommended: 1 (INFO) for normal operation.
-  CONSOLE_LOG_LEVEL: 1,
+  CONSOLE_LOG_LEVEL: 0,
 
   // CONSOLE_BUFFER_SIZE
   //   Role: Maximum number of queued console log messages.
   //   Critical: 50–500 (avoid >1000 on small devices).
   //   Recommended: 100–200; 150 is a reasonable compromise.
-  CONSOLE_BUFFER_SIZE: 150,
+  CONSOLE_BUFFER_SIZE: 50,
 
   // CONSOLE_INTERVAL_MS
   //   Role: Interval between draining queued console logs in ms.
@@ -304,7 +306,7 @@ export const USER_CONFIG: Readonly<FridgeUserConfig> = {
   //   Acts as a floor; sinks cannot log below their own minLevel, but this controls internal logic.
   //   Critical: Must match one of the LOG_LEVELS values.
   //   Recommended: 1 (INFO) for normal operation, 0 (DEBUG) only during tuning.
-  GLOBAL_LOG_LEVEL: 1,
+  GLOBAL_LOG_LEVEL: 0,
 
   // GLOBAL_LOG_AUTO_DEMOTE_HOURS
   //   Role: Hours after which log level can auto-demote (e.g. DEBUG → INFO).
@@ -406,9 +408,6 @@ export const APP_CONSTANTS: Readonly<FridgeAppConstants> = {
 // ─────────────────────────────────────────────────────────────
 
 
-const CONFIG: FridgeConfig = {
-  ...APP_CONSTANTS,
-  ...USER_CONFIG,
-};
+const CONFIG: FridgeConfig = Object.assign({}, APP_CONSTANTS, USER_CONFIG) as FridgeConfig;
 
 export default CONFIG;

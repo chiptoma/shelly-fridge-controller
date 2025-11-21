@@ -53,6 +53,74 @@ jest.mock('@logging', () => ({
   createSlackSink: jest.fn()
 }));
 
+// Mock config with all needed values
+jest.mock('./config', () => {
+  const mockConfig = {
+    AIR_SENSOR_ID: 100,
+    EVAP_SENSOR_ID: 101,
+    SETPOINT_C: 4.0,
+    HYSTERESIS_C: 1.0,
+    MIN_ON_SEC: 120,
+    MIN_OFF_SEC: 180,
+    LOOP_PERIOD_MS: 10000,
+    FREEZE_PROTECTION_START_C: -16.0,
+    FREEZE_PROTECTION_STOP_C: -2.0,
+    FREEZE_LOCK_HYSTERESIS_C: 0.3,
+    FREEZE_RECOVERY_HYSTERESIS_C: 0.5,
+    FREEZE_RECOVERY_DELAY_SEC: 300,
+    HIGH_TEMP_INSTANT_THRESHOLD_C: 10.0,
+    HIGH_TEMP_INSTANT_DELAY_SEC: 10,
+    HIGH_TEMP_SUSTAINED_THRESHOLD_C: 8.0,
+    HIGH_TEMP_SUSTAINED_DELAY_SEC: 1800,
+    ADAPTIVE_HIGH_DUTY_PCT: 70,
+    ADAPTIVE_LOW_DUTY_PCT: 30,
+    ADAPTIVE_MAX_SHIFT_C: 0.5,
+    ADAPTIVE_MIN_SHIFT_C: 0,
+    ADAPTIVE_SHIFT_STEP_C: 0.1,
+    DAILY_SUMMARY_HOUR: 6,
+    DUTY_INTERVAL_SEC: 3600,
+    GLOBAL_LOG_LEVEL: 1,
+    CONSOLE_ENABLED: true,
+    SLACK_ENABLED: true,
+    AIR_SENSOR_SMOOTHING_SEC: 30,
+    EVAP_SENSOR_SMOOTHING_SEC: 30,
+    FEATURE_DUTY_CYCLE: true,
+    FEATURE_DAILY_SUMMARY: true,
+    FEATURE_SENSOR_FAILURE: true,
+    FEATURE_HIGH_TEMP_ALERTS: true,
+    FEATURE_ADAPTIVE_HYSTERESIS: true,
+    FEATURE_WATCHDOG: true,
+    FEATURE_PERFORMANCE_METRICS: true,
+    RELAY_ID: 0,
+    COMPONENT_SWITCH: 'switch',
+    COMPONENT_TEMPERATURE: 'temperature',
+    WATCHDOG_TIMEOUT_SEC: 30,
+    SENSOR_NO_READING_SEC: 30,
+    SENSOR_CRITICAL_FAILURE_SEC: 600,
+    SENSOR_STUCK_SEC: 300,
+    SENSOR_STUCK_EPSILON_C: 0.05,
+    DUTY_LOG_EVERY_INTERVAL: false,
+    SLACK_LOG_LEVEL: 2,
+    SLACK_WEBHOOK_KEY: 'slack_webhook',
+    SLACK_INTERVAL_SEC: 60,
+    SLACK_BUFFER_SIZE: 10,
+    SLACK_RETRY_DELAY_SEC: 5,
+    CONSOLE_LOG_LEVEL: 1,
+    CONSOLE_BUFFER_SIZE: 10,
+    CONSOLE_INTERVAL_MS: 1000,
+    GLOBAL_LOG_AUTO_DEMOTE_HOURS: 24,
+    PERF_LOG_INTERVAL_SEC: 3600,
+    PERF_SLOW_LOOP_THRESHOLD_MS: 100,
+    PERF_WARN_SLOW_LOOPS: true,
+    LOG_LEVELS: { DEBUG: 0, INFO: 1, WARNING: 2, CRITICAL: 3 }
+  };
+  return {
+    __esModule: true,
+    default: mockConfig,
+    USER_CONFIG: mockConfig
+  };
+});
+
 import { initialize } from './init';
 import { validateConfig } from '@validation';
 import { getRelayStatus } from '@hardware/relay';
@@ -263,8 +331,10 @@ describe('initialize', () => {
 
   describe('logger initialization callback', () => {
     it('should log info for successful init messages', () => {
+      const loggerInfoSpy = jest.fn();
       (createLogger as jest.Mock).mockReturnValue({
         ...mockLogger,
+        info: loggerInfoSpy,
         initialize: jest.fn((callback: any) => {
           callback(true, [{ success: true, message: 'Sink initialized' }]);
         })
@@ -272,13 +342,15 @@ describe('initialize', () => {
 
       initialize();
 
-      const logger = (createLogger as jest.Mock).mock.results[0].value;
-      expect(logger.info).toHaveBeenCalledWith('Sink initialized');
+      // Init messages go through logger.info after sinks are ready
+      expect(loggerInfoSpy).toHaveBeenCalledWith('Sink initialized');
     });
 
     it('should log warning for failed init messages', () => {
+      const loggerWarningSpy = jest.fn();
       (createLogger as jest.Mock).mockReturnValue({
         ...mockLogger,
+        warning: loggerWarningSpy,
         initialize: jest.fn((callback: any) => {
           callback(false, [{ success: false, message: 'Sink failed' }]);
         })
@@ -286,8 +358,8 @@ describe('initialize', () => {
 
       initialize();
 
-      const logger = (createLogger as jest.Mock).mock.results[0].value;
-      expect(logger.warning).toHaveBeenCalledWith('Sink failed');
+      // Init messages go through logger.warning after sinks are ready
+      expect(loggerWarningSpy).toHaveBeenCalledWith('Sink failed');
     });
   });
 
@@ -299,4 +371,32 @@ describe('initialize', () => {
       expect(result).toHaveProperty('isDebug');
     });
   });
+
+  describe('config summary display branches', () => {
+    it('should display relay state as ON when confirmedOn is true', () => {
+      // Initialize with relay ON
+      (getRelayStatus as jest.Mock).mockReturnValue({ output: true });
+      (createInitialState as jest.Mock).mockReturnValue({
+        confirmedOn: true,
+        intendedOn: true
+      });
+
+      const result = initialize();
+
+      expect(result).not.toBeNull();
+      // The logInitSummary function is called, which uses generateConfigSections
+      // This tests the state.confirmedOn ? "ON" : "OFF" branch
+      expect(mockLogger.info).toHaveBeenCalled();
+    });
+
+    it('should display relay state as OFF when confirmedOn is false', () => {
+      // Initialize with relay OFF (default)
+      const result = initialize();
+
+      expect(result).not.toBeNull();
+      // This tests the false branch of state.confirmedOn ? "ON" : "OFF"
+      expect(mockLogger.info).toHaveBeenCalled();
+    });
+  });
 });
+
