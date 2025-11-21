@@ -5,13 +5,13 @@
 import type { SingleAlertState } from './types';
 
 /**
- * Update a single temperature alert state
+ * Update a single temperature alert state (mutates in place)
  * @param temperature - Current temperature reading
  * @param now - Current timestamp in seconds
- * @param state - Current alert state
+ * @param state - Alert state to mutate
  * @param threshold - Temperature threshold in °C
  * @param delaySec - Delay before firing in seconds
- * @returns Updated alert state and whether it just fired
+ * @returns Whether alert just fired this cycle
  */
 export function updateSingleAlert(
   temperature: number | null,
@@ -19,43 +19,35 @@ export function updateSingleAlert(
   state: SingleAlertState,
   threshold: number,
   delaySec: number
-): { state: SingleAlertState; justFired: boolean } {
+): boolean {
   // Reset tracking if temperature is null
   if (temperature === null) {
-    return {
-      state: { startTime: 0, fired: false },
-      justFired: false,
-    };
+    state.startTime = 0;
+    state.fired = false;
+    return false;
   }
 
   // Temperature below threshold - reset tracking
   if (temperature < threshold) {
-    return {
-      state: { startTime: 0, fired: false },
-      justFired: false,
-    };
+    state.startTime = 0;
+    state.fired = false;
+    return false;
   }
 
   // Temperature at or above threshold
   // Start tracking if not already
   if (state.startTime === 0) {
-    return {
-      state: { startTime: now, fired: false },
-      justFired: false,
-    };
+    state.startTime = now;
+    state.fired = false;
+    return false;
   }
 
   // Check if delay has elapsed and alert hasn't fired yet
   if (!state.fired && (now - state.startTime) >= delaySec) {
-    return {
-      state: { startTime: state.startTime, fired: true },
-      justFired: true,
-    };
+    state.fired = true;
+    return true;
   }
 
-  // Continue tracking
-  return {
-    state: { startTime: state.startTime, fired: state.fired },
-    justFired: false,
-  };
+  // Continue tracking - no changes needed
+  return false;
 }

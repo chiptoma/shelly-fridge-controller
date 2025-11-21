@@ -101,9 +101,10 @@ export function initialize(onReady?: (controller: Controller) => void): Controll
     logger.info("⚙️ DC:" + (CONFIG.FEATURE_DUTY_CYCLE ? "ON" : "OFF") + " | AH:" + (CONFIG.FEATURE_ADAPTIVE_HYSTERESIS ? "ON" : "OFF") + " | HT:" + (CONFIG.FEATURE_HIGH_TEMP_ALERTS ? "ON" : "OFF") + " | SF:" + (CONFIG.FEATURE_SENSOR_FAILURE ? "ON" : "OFF") + " | WD:" + (CONFIG.FEATURE_WATCHDOG ? "ON" : "OFF"));
 
     // Log sink init warnings AFTER title (skip success messages)
+    // Use console.log directly to avoid recursion during initialization
     for (let i = 0; i < messages.length; i++) {
       if (!messages[i].success) {
-        logger.warning(messages[i].message);
+        console.log('⚠️ [WARNING]  ' + messages[i].message);
       }
     }
 

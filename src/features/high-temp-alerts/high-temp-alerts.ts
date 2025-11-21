@@ -26,13 +26,13 @@ export function initHighTempAlertState(): HighTempAlertState {
 }
 
 /**
- * Update all high temperature alerts
+ * Update all high temperature alerts (mutates state in place)
  *
  * @param airTemp - Current air temperature (smoothed)
  * @param now - Current timestamp in seconds
- * @param alertState - Current alert state
+ * @param alertState - Alert state to mutate
  * @param config - Configuration with thresholds and delays
- * @returns Updated alert state
+ * @returns Whether any alert just fired this cycle
  *
  * @remarks
  * **Alert Logic**: Each alert tracks independently:
@@ -40,13 +40,13 @@ export function initHighTempAlertState(): HighTempAlertState {
  * 2. After delay elapses, fire alert (once per exceedance)
  * 3. When temp drops below threshold, reset tracking
  *
- * **justFired Flag**: Set to true when either alert fires this cycle.
+ * **justFired Return**: Returns true when either alert fires this cycle.
  * Caller should check this to trigger notifications.
  *
  * @example
  * ```typescript
- * const newState = updateHighTempAlerts(5.5, now, state, config);
- * if (newState.justFired) {
+ * const justFired = updateHighTempAlerts(5.5, now, state, config);
+ * if (justFired) {
  *   sendAlertNotification('High temperature detected');
  * }
  * ```
@@ -56,8 +56,8 @@ export function updateHighTempAlerts(
   now: number,
   alertState: HighTempAlertState,
   config: HighTempAlertConfig
-): HighTempAlertState {
-  const instantResult = updateSingleAlert(
+): boolean {
+  const instantFired = updateSingleAlert(
     airTemp,
     now,
     alertState.instant,
@@ -65,7 +65,7 @@ export function updateHighTempAlerts(
     config.HIGH_TEMP_INSTANT_DELAY_SEC
   );
 
-  const sustainedResult = updateSingleAlert(
+  const sustainedFired = updateSingleAlert(
     airTemp,
     now,
     alertState.sustained,
@@ -73,11 +73,8 @@ export function updateHighTempAlerts(
     config.HIGH_TEMP_SUSTAINED_DELAY_SEC
   );
 
-  return {
-    instant: instantResult.state,
-    sustained: sustainedResult.state,
-    justFired: instantResult.justFired || sustainedResult.justFired,
-  };
+  alertState.justFired = instantFired || sustainedFired;
+  return alertState.justFired;
 }
 
 /**

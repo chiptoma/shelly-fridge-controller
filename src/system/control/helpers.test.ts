@@ -291,7 +291,12 @@ describe('Control Helpers', () => {
       dayEvapSum: 0,
       dayEvapCount: 0,
       lastDailySummaryDate: '',
-      lastAdaptiveAdjust: 0
+      lastAdaptiveAdjust: 0,
+      alertState: {
+        instant: { startTime: 0, fired: false },
+        sustained: { startTime: 0, fired: false },
+        justFired: false
+      }
     } as any;
   });
 
@@ -667,10 +672,13 @@ describe('Control Helpers', () => {
 
   describe('processHighTempAlerts', () => {
     it('should log warning on instant alert', () => {
-      (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instant: { startTime: 800, fired: true },
-        sustained: { startTime: 0, fired: false },
-        justFired: true
+      // Mock mutates the alertState object that gets passed to it
+      (updateHighTempAlerts as jest.Mock).mockImplementation((_temp, _t, alertState, _config) => {
+        alertState.instant.startTime = 800;
+        alertState.instant.fired = true;
+        alertState.sustained.startTime = 0;
+        alertState.sustained.fired = false;
+        return true;
       });
 
       processHighTempAlerts(mockState, 12.0, 1000, mockLogger);
@@ -680,10 +688,12 @@ describe('Control Helpers', () => {
     });
 
     it('should log warning on sustained alert', () => {
-      (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instant: { startTime: 0, fired: false },
-        sustained: { startTime: 400, fired: true },
-        justFired: true
+      (updateHighTempAlerts as jest.Mock).mockImplementation((_temp, _t, alertState, _config) => {
+        alertState.instant.startTime = 0;
+        alertState.instant.fired = false;
+        alertState.sustained.startTime = 400;
+        alertState.sustained.fired = true;
+        return true;
       });
 
       processHighTempAlerts(mockState, 12.0, 1000, mockLogger);
@@ -694,10 +704,12 @@ describe('Control Helpers', () => {
 
     it('should log info on instant alert recovery', () => {
       mockState.instantFired = true;
-      (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instant: { startTime: 0, fired: false },
-        sustained: { startTime: 0, fired: false },
-        justFired: false
+      (updateHighTempAlerts as jest.Mock).mockImplementation((_temp, _t, alertState, _config) => {
+        alertState.instant.startTime = 0;
+        alertState.instant.fired = false;
+        alertState.sustained.startTime = 0;
+        alertState.sustained.fired = false;
+        return false;
       });
 
       processHighTempAlerts(mockState, 5.0, 1000, mockLogger);
@@ -707,10 +719,12 @@ describe('Control Helpers', () => {
 
     it('should log info on sustained alert recovery', () => {
       mockState.sustainedFired = true;
-      (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instant: { startTime: 0, fired: false },
-        sustained: { startTime: 0, fired: false },
-        justFired: false
+      (updateHighTempAlerts as jest.Mock).mockImplementation((_temp, _t, alertState, _config) => {
+        alertState.instant.startTime = 0;
+        alertState.instant.fired = false;
+        alertState.sustained.startTime = 0;
+        alertState.sustained.fired = false;
+        return false;
       });
 
       processHighTempAlerts(mockState, 5.0, 1000, mockLogger);
@@ -719,10 +733,12 @@ describe('Control Helpers', () => {
     });
 
     it('should log ? for null airDecision on instant alert', () => {
-      (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instant: { startTime: 800, fired: true },
-        sustained: { startTime: 0, fired: false },
-        justFired: true
+      (updateHighTempAlerts as jest.Mock).mockImplementation((_temp, _t, alertState, _config) => {
+        alertState.instant.startTime = 800;
+        alertState.instant.fired = true;
+        alertState.sustained.startTime = 0;
+        alertState.sustained.fired = false;
+        return true;
       });
 
       processHighTempAlerts(mockState, null, 1000, mockLogger);
@@ -733,10 +749,12 @@ describe('Control Helpers', () => {
     });
 
     it('should log ? for null airDecision on sustained alert', () => {
-      (updateHighTempAlerts as jest.Mock).mockReturnValue({
-        instant: { startTime: 0, fired: false },
-        sustained: { startTime: 400, fired: true },
-        justFired: true
+      (updateHighTempAlerts as jest.Mock).mockImplementation((_temp, _t, alertState, _config) => {
+        alertState.instant.startTime = 0;
+        alertState.instant.fired = false;
+        alertState.sustained.startTime = 400;
+        alertState.sustained.fired = true;
+        return true;
       });
 
       processHighTempAlerts(mockState, null, 1000, mockLogger);

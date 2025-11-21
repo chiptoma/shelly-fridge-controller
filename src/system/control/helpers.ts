@@ -223,31 +223,35 @@ export function processHighTempAlerts(
   const prevInstant = state.instantFired;
   const prevSustained = state.sustainedFired;
 
-  const result = updateHighTempAlerts(airDecision, t, {
-    instant: { startTime: state.instantStart, fired: state.instantFired },
-    sustained: { startTime: state.sustainedStart, fired: state.sustainedFired },
-    justFired: false
-  }, alertConfig);
+  // Reuse alert state object from controller state to avoid allocations
+  const alertState = state.alertState;
+  alertState.instant.startTime = state.instantStart;
+  alertState.instant.fired = state.instantFired;
+  alertState.sustained.startTime = state.sustainedStart;
+  alertState.sustained.fired = state.sustainedFired;
 
-  state.instantStart = result.instant.startTime;
-  state.instantFired = result.instant.fired;
-  state.sustainedStart = result.sustained.startTime;
-  state.sustainedFired = result.sustained.fired;
+  updateHighTempAlerts(airDecision, t, alertState, alertConfig);
 
-  if (result.instant.fired && !prevInstant) {
+  // Copy back to flat state fields
+  state.instantStart = alertState.instant.startTime;
+  state.instantFired = alertState.instant.fired;
+  state.sustainedStart = alertState.sustained.startTime;
+  state.sustainedFired = alertState.sustained.fired;
+
+  if (alertState.instant.fired && !prevInstant) {
     logger.warning("HIGH TEMP INSTANT: " + (airDecision !== null ? airDecision.toFixed(1) : "?") + "C exceeded " + CONFIG.HIGH_TEMP_INSTANT_THRESHOLD_C + "C for " + CONFIG.HIGH_TEMP_INSTANT_DELAY_SEC + "s");
     state.dayHighTempCount++;
   }
 
-  if (result.sustained.fired && !prevSustained) {
+  if (alertState.sustained.fired && !prevSustained) {
     logger.warning("HIGH TEMP SUSTAINED: " + (airDecision !== null ? airDecision.toFixed(1) : "?") + "C exceeded " + CONFIG.HIGH_TEMP_SUSTAINED_THRESHOLD_C + "C for " + (CONFIG.HIGH_TEMP_SUSTAINED_DELAY_SEC / 60).toFixed(0) + "min");
     state.dayHighTempCount++;
   }
 
-  if (!result.instant.fired && prevInstant) {
+  if (!alertState.instant.fired && prevInstant) {
     logger.info("High temp instant alert recovered");
   }
-  if (!result.sustained.fired && prevSustained) {
+  if (!alertState.sustained.fired && prevSustained) {
     logger.info("High temp sustained alert recovered");
   }
 }

@@ -352,10 +352,9 @@ describe('initialize', () => {
     });
 
     it('should log warning for failed init messages', () => {
-      const loggerWarningSpy = jest.fn();
+      const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
       (createLogger as jest.Mock).mockReturnValue({
         ...mockLogger,
-        warning: loggerWarningSpy,
         initialize: jest.fn((callback: any) => {
           callback(false, [{ success: false, message: 'Sink failed' }]);
         })
@@ -363,8 +362,10 @@ describe('initialize', () => {
 
       initialize();
 
-      // Init messages go through logger.warning after sinks are ready
-      expect(loggerWarningSpy).toHaveBeenCalledWith('Sink failed');
+      // Init messages now go through console.log to avoid recursion
+      expect(consoleLogSpy).toHaveBeenCalledWith('⚠️ [WARNING]  Sink failed');
+
+      consoleLogSpy.mockRestore();
     });
   });
 

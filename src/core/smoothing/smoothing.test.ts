@@ -19,33 +19,26 @@ describe('smoothing', () => {
       const result = updateMovingAverage(buffer, 10.0, defaultConfig);
 
       expect(result.value).toBe(10.0);
-      expect(result.buffer.samples).toEqual([10.0]);
       expect(buffer.samples).toEqual([10.0]); // Buffer is mutated in place
-      expect(result.buffer).toBe(buffer); // Same reference
     });
 
     it('should calculate average of multiple values', () => {
-      let buffer = createEmptyBuffer();
+      const buffer = createEmptyBuffer();
 
-      let result = updateMovingAverage(buffer, 10.0, defaultConfig);
-      buffer = result.buffer;
-
-      result = updateMovingAverage(buffer, 20.0, defaultConfig);
-      buffer = result.buffer;
-
-      result = updateMovingAverage(buffer, 30.0, defaultConfig);
+      updateMovingAverage(buffer, 10.0, defaultConfig);
+      updateMovingAverage(buffer, 20.0, defaultConfig);
+      const result = updateMovingAverage(buffer, 30.0, defaultConfig);
 
       expect(result.value).toBe(20.0); // (10 + 20 + 30) / 3
-      expect(result.buffer.samples).toEqual([10.0, 20.0, 30.0]);
+      expect(buffer.samples).toEqual([10.0, 20.0, 30.0]);
     });
 
     it('should trim buffer when exceeding max samples', () => {
       const config: SmoothingConfig = { windowSizeSec: 3, loopPeriodMs: 1000 };
-      let buffer = createEmptyBuffer();
+      const buffer = createEmptyBuffer();
 
       for (let i = 1; i <= 5; i++) {
-        const result = updateMovingAverage(buffer, i, config);
-        buffer = result.buffer;
+        updateMovingAverage(buffer, i, config);
       }
 
       expect(buffer.samples).toHaveLength(3);
@@ -65,11 +58,10 @@ describe('smoothing', () => {
 
     it('should return bufferFull status', () => {
       const config: SmoothingConfig = { windowSizeSec: 2, loopPeriodMs: 1000 };
-      let buffer = createEmptyBuffer();
+      const buffer = createEmptyBuffer();
 
       let result = updateMovingAverage(buffer, 1.0, config);
       expect(result.bufferFull).toBe(false);
-      buffer = result.buffer;
 
       result = updateMovingAverage(buffer, 2.0, config);
       expect(result.bufferFull).toBe(true);

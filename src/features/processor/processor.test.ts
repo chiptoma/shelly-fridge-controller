@@ -55,7 +55,7 @@ describe('Features Processor', () => {
       expect(state.dynOnAbove).toBe(5.0); // 4.0 + 1.0
       expect(state.dynOffBelow).toBe(3.0); // 4.0 - 1.0
       expect(state.dailyState.dayOnSec).toBe(0);
-      expect(state.alertState.instantFired).toBe(false);
+      expect(state.alertState.instant.fired).toBe(false);
     });
   });
 
@@ -99,7 +99,7 @@ describe('Features Processor', () => {
         const event = createStateEvent({ airTemp: 8.0 });
         const result = processStateEvent(event, state, defaultConfig, () => 1001);
 
-        expect(result.state.alertState.instantFired).toBe(false);
+        expect(result.state.alertState.instant.fired).toBe(false);
         const alertCommands = result.commands.filter(c => c.message?.includes('HIGH TEMP'));
         expect(alertCommands).toHaveLength(0);
       });
@@ -108,14 +108,14 @@ describe('Features Processor', () => {
         const event = createStateEvent({ airTemp: 12.0, timestamp: 1000 });
         const result = processStateEvent(event, state, defaultConfig, () => 1001);
 
-        expect(result.state.alertState.instantStart).toBe(1000);
-        expect(result.state.alertState.instantFired).toBe(false);
+        expect(result.state.alertState.instant.startTime).toBe(1000);
+        expect(result.state.alertState.instant.fired).toBe(false);
       });
 
       it('should fire instant alert after delay', () => {
         // First event starts tracking
-        state.alertState.instantStart = 1000;
-        state.alertState.instantFired = false;
+        state.alertState.instant.startTime = 1000;
+        state.alertState.instant.fired = false;
 
         // Event after delay
         const event = createStateEvent({
@@ -125,28 +125,28 @@ describe('Features Processor', () => {
 
         const result = processStateEvent(event, state, defaultConfig, () => 1200);
 
-        expect(result.state.alertState.instantFired).toBe(true);
+        expect(result.state.alertState.instant.fired).toBe(true);
         const alertCommand = result.commands.find(c => c.message?.includes('HIGH TEMP INSTANT'));
         expect(alertCommand).toBeDefined();
         expect(alertCommand?.level).toBe(2);
       });
 
       it('should generate recovery message when alert clears', () => {
-        state.alertState.instantStart = 0;
-        state.alertState.instantFired = true;
+        state.alertState.instant.startTime = 0;
+        state.alertState.instant.fired = true;
 
         const event = createStateEvent({ airTemp: 8.0 }); // Below threshold
         const result = processStateEvent(event, state, defaultConfig, () => 1001);
 
-        expect(result.state.alertState.instantFired).toBe(false);
+        expect(result.state.alertState.instant.fired).toBe(false);
         const recoveryCommand = result.commands.find(c => c.message?.includes('recovered'));
         expect(recoveryCommand).toBeDefined();
       });
 
       it('should fire sustained alert after longer delay', () => {
         // Set up sustained tracking
-        state.alertState.sustainedStart = 1000;
-        state.alertState.sustainedFired = false;
+        state.alertState.sustained.startTime = 1000;
+        state.alertState.sustained.fired = false;
 
         // Event after sustained delay (600s)
         const event = createStateEvent({
@@ -156,7 +156,7 @@ describe('Features Processor', () => {
 
         const result = processStateEvent(event, state, defaultConfig, () => 1700);
 
-        expect(result.state.alertState.sustainedFired).toBe(true);
+        expect(result.state.alertState.sustained.fired).toBe(true);
         const alertCommand = result.commands.find(c => c.message?.includes('HIGH TEMP SUSTAINED'));
         expect(alertCommand).toBeDefined();
         expect(alertCommand?.level).toBe(2);
@@ -165,8 +165,8 @@ describe('Features Processor', () => {
 
       it('should format instant alert message with temperature value', () => {
         // Start with alert already tracking (startTime set)
-        state.alertState.instantStart = 1000;
-        state.alertState.instantFired = false;
+        state.alertState.instant.startTime = 1000;
+        state.alertState.instant.fired = false;
 
         // Create high temp event that triggers the alert
         const event = createStateEvent({
@@ -176,15 +176,15 @@ describe('Features Processor', () => {
 
         const result = processStateEvent(event, state, defaultConfig, () => 1200);
 
-        expect(result.state.alertState.instantFired).toBe(true);
+        expect(result.state.alertState.instant.fired).toBe(true);
         const alertCommand = result.commands.find(c => c.message?.includes('HIGH TEMP INSTANT'));
         expect(alertCommand).toBeDefined();
         expect(alertCommand?.message).toContain('15');
       });
 
       it('should format sustained alert message with temperature value', () => {
-        state.alertState.sustainedStart = 1000;
-        state.alertState.sustainedFired = false;
+        state.alertState.sustained.startTime = 1000;
+        state.alertState.sustained.fired = false;
 
         const event = createStateEvent({
           airTemp: 15.0,
@@ -193,20 +193,20 @@ describe('Features Processor', () => {
 
         const result = processStateEvent(event, state, defaultConfig, () => 1700);
 
-        expect(result.state.alertState.sustainedFired).toBe(true);
+        expect(result.state.alertState.sustained.fired).toBe(true);
         const alertCommand = result.commands.find(c => c.message?.includes('HIGH TEMP SUSTAINED'));
         expect(alertCommand).toBeDefined();
         expect(alertCommand?.message).toContain('15');
       });
 
       it('should generate sustained recovery message', () => {
-        state.alertState.sustainedStart = 0;
-        state.alertState.sustainedFired = true;
+        state.alertState.sustained.startTime = 0;
+        state.alertState.sustained.fired = true;
 
         const event = createStateEvent({ airTemp: 8.0 });
         const result = processStateEvent(event, state, defaultConfig, () => 1001);
 
-        expect(result.state.alertState.sustainedFired).toBe(false);
+        expect(result.state.alertState.sustained.fired).toBe(false);
         const recoveryCommand = result.commands.find(c => c.message?.includes('sustained alert recovered'));
         expect(recoveryCommand).toBeDefined();
       });

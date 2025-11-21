@@ -44,11 +44,11 @@ describe('High Temperature Alerts', () => {
       const state = initHighTempAlertState();
       const now = 1000;
 
-      const result = updateHighTempAlerts(10.5, now, state, config);
+      const justFired = updateHighTempAlerts(10.5, now, state, config);
 
-      expect(result.instant.startTime).toBe(now);
-      expect(result.instant.fired).toBe(false);
-      expect(result.justFired).toBe(false);
+      expect(state.instant.startTime).toBe(now);
+      expect(state.instant.fired).toBe(false);
+      expect(justFired).toBe(false);
     });
 
     it('should fire alert after delay elapses', () => {
@@ -59,10 +59,10 @@ describe('High Temperature Alerts', () => {
         justFired: false,
       };
 
-      const result = updateHighTempAlerts(10.5, 1060, state, config);
+      const justFired = updateHighTempAlerts(10.5, 1060, state, config);
 
-      expect(result.instant.fired).toBe(true);
-      expect(result.justFired).toBe(true);
+      expect(state.instant.fired).toBe(true);
+      expect(justFired).toBe(true);
     });
 
     it('should not fire again once already fired', () => {
@@ -73,10 +73,10 @@ describe('High Temperature Alerts', () => {
         justFired: false,
       };
 
-      const result = updateHighTempAlerts(10.5, 1100, state, config);
+      const justFired = updateHighTempAlerts(10.5, 1100, state, config);
 
-      expect(result.instant.fired).toBe(true);
-      expect(result.justFired).toBe(false);
+      expect(state.instant.fired).toBe(true);
+      expect(justFired).toBe(false);
     });
 
     it('should reset when temp drops below threshold', () => {
@@ -87,10 +87,10 @@ describe('High Temperature Alerts', () => {
         justFired: false,
       };
 
-      const result = updateHighTempAlerts(9.0, 1100, state, config);
+      updateHighTempAlerts(9.0, 1100, state, config);
 
-      expect(result.instant.startTime).toBe(0);
-      expect(result.instant.fired).toBe(false);
+      expect(state.instant.startTime).toBe(0);
+      expect(state.instant.fired).toBe(false);
     });
   });
 
@@ -104,10 +104,10 @@ describe('High Temperature Alerts', () => {
       const state = initHighTempAlertState();
 
       // 8.5°C exceeds sustained (8.0) but not instant (10.0)
-      const result = updateHighTempAlerts(8.5, 1000, state, config);
+      updateHighTempAlerts(8.5, 1000, state, config);
 
-      expect(result.sustained.startTime).toBe(1000);
-      expect(result.instant.startTime).toBe(0);
+      expect(state.sustained.startTime).toBe(1000);
+      expect(state.instant.startTime).toBe(0);
     });
 
     it('should fire after its own delay', () => {
@@ -118,10 +118,10 @@ describe('High Temperature Alerts', () => {
         justFired: false,
       };
 
-      const result = updateHighTempAlerts(8.5, 1300, state, config);
+      const justFired = updateHighTempAlerts(8.5, 1300, state, config);
 
-      expect(result.sustained.fired).toBe(true);
-      expect(result.justFired).toBe(true);
+      expect(state.sustained.fired).toBe(true);
+      expect(justFired).toBe(true);
     });
   });
 
@@ -138,12 +138,12 @@ describe('High Temperature Alerts', () => {
         justFired: false,
       };
 
-      const result = updateHighTempAlerts(null, 1100, state, config);
+      updateHighTempAlerts(null, 1100, state, config);
 
-      expect(result.instant.startTime).toBe(0);
-      expect(result.instant.fired).toBe(false);
-      expect(result.sustained.startTime).toBe(0);
-      expect(result.sustained.fired).toBe(false);
+      expect(state.instant.startTime).toBe(0);
+      expect(state.instant.fired).toBe(false);
+      expect(state.sustained.startTime).toBe(0);
+      expect(state.sustained.fired).toBe(false);
     });
   });
 
@@ -161,8 +161,8 @@ describe('High Temperature Alerts', () => {
         sustained: { startTime: 0, fired: false },
         justFired: false,
       };
-      const result1 = updateHighTempAlerts(10.5, 1060, state1, config);
-      expect(result1.justFired).toBe(true);
+      const justFired1 = updateHighTempAlerts(10.5, 1060, state1, config);
+      expect(justFired1).toBe(true);
 
       // Sustained fires
       const state2: HighTempAlertState = {
@@ -170,18 +170,18 @@ describe('High Temperature Alerts', () => {
         sustained: { startTime: 1000, fired: false },
         justFired: false,
       };
-      const result2 = updateHighTempAlerts(8.5, 1300, state2, config);
-      expect(result2.justFired).toBe(true);
+      const justFired2 = updateHighTempAlerts(8.5, 1300, state2, config);
+      expect(justFired2).toBe(true);
     });
 
     it('should track both when temp exceeds both thresholds', () => {
       const config = createMockConfig();
       const state = initHighTempAlertState();
 
-      const result = updateHighTempAlerts(12.0, 1000, state, config);
+      updateHighTempAlerts(12.0, 1000, state, config);
 
-      expect(result.instant.startTime).toBe(1000);
-      expect(result.sustained.startTime).toBe(1000);
+      expect(state.instant.startTime).toBe(1000);
+      expect(state.sustained.startTime).toBe(1000);
     });
   });
 

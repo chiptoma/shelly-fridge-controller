@@ -51,12 +51,11 @@ export interface FeaturesState {
   dynOnAbove: number;
   dynOffBelow: number;
 
-  // High temp alerts
+  // High temp alerts (pre-allocated for memory efficiency)
   alertState: {
-    instantStart: number;
-    instantFired: boolean;
-    sustainedStart: number;
-    sustainedFired: boolean;
+    instant: { startTime: number; fired: boolean };
+    sustained: { startTime: number; fired: boolean };
+    justFired: boolean;
   };
 
   // Performance
@@ -96,10 +95,9 @@ export function createInitialFeaturesState(config: FeaturesConfig): FeaturesStat
     dynOnAbove: config.SETPOINT_C + config.HYSTERESIS_C,
     dynOffBelow: config.SETPOINT_C - config.HYSTERESIS_C,
     alertState: {
-      instantStart: 0,
-      instantFired: false,
-      sustainedStart: 0,
-      sustainedFired: false
+      instant: { startTime: 0, fired: false },
+      sustained: { startTime: 0, fired: false },
+      justFired: false
     },
     perfState: initPerformanceState(),
     lastPerfLog: 0,
@@ -135,21 +133,13 @@ export function processStateEvent(
     HIGH_TEMP_SUSTAINED_DELAY_SEC: config.HIGH_TEMP_SUSTAINED_DELAY_SEC
   };
 
-  const prevInstant = newState.alertState.instantFired;
-  const prevSustained = newState.alertState.sustainedFired;
+  const prevInstant = newState.alertState.instant.fired;
+  const prevSustained = newState.alertState.sustained.fired;
 
-  const alertResult = updateHighTempAlerts(event.airTemp, t, {
-    instant: { startTime: newState.alertState.instantStart, fired: newState.alertState.instantFired },
-    sustained: { startTime: newState.alertState.sustainedStart, fired: newState.alertState.sustainedFired },
-    justFired: false
-  }, alertConfig);
+  // updateHighTempAlerts mutates alertState in place
+  updateHighTempAlerts(event.airTemp, t, newState.alertState, alertConfig);
 
-  newState.alertState.instantStart = alertResult.instant.startTime;
-  newState.alertState.instantFired = alertResult.instant.fired;
-  newState.alertState.sustainedStart = alertResult.sustained.startTime;
-  newState.alertState.sustainedFired = alertResult.sustained.fired;
-
-  if (alertResult.instant.fired && !prevInstant) {
+  if (newState.alertState.instant.fired && !prevInstant) {
     commands.push({
       type: 'log',
       level: 2,
@@ -158,7 +148,7 @@ export function processStateEvent(
     newState.dailyState.highTempCount++;
   }
 
-  if (alertResult.sustained.fired && !prevSustained) {
+  if (newState.alertState.sustained.fired && !prevSustained) {
     commands.push({
       type: 'log',
       level: 2,
@@ -167,10 +157,10 @@ export function processStateEvent(
     newState.dailyState.highTempCount++;
   }
 
-  if (!alertResult.instant.fired && prevInstant) {
+  if (!newState.alertState.instant.fired && prevInstant) {
     commands.push({ type: 'log', level: 1, message: "High temp instant alert recovered" });
   }
-  if (!alertResult.sustained.fired && prevSustained) {
+  if (!newState.alertState.sustained.fired && prevSustained) {
     commands.push({ type: 'log', level: 1, message: "High temp sustained alert recovered" });
   }
 

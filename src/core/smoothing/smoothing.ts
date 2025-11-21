@@ -13,7 +13,7 @@
  * over a time window. Longer windows = more stable but slower response.
  */
 
-import type { SmoothingConfig, SmoothingBufferState, SmoothingResult } from './types';
+import type { SmoothingConfig, SmoothingBufferState } from './types';
 import { validateSmoothingConfig, validateTemperatureValue } from './helpers';
 
 /**
@@ -47,14 +47,14 @@ export function createEmptyBuffer(): SmoothingBufferState {
  * @param buffer - Current buffer state (will be mutated)
  * @param newValue - New temperature reading to add
  * @param config - Smoothing configuration
- * @returns Smoothing result with same buffer reference
+ * @returns Object with smoothed value and buffer full status
  * @throws {Error} If inputs are invalid
  */
 export function updateMovingAverage(
   buffer: SmoothingBufferState,
   newValue: number,
   config: SmoothingConfig
-): SmoothingResult {
+): { value: number; bufferFull: boolean } {
   validateSmoothingConfig(config);
   validateTemperatureValue(newValue, 'updateMovingAverage');
 
@@ -76,9 +76,7 @@ export function updateMovingAverage(
   const average = sum / buffer.samples.length;
 
   return {
-    buffer: buffer,
     value: average,
-    sampleCount: buffer.samples.length,
     bufferFull: buffer.samples.length >= maxSamples
   };
 }

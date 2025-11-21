@@ -81,6 +81,12 @@ export interface ControllerState {
     instantFired: boolean;
     sustainedStart: number;
     sustainedFired: boolean;
+    // Pre-allocated alert state object for memory efficiency
+    alertState: {
+        instant: { startTime: number; fired: boolean };
+        sustained: { startTime: number; fired: boolean };
+        justFired: boolean;
+    };
 
     // ═══════════════════════════════════════════════════════════════
     // FEATURE_ADAPTIVE_HYSTERESIS: DYNAMIC THRESHOLD ADJUSTMENT

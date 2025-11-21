@@ -43,22 +43,46 @@ export function loadWebhookUrl(
   config: SlackSinkConfig,
   callback: (url: string | null) => void
 ): void {
-  if (!config.webhookKvsKey) {
+  if (!config.webhookKvsKey || config.webhookKvsKey === '') {
     callback(null);
     return;
   }
 
   try {
-    // Build params object - avoid bundler issues with object literals
-    const kvsKey = config.webhookKvsKey;
-    const params = Object.create(null);
-    params.key = kvsKey;
+    // Get the key value
+    const kvsKey = String(config.webhookKvsKey);
+    if (!kvsKey || kvsKey === '' || kvsKey === 'undefined') {
+      console.log('KVS.Get skipped: empty or invalid webhook key');
+      callback(null);
+      return;
+    }
+
+    // WORKAROUND: Use apply with explicit arguments to bypass minification issues
+    // This ensures the params object is passed exactly as needed
+    console.log('KVS.Get calling with key:', kvsKey);
+
+    // Use a different object creation pattern that esbuild won't optimize away
+    // Create an object with defineProperty to ensure the key property is preserved
+    const params = {};
+    Object.defineProperty(params, 'key', {
+      value: kvsKey,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+
+    console.log('KVS.Get params:', JSON.stringify(params));
+
+    // Call with the params object
     shellyApi.call<KVSGetResult>('KVS.Get', params, function(result, error_code, error_message) {
       if (error_code === 0 && result && result.value) {
         callback(result.value);
       } else {
-        // Log failure for debugging
         console.log('KVS.Get failed:', error_code, error_message);
+
+        // FALLBACK: Since KVS.Get is broken due to minification issues,
+        // uncomment the next line to use the hardcoded webhook URL
+        // callback('https://hooks.slack.com/services/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');
         callback(null);
       }
     });

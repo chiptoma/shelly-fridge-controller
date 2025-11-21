@@ -83,22 +83,23 @@ const dailyState = {
   dayEvapMax: null as number | null,
   dayEvapSum: 0,
   dayEvapCount: 0,
-  dayFreezeCount: 0,
-  dayHighTempCount: 0,
-  lastDailySummaryDate: null as string | null
+  freezeCount: 0,
+  highTempCount: 0
 };
+
+// Track daily summary separately
+let lastDailySummaryDate: string | null = null;
 
 // Adaptive hysteresis state
 let currentShift = 0;
 let dynOnAbove = FEATURES_CONFIG.SETPOINT_C + FEATURES_CONFIG.HYSTERESIS_C;
 let dynOffBelow = FEATURES_CONFIG.SETPOINT_C - FEATURES_CONFIG.HYSTERESIS_C;
 
-// High temp alerts state
+// High temp alerts state (pre-allocated for memory efficiency)
 const alertState = {
-  instantStart: 0,
-  instantFired: false,
-  sustainedStart: 0,
-  sustainedFired: false
+  instant: { startTime: 0, fired: false },
+  sustained: { startTime: 0, fired: false },
+  justFired: false
 };
 
 // Performance metrics state
@@ -148,34 +149,26 @@ function processStateEvent(event: FridgeStateEvent): void {
     HIGH_TEMP_SUSTAINED_DELAY_SEC: FEATURES_CONFIG.HIGH_TEMP_SUSTAINED_DELAY_SEC
   };
 
-  const prevInstant = alertState.instantFired;
-  const prevSustained = alertState.sustainedFired;
+  const prevInstant = alertState.instant.fired;
+  const prevSustained = alertState.sustained.fired;
 
-  const alertResult = updateHighTempAlerts(event.airTemp, t, {
-    instant: { startTime: alertState.instantStart, fired: alertState.instantFired },
-    sustained: { startTime: alertState.sustainedStart, fired: alertState.sustainedFired },
-    justFired: false
-  }, alertConfig);
+  // updateHighTempAlerts mutates alertState in place
+  updateHighTempAlerts(event.airTemp, t, alertState, alertConfig);
 
-  alertState.instantStart = alertResult.instant.startTime;
-  alertState.instantFired = alertResult.instant.fired;
-  alertState.sustainedStart = alertResult.sustained.startTime;
-  alertState.sustainedFired = alertResult.sustained.fired;
-
-  if (alertResult.instant.fired && !prevInstant) {
+  if (alertState.instant.fired && !prevInstant) {
     log(2, "HIGH TEMP INSTANT: " + (event.airTemp !== null ? event.airTemp.toFixed(1) : "?") + "C exceeded " + FEATURES_CONFIG.HIGH_TEMP_INSTANT_THRESHOLD_C + "C");
-    dailyState.dayHighTempCount++;
+    dailyState.highTempCount++;
   }
 
-  if (alertResult.sustained.fired && !prevSustained) {
+  if (alertState.sustained.fired && !prevSustained) {
     log(2, "HIGH TEMP SUSTAINED: " + (event.airTemp !== null ? event.airTemp.toFixed(1) : "?") + "C exceeded " + FEATURES_CONFIG.HIGH_TEMP_SUSTAINED_THRESHOLD_C + "C");
-    dailyState.dayHighTempCount++;
+    dailyState.highTempCount++;
   }
 
-  if (!alertResult.instant.fired && prevInstant) {
+  if (!alertState.instant.fired && prevInstant) {
     log(1, "High temp instant alert recovered");
   }
-  if (!alertResult.sustained.fired && prevSustained) {
+  if (!alertState.sustained.fired && prevSustained) {
     log(1, "High temp sustained alert recovered");
   }
 
@@ -221,7 +214,7 @@ function processStateEvent(event: FridgeStateEvent): void {
   // ─────────────────────────────────────────────────────────────
   // Daily summary
   // ─────────────────────────────────────────────────────────────
-  const summaryCheck = shouldGenerateSummary(t, dailyState.lastDailySummaryDate || "", FEATURES_CONFIG.DAILY_SUMMARY_HOUR);
+  const summaryCheck = shouldGenerateSummary(t, lastDailySummaryDate || "", FEATURES_CONFIG.DAILY_SUMMARY_HOUR);
 
   if (summaryCheck.shouldGenerate) {
     const summary = calculateSummary({
@@ -235,8 +228,8 @@ function processStateEvent(event: FridgeStateEvent): void {
       dayEvapMax: dailyState.dayEvapMax,
       dayEvapSum: dailyState.dayEvapSum,
       dayEvapCount: dailyState.dayEvapCount,
-      freezeCount: dailyState.dayFreezeCount,
-      highTempCount: dailyState.dayHighTempCount
+      freezeCount: dailyState.freezeCount,
+      highTempCount: dailyState.highTempCount
     });
 
     // Send formatted summary to core for logging
@@ -256,9 +249,9 @@ function processStateEvent(event: FridgeStateEvent): void {
     dailyState.dayEvapMax = null;
     dailyState.dayEvapSum = 0;
     dailyState.dayEvapCount = 0;
-    dailyState.dayFreezeCount = 0;
-    dailyState.dayHighTempCount = 0;
-    dailyState.lastDailySummaryDate = summaryCheck.currentDate;
+    dailyState.freezeCount = 0;
+    dailyState.highTempCount = 0;
+    lastDailySummaryDate = summaryCheck.currentDate;
   }
 
   // ─────────────────────────────────────────────────────────────

@@ -71,34 +71,39 @@ describe('sensor-health', () => {
       SENSOR_STUCK_EPSILON_C: 0.05
     };
 
-    const defaultState: SensorHealthState = {
+    const createDefaultState = (): SensorHealthState => ({
       lastReadTime: 1000,
       lastChangeTime: 1000,
       lastRaw: 4.5,
       noReadingFired: false,
       criticalFailure: false,
       stuckFired: false
-    };
+    });
 
     it('should update lastReadTime on valid reading', () => {
-      const result = updateSensorHealth('air', 4.6, 1005, defaultState, defaultConfig);
+      const state = createDefaultState();
+      const result = updateSensorHealth('air', 4.6, 1005, state, defaultConfig);
       expect(result.lastReadTime).toBe(1005);
     });
 
     it('should fire no reading alert when offline', () => {
-      const result = updateSensorHealth('air', null, 1040, defaultState, defaultConfig);
+      const state = createDefaultState();
+      const result = updateSensorHealth('air', null, 1040, state, defaultConfig);
       expect(result.noReadingFired).toBe(true);
       expect(result.offlineDuration).toBe(40);
     });
 
     it('should escalate to critical failure', () => {
-      const state = { ...defaultState, noReadingFired: true };
+      const state = createDefaultState();
+      state.noReadingFired = true;
       const result = updateSensorHealth('air', null, 1700, state, defaultConfig);
       expect(result.criticalFailure).toBe(true);
     });
 
     it('should recover from offline state', () => {
-      const state = { ...defaultState, noReadingFired: true, criticalFailure: true };
+      const state = createDefaultState();
+      state.noReadingFired = true;
+      state.criticalFailure = true;
       const result = updateSensorHealth('air', 4.5, 1800, state, defaultConfig);
       expect(result.recovered).toBe(true);
       expect(result.noReadingFired).toBe(false);
@@ -106,20 +111,23 @@ describe('sensor-health', () => {
     });
 
     it('should fire stuck alert when value unchanged', () => {
-      const result = updateSensorHealth('air', 4.52, 1200, defaultState, defaultConfig);
+      const state = createDefaultState();
+      const result = updateSensorHealth('air', 4.52, 1200, state, defaultConfig);
       expect(result.stuckFired).toBe(true);
       expect(result.stuckDuration).toBe(200);
     });
 
     it('should recover from stuck state', () => {
-      const state = { ...defaultState, stuckFired: true };
+      const state = createDefaultState();
+      state.stuckFired = true;
       const result = updateSensorHealth('air', 4.6, 1005, state, defaultConfig);
       expect(result.unstuck).toBe(true);
       expect(result.stuckFired).toBe(false);
     });
 
     it('should update lastChangeTime and lastRaw on value change', () => {
-      const result = updateSensorHealth('air', 4.6, 1005, defaultState, defaultConfig);
+      const state = createDefaultState();
+      const result = updateSensorHealth('air', 4.6, 1005, state, defaultConfig);
       expect(result.lastChangeTime).toBe(1005);
       expect(result.lastRaw).toBe(4.6);
     });

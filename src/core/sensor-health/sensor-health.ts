@@ -8,7 +8,7 @@ import type { SensorHealthState, SensorHealthConfig } from './types';
 import { checkNoReading, checkStuckSensor } from './helpers';
 
 /**
- * Update sensor health state
+ * Update sensor health state (mutates state in place)
  *
  * Main sensor health monitoring function. Updates sensor state based on current
  * reading and detects offline, stuck, and critical failure conditions.
@@ -23,9 +23,9 @@ import { checkNoReading, checkStuckSensor } from './helpers';
  * @param _sensorName - Name of sensor ('air' or 'evap') - for logging
  * @param rawValue - Current raw sensor value (°C), null if no reading
  * @param nowSec - Current timestamp in seconds
- * @param sensorState - Current sensor health state
+ * @param sensorState - Sensor health state to mutate
  * @param config - Sensor monitoring configuration
- * @returns New sensor health state (immutable update pattern)
+ * @returns The same state object (for convenience)
  */
 export function updateSensorHealth(
   _sensorName: string,
@@ -34,21 +34,24 @@ export function updateSensorHealth(
   sensorState: SensorHealthState,
   config: SensorHealthConfig
 ): SensorHealthState {
-  // Create new state object (immutable update pattern)
-  const newState = Object.assign({}, sensorState);
-
   // Save old lastRaw before updating (needed for stuck sensor check)
   const oldLastRaw = sensorState.lastRaw;
 
+  // Clear transient flags from previous call
+  sensorState.recovered = undefined;
+  sensorState.unstuck = undefined;
+  sensorState.offlineDuration = undefined;
+  sensorState.stuckDuration = undefined;
+
   // Update reading time if we have valid reading
   if (rawValue !== null) {
-    newState.lastReadTime = nowSec;
+    sensorState.lastReadTime = nowSec;
 
     // Clear offline flags on recovery
-    if (newState.noReadingFired || newState.criticalFailure) {
-      newState.recovered = true;
-      newState.noReadingFired = false;
-      newState.criticalFailure = false;
+    if (sensorState.noReadingFired || sensorState.criticalFailure) {
+      sensorState.recovered = true;
+      sensorState.noReadingFired = false;
+      sensorState.criticalFailure = false;
     }
   }
 
@@ -56,19 +59,19 @@ export function updateSensorHealth(
   const noReadingCheck = checkNoReading(
     rawValue,
     nowSec,
-    newState.lastReadTime,
+    sensorState.lastReadTime,
     config.SENSOR_NO_READING_SEC
   );
 
   // Fire alert on first detection
-  if (noReadingCheck.offline && !newState.noReadingFired) {
-    newState.noReadingFired = true;
-    newState.offlineDuration = noReadingCheck.duration;
+  if (noReadingCheck.offline && !sensorState.noReadingFired) {
+    sensorState.noReadingFired = true;
+    sensorState.offlineDuration = noReadingCheck.duration;
   }
 
   // Escalate to critical failure if offline too long
-  if (noReadingCheck.duration > config.SENSOR_CRITICAL_FAILURE_SEC && !newState.criticalFailure) {
-    newState.criticalFailure = true;
+  if (noReadingCheck.duration > config.SENSOR_CRITICAL_FAILURE_SEC && !sensorState.criticalFailure) {
+    sensorState.criticalFailure = true;
   }
 
   // Check for stuck sensor (use old lastRaw for comparison)
@@ -76,26 +79,26 @@ export function updateSensorHealth(
     rawValue,
     oldLastRaw,
     nowSec,
-    newState.lastChangeTime,
+    sensorState.lastChangeTime,
     config.SENSOR_STUCK_SEC,
     config.SENSOR_STUCK_EPSILON_C
   );
 
   if (stuckCheck.changed) {
     // Value changed - update lastChangeTime and lastRaw
-    newState.lastChangeTime = nowSec;
-    newState.lastRaw = rawValue;
+    sensorState.lastChangeTime = nowSec;
+    sensorState.lastRaw = rawValue;
 
     // Clear stuck flag on recovery
-    if (newState.stuckFired) {
-      newState.unstuck = true;
-      newState.stuckFired = false;
+    if (sensorState.stuckFired) {
+      sensorState.unstuck = true;
+      sensorState.stuckFired = false;
     }
-  } else if (stuckCheck.stuck && !newState.stuckFired) {
+  } else if (stuckCheck.stuck && !sensorState.stuckFired) {
     // Fire stuck alert on first detection
-    newState.stuckFired = true;
-    newState.stuckDuration = stuckCheck.duration;
+    sensorState.stuckFired = true;
+    sensorState.stuckDuration = stuckCheck.duration;
   }
 
-  return newState;
+  return sensorState;
 }

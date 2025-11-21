@@ -169,6 +169,12 @@ export function createInitialState(
     instantFired: false,  // Has instant alert been sent? (prevents spam)
     sustainedStart: 0,    // When sustained threshold was exceeded, 0 if normal
     sustainedFired: false, // Has sustained alert been sent?
+    // Pre-allocated alert state object to avoid per-loop allocations
+    alertState: {
+      instant: { startTime: 0, fired: false },
+      sustained: { startTime: 0, fired: false },
+      justFired: false
+    },
 
     // ═══════════════════════════════════════════════════════════════
     // FEATURE_ADAPTIVE_HYSTERESIS: DYNAMIC THRESHOLD ADJUSTMENT
