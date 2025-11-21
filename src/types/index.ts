@@ -5,3 +5,4 @@
 export * from './common';
 export * from './config';
 export * from './shelly';
+export * from './errors';

@@ -1,4 +1,5 @@
 import { checkMinOn, checkMinOff, applyTimingConstraints } from './compressor-timing';
+import { TIMING_CONSTRAINTS } from './types';
 import type { TimingState, TimingConfig } from './types';
 
 describe('compressor-timing', () => {
@@ -29,6 +30,33 @@ describe('compressor-timing', () => {
       const result = checkMinOn(true, false, 1000, 820, 180);
       expect(result.allow).toBe(true);
     });
+
+    // Edge cases
+    it('should handle zero lastOnTime (never turned on)', () => {
+      const result = checkMinOn(true, false, 1000, 0, 180);
+      expect(result.allow).toBe(true);
+    });
+
+    // Validation tests
+    it('should throw on negative timestamp', () => {
+      expect(() => checkMinOn(true, false, -1, 0, 180)).toThrow();
+    });
+
+    it('should throw on NaN values', () => {
+      expect(() => checkMinOn(true, false, NaN, 0, 180)).toThrow();
+    });
+
+    it('should throw on Infinity', () => {
+      expect(() => checkMinOn(true, false, Infinity, 0, 180)).toThrow();
+    });
+
+    it('should throw on zero duration', () => {
+      expect(() => checkMinOn(true, false, 1000, 900, 0)).toThrow();
+    });
+
+    it('should throw on negative duration', () => {
+      expect(() => checkMinOn(true, false, 1000, 900, -180)).toThrow();
+    });
   });
 
   describe('checkMinOff', () => {
@@ -58,6 +86,12 @@ describe('compressor-timing', () => {
       const result = checkMinOff(false, true, 1000, 700, 300);
       expect(result.allow).toBe(true);
     });
+
+    // Edge cases
+    it('should handle zero lastOffTime (never turned off)', () => {
+      const result = checkMinOff(false, true, 1000, 0, 300);
+      expect(result.allow).toBe(true);
+    });
   });
 
   describe('applyTimingConstraints', () => {
@@ -76,14 +110,14 @@ describe('compressor-timing', () => {
       const state: TimingState = { lastOnTime: 900, lastOffTime: 0 };
       const result = applyTimingConstraints(true, false, 1000, state, defaultConfig);
       expect(result.allow).toBe(false);
-      expect(result.reason).toBe('MIN_ON');
+      expect(result.reason).toBe(TIMING_CONSTRAINTS.MIN_ON);
     });
 
     it('should block with MIN_OFF reason', () => {
       const state: TimingState = { lastOnTime: 0, lastOffTime: 800 };
       const result = applyTimingConstraints(false, true, 1000, state, defaultConfig);
       expect(result.allow).toBe(false);
-      expect(result.reason).toBe('MIN_OFF');
+      expect(result.reason).toBe(TIMING_CONSTRAINTS.MIN_OFF);
     });
 
     it('should allow state change when constraints satisfied', () => {
@@ -97,6 +131,12 @@ describe('compressor-timing', () => {
       const result = applyTimingConstraints(true, false, 1000, state, defaultConfig);
       expect(result.remainingSec).toBe(80);
       expect(result.canTurnOffAt).toBe(1080);
+    });
+
+    it('should prioritize MIN_ON when both would fail', () => {
+      const state: TimingState = { lastOnTime: 950, lastOffTime: 950 };
+      const result = applyTimingConstraints(true, false, 1000, state, defaultConfig);
+      expect(result.reason).toBe(TIMING_CONSTRAINTS.MIN_ON);
     });
   });
 });

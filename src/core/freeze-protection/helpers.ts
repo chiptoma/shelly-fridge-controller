@@ -1,9 +1,30 @@
 /**
  * Freeze protection helper functions
+ *
+ * Internal logic for evaporator freeze protection.
+ * Prevents ice buildup that can damage equipment and reduce efficiency.
  */
 
 import type { TemperatureReading } from '$types/common';
 import type { FreezeState, FreezeConfig, ReleaseDecision } from './types';
+
+/**
+ * Validate freeze protection configuration
+ * @throws {Error} If configuration is invalid
+ */
+export function validateFreezeConfig(config: FreezeConfig): void {
+  if (config.FREEZE_PROTECTION_START_C >= config.FREEZE_PROTECTION_STOP_C) {
+    throw new Error(
+      `Invalid freeze config: START_C (${config.FREEZE_PROTECTION_START_C}) must be less than STOP_C (${config.FREEZE_PROTECTION_STOP_C})`
+    );
+  }
+  if (config.FREEZE_LOCK_HYSTERESIS_C < 0 || config.FREEZE_RECOVERY_HYSTERESIS_C < 0) {
+    throw new Error('Hysteresis values must be non-negative');
+  }
+  if (config.FREEZE_RECOVERY_DELAY_SEC <= 0) {
+    throw new Error('Recovery delay must be positive');
+  }
+}
 
 /**
  * Check if freeze lock should be engaged
