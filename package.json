@@ -14,7 +14,8 @@
     "validate": "node validate-shelly-script.js dist/main.js",
     "validate:core": "node validate-shelly-script.js dist/main-core.js",
     "validate:features": "node validate-shelly-script.js dist/main-features.js",
-    "clean": "rm -rf coverage dist"
+    "clean": "rm -rf coverage dist",
+    "benchmark:memory": "TS_NODE_PROJECT=benchmark/tsconfig.json node --expose-gc -r ts-node/register -r tsconfig-paths/register benchmark/memory-benchmark.ts"
   },
   "keywords": [
     "shelly",
@@ -35,6 +36,8 @@
     "jest": "^29.7.0",
     "terser": "^5.44.1",
     "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
   }
 }

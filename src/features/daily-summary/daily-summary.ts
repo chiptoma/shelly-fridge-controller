@@ -12,11 +12,14 @@ import { updateMinMax, formatDateISO, formatTemp } from './helpers';
 const SECONDS_PER_HOUR = 3600;
 
 /**
- * Update daily temperature statistics
- * @param dailyState - Current daily state
+ * Update daily temperature statistics (MUTABLE)
+ *
+ * Mutates dailyState in-place for memory efficiency on constrained devices.
+ *
+ * @param dailyState - Current daily state (will be mutated)
  * @param airRaw - Raw air temperature
  * @param evapRaw - Raw evaporator temperature
- * @returns New daily state with updated statistics (immutable)
+ * @returns The same state object (for convenience)
  */
 export function updateDailyStats(
   dailyState: DailyState,
@@ -28,25 +31,27 @@ export function updateDailyStats(
   const airStats = updateMinMax(airRaw, dailyState.dayAirMin, dailyState.dayAirMax);
   const evapStats = updateMinMax(evapRaw, dailyState.dayEvapMin, dailyState.dayEvapMax);
 
-  return {
-    ...dailyState,
-    dayAirMin: airStats.min,
-    dayAirMax: airStats.max,
-    dayAirSum: dailyState.dayAirSum + (airRaw ?? 0),
-    dayAirCount: dailyState.dayAirCount + (airRaw !== null ? 1 : 0),
-    dayEvapMin: evapStats.min,
-    dayEvapMax: evapStats.max,
-    dayEvapSum: dailyState.dayEvapSum + (evapRaw ?? 0),
-    dayEvapCount: dailyState.dayEvapCount + (evapRaw !== null ? 1 : 0),
-  };
+  dailyState.dayAirMin = airStats.min;
+  dailyState.dayAirMax = airStats.max;
+  dailyState.dayAirSum = dailyState.dayAirSum + (airRaw ?? 0);
+  dailyState.dayAirCount = dailyState.dayAirCount + (airRaw !== null ? 1 : 0);
+  dailyState.dayEvapMin = evapStats.min;
+  dailyState.dayEvapMax = evapStats.max;
+  dailyState.dayEvapSum = dailyState.dayEvapSum + (evapRaw ?? 0);
+  dailyState.dayEvapCount = dailyState.dayEvapCount + (evapRaw !== null ? 1 : 0);
+
+  return dailyState;
 }
 
 /**
- * Update daily runtime statistics
- * @param dailyState - Current daily state
+ * Update daily runtime statistics (MUTABLE)
+ *
+ * Mutates dailyState in-place for memory efficiency on constrained devices.
+ *
+ * @param dailyState - Current daily state (will be mutated)
  * @param dt - Time delta in seconds
  * @param relayOn - Whether relay is ON
- * @returns New daily state with updated runtime (immutable)
+ * @returns The same state object (for convenience)
  */
 export function updateDailyRuntime(
   dailyState: DailyState,
@@ -57,11 +62,10 @@ export function updateDailyRuntime(
     return dailyState;
   }
 
-  return {
-    ...dailyState,
-    dayOnSec: dailyState.dayOnSec + (relayOn ? dt : 0),
-    dayOffSec: dailyState.dayOffSec + (relayOn ? 0 : dt),
-  };
+  dailyState.dayOnSec = dailyState.dayOnSec + (relayOn ? dt : 0);
+  dailyState.dayOffSec = dailyState.dayOffSec + (relayOn ? 0 : dt);
+
+  return dailyState;
 }
 
 /**

@@ -23,6 +23,25 @@ import { now } from '@utils/time';
 import type { Logger } from '@logging';
 import type { ControllerState } from '@system/state/types';
 
+// ═══════════════════════════════════════════════════════════════
+// MODULE-LEVEL CONFIG OBJECTS (created once at startup)
+// Avoids per-loop allocations for memory efficiency
+// ═══════════════════════════════════════════════════════════════
+
+const SENSOR_CONFIG = {
+  SENSOR_NO_READING_SEC: CONFIG.SENSOR_NO_READING_SEC,
+  SENSOR_CRITICAL_FAILURE_SEC: CONFIG.SENSOR_CRITICAL_FAILURE_SEC,
+  SENSOR_STUCK_SEC: CONFIG.SENSOR_STUCK_SEC,
+  SENSOR_STUCK_EPSILON_C: CONFIG.SENSOR_STUCK_EPSILON_C
+};
+
+const ALERT_CONFIG = {
+  HIGH_TEMP_INSTANT_THRESHOLD_C: CONFIG.HIGH_TEMP_INSTANT_THRESHOLD_C,
+  HIGH_TEMP_INSTANT_DELAY_SEC: CONFIG.HIGH_TEMP_INSTANT_DELAY_SEC,
+  HIGH_TEMP_SUSTAINED_THRESHOLD_C: CONFIG.HIGH_TEMP_SUSTAINED_THRESHOLD_C,
+  HIGH_TEMP_SUSTAINED_DELAY_SEC: CONFIG.HIGH_TEMP_SUSTAINED_DELAY_SEC
+};
+
 /**
  * Apply sensor health result to state fields
  */
@@ -58,13 +77,6 @@ export function processSensorHealth(
   t: number,
   logger: Logger
 ): boolean {
-  const sensorConfig = {
-    SENSOR_NO_READING_SEC: CONFIG.SENSOR_NO_READING_SEC,
-    SENSOR_CRITICAL_FAILURE_SEC: CONFIG.SENSOR_CRITICAL_FAILURE_SEC,
-    SENSOR_STUCK_SEC: CONFIG.SENSOR_STUCK_SEC,
-    SENSOR_STUCK_EPSILON_C: CONFIG.SENSOR_STUCK_EPSILON_C
-  };
-
   // Air sensor
   const airHealth = updateSensorHealth('air', sensors.airRaw, t, {
     lastReadTime: state.airLastReadTime,
@@ -73,7 +85,7 @@ export function processSensorHealth(
     noReadingFired: state.airNoReadingFired,
     criticalFailure: state.airCriticalFailure,
     stuckFired: state.airStuckFired
-  }, sensorConfig);
+  }, SENSOR_CONFIG);
 
   if (airHealth.noReadingFired && !state.airNoReadingFired) {
     logger.warning("Air sensor offline for " + airHealth.offlineDuration + "s");
@@ -112,7 +124,7 @@ export function processSensorHealth(
     noReadingFired: state.evapNoReadingFired,
     criticalFailure: state.evapCriticalFailure,
     stuckFired: state.evapStuckFired
-  }, sensorConfig);
+  }, SENSOR_CONFIG);
 
   if (evapHealth.noReadingFired && !state.evapNoReadingFired) {
     logger.warning("Evap sensor offline for " + evapHealth.offlineDuration + "s");
@@ -213,13 +225,6 @@ export function processHighTempAlerts(
   t: number,
   logger: Logger
 ): void {
-  const alertConfig = {
-    HIGH_TEMP_INSTANT_THRESHOLD_C: CONFIG.HIGH_TEMP_INSTANT_THRESHOLD_C,
-    HIGH_TEMP_INSTANT_DELAY_SEC: CONFIG.HIGH_TEMP_INSTANT_DELAY_SEC,
-    HIGH_TEMP_SUSTAINED_THRESHOLD_C: CONFIG.HIGH_TEMP_SUSTAINED_THRESHOLD_C,
-    HIGH_TEMP_SUSTAINED_DELAY_SEC: CONFIG.HIGH_TEMP_SUSTAINED_DELAY_SEC
-  };
-
   const prevInstant = state.instantFired;
   const prevSustained = state.sustainedFired;
 
@@ -230,7 +235,7 @@ export function processHighTempAlerts(
   alertState.sustained.startTime = state.sustainedStart;
   alertState.sustained.fired = state.sustainedFired;
 
-  updateHighTempAlerts(airDecision, t, alertState, alertConfig);
+  updateHighTempAlerts(airDecision, t, alertState, ALERT_CONFIG);
 
   // Copy back to flat state fields
   state.instantStart = alertState.instant.startTime;

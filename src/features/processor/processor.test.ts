@@ -360,8 +360,8 @@ describe('Features Processor', () => {
       });
     });
 
-    describe('state immutability', () => {
-      it('should not modify original state', () => {
+    describe('state mutation', () => {
+      it('should mutate state in place for memory efficiency', () => {
         const event = createStateEvent({
           relayOn: true,
           dt: 100,
@@ -369,9 +369,12 @@ describe('Features Processor', () => {
         });
 
         const originalDayOnSec = state.dailyState.dayOnSec;
-        processStateEvent(event, state, defaultConfig, () => 1001);
+        const result = processStateEvent(event, state, defaultConfig, () => 1001);
 
-        expect(state.dailyState.dayOnSec).toBe(originalDayOnSec);
+        // State should be mutated in place
+        expect(state.dailyState.dayOnSec).toBe(originalDayOnSec + 100);
+        // Result.state should be the same object as input state
+        expect(result.state).toBe(state);
       });
     });
   });

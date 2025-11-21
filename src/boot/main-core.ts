@@ -23,17 +23,25 @@ declare const Timer: {
   clear: (id: number) => void;
 };
 
+// Module-level controller reference for hoisted callback
+let _controller: { state: any; logger: any; isDebug: boolean };
+
+// Hoisted loop callback - avoids per-call closure allocation
+function loopCallback(): void {
+  runCore(_controller);
+}
+
 // Initialize and start control loop after logger is ready
 initialize(function(controller) {
+  _controller = controller;
+
   // Setup handler for commands from features script
   setupCommandHandler(controller);
 
   // Defer first run to avoid deep stack from init callback
-  // Then schedule periodic loop
+  // Then schedule periodic loop with hoisted callback
   Timer.set(10, false, function() {
-    runCore(controller);
-    Timer.set(CONFIG.LOOP_PERIOD_MS, true, function() {
-      runCore(controller);
-    });
+    runCore(_controller);
+    Timer.set(CONFIG.LOOP_PERIOD_MS, true, loopCallback);
   });
 });

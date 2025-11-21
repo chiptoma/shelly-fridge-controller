@@ -106,7 +106,9 @@ export function createInitialFeaturesState(config: FeaturesConfig): FeaturesStat
 }
 
 /**
- * Process a state event and generate commands
+ * Process a state event and generate commands (MUTABLE)
+ *
+ * Mutates state in-place for memory efficiency on constrained devices.
  */
 export function processStateEvent(
   event: FridgeStateEvent,
@@ -117,13 +119,9 @@ export function processStateEvent(
   const commands: FridgeCommandEvent[] = [];
   const t = event.timestamp;
 
-  // Clone state for immutability
-  const newState = JSON.parse(JSON.stringify(state)) as FeaturesState;
-
-  // Update daily statistics
-  const statsUpdated = updateDailyStats(newState.dailyState, event.airRaw, event.evapRaw);
-  const runtimeUpdated = updateDailyRuntime(statsUpdated, event.dt, event.relayOn);
-  newState.dailyState = { ...runtimeUpdated, lastDailySummaryDate: newState.dailyState.lastDailySummaryDate };
+  // Update daily statistics (mutates state.dailyState in place)
+  updateDailyStats(state.dailyState, event.airRaw, event.evapRaw);
+  updateDailyRuntime(state.dailyState, event.dt, event.relayOn);
 
   // High temperature alerts
   const alertConfig = {
@@ -133,51 +131,51 @@ export function processStateEvent(
     HIGH_TEMP_SUSTAINED_DELAY_SEC: config.HIGH_TEMP_SUSTAINED_DELAY_SEC
   };
 
-  const prevInstant = newState.alertState.instant.fired;
-  const prevSustained = newState.alertState.sustained.fired;
+  const prevInstant = state.alertState.instant.fired;
+  const prevSustained = state.alertState.sustained.fired;
 
   // updateHighTempAlerts mutates alertState in place
-  updateHighTempAlerts(event.airTemp, t, newState.alertState, alertConfig);
+  updateHighTempAlerts(event.airTemp, t, state.alertState, alertConfig);
 
-  if (newState.alertState.instant.fired && !prevInstant) {
+  if (state.alertState.instant.fired && !prevInstant) {
     commands.push({
       type: 'log',
       level: 2,
       message: "HIGH TEMP INSTANT: " + (event.airTemp !== null ? event.airTemp.toFixed(1) : "?") + "C exceeded " + config.HIGH_TEMP_INSTANT_THRESHOLD_C + "C"
     });
-    newState.dailyState.highTempCount++;
+    state.dailyState.highTempCount++;
   }
 
-  if (newState.alertState.sustained.fired && !prevSustained) {
+  if (state.alertState.sustained.fired && !prevSustained) {
     commands.push({
       type: 'log',
       level: 2,
       message: "HIGH TEMP SUSTAINED: " + (event.airTemp !== null ? event.airTemp.toFixed(1) : "?") + "C exceeded " + config.HIGH_TEMP_SUSTAINED_THRESHOLD_C + "C"
     });
-    newState.dailyState.highTempCount++;
+    state.dailyState.highTempCount++;
   }
 
-  if (!newState.alertState.instant.fired && prevInstant) {
+  if (!state.alertState.instant.fired && prevInstant) {
     commands.push({ type: 'log', level: 1, message: "High temp instant alert recovered" });
   }
-  if (!newState.alertState.sustained.fired && prevSustained) {
+  if (!state.alertState.sustained.fired && prevSustained) {
     commands.push({ type: 'log', level: 1, message: "High temp sustained alert recovered" });
   }
 
   // Adaptive hysteresis
   const dutyPercent = getDutyPercent(event.dutyOnSec, event.dutyOffSec);
 
-  const adaptiveResult = calculateAdaptiveShift(dutyPercent, newState.currentShift, config as any);
+  const adaptiveResult = calculateAdaptiveShift(dutyPercent, state.currentShift, config as any);
 
   if (adaptiveResult.changed) {
-    newState.currentShift = adaptiveResult.newShift;
-    newState.dynOnAbove = config.SETPOINT_C + config.HYSTERESIS_C + adaptiveResult.newShift;
-    newState.dynOffBelow = config.SETPOINT_C - config.HYSTERESIS_C - adaptiveResult.newShift;
+    state.currentShift = adaptiveResult.newShift;
+    state.dynOnAbove = config.SETPOINT_C + config.HYSTERESIS_C + adaptiveResult.newShift;
+    state.dynOffBelow = config.SETPOINT_C - config.HYSTERESIS_C - adaptiveResult.newShift;
 
     commands.push({
       type: 'adjust_hysteresis',
-      onAbove: newState.dynOnAbove,
-      offBelow: newState.dynOffBelow
+      onAbove: state.dynOnAbove,
+      offBelow: state.dynOffBelow
     });
 
     commands.push({
@@ -189,9 +187,9 @@ export function processStateEvent(
 
   // Performance metrics
   const loopEndSec = nowFn();
-  const perfResult = trackLoopExecution(newState.perfState, event.loopStartSec, loopEndSec, config.PERF_SLOW_LOOP_THRESHOLD_MS);
+  const perfResult = trackLoopExecution(state.perfState, event.loopStartSec, loopEndSec, config.PERF_SLOW_LOOP_THRESHOLD_MS);
 
-  newState.perfState = perfResult.performance;
+  state.perfState = perfResult.performance;
 
   if (perfResult.wasSlow && config.PERF_WARN_SLOW_LOOPS) {
     commands.push({
@@ -201,32 +199,32 @@ export function processStateEvent(
     });
   }
 
-  if (loopEndSec - newState.lastPerfLog >= config.PERF_LOG_INTERVAL_SEC) {
+  if (loopEndSec - state.lastPerfLog >= config.PERF_LOG_INTERVAL_SEC) {
     commands.push({
       type: 'log',
       level: 1,
-      message: formatPerformanceSummary(newState.perfState)
+      message: formatPerformanceSummary(state.perfState)
     });
-    newState.lastPerfLog = loopEndSec;
+    state.lastPerfLog = loopEndSec;
   }
 
   // Daily summary
-  const summaryCheck = shouldGenerateSummary(t, newState.dailyState.lastDailySummaryDate || "", config.DAILY_SUMMARY_HOUR);
+  const summaryCheck = shouldGenerateSummary(t, state.dailyState.lastDailySummaryDate || "", config.DAILY_SUMMARY_HOUR);
 
   if (summaryCheck.shouldGenerate) {
     const summary = calculateSummary({
-      dayOnSec: newState.dailyState.dayOnSec,
-      dayOffSec: newState.dailyState.dayOffSec,
-      dayAirMin: newState.dailyState.dayAirMin,
-      dayAirMax: newState.dailyState.dayAirMax,
-      dayAirSum: newState.dailyState.dayAirSum,
-      dayAirCount: newState.dailyState.dayAirCount,
-      dayEvapMin: newState.dailyState.dayEvapMin,
-      dayEvapMax: newState.dailyState.dayEvapMax,
-      dayEvapSum: newState.dailyState.dayEvapSum,
-      dayEvapCount: newState.dailyState.dayEvapCount,
-      freezeCount: newState.dailyState.freezeCount,
-      highTempCount: newState.dailyState.highTempCount
+      dayOnSec: state.dailyState.dayOnSec,
+      dayOffSec: state.dailyState.dayOffSec,
+      dayAirMin: state.dailyState.dayAirMin,
+      dayAirMax: state.dailyState.dayAirMax,
+      dayAirSum: state.dailyState.dayAirSum,
+      dayAirCount: state.dailyState.dayAirCount,
+      dayEvapMin: state.dailyState.dayEvapMin,
+      dayEvapMax: state.dailyState.dayEvapMax,
+      dayEvapSum: state.dailyState.dayEvapSum,
+      dayEvapCount: state.dailyState.dayEvapCount,
+      freezeCount: state.dailyState.freezeCount,
+      highTempCount: state.dailyState.highTempCount
     });
 
     commands.push({
@@ -235,30 +233,30 @@ export function processStateEvent(
     });
 
     // Reset daily stats
-    newState.dailyState.dayOnSec = 0;
-    newState.dailyState.dayOffSec = 0;
-    newState.dailyState.dayAirMin = null;
-    newState.dailyState.dayAirMax = null;
-    newState.dailyState.dayAirSum = 0;
-    newState.dailyState.dayAirCount = 0;
-    newState.dailyState.dayEvapMin = null;
-    newState.dailyState.dayEvapMax = null;
-    newState.dailyState.dayEvapSum = 0;
-    newState.dailyState.dayEvapCount = 0;
-    newState.dailyState.freezeCount = 0;
-    newState.dailyState.highTempCount = 0;
-    newState.dailyState.lastDailySummaryDate = summaryCheck.currentDate;
+    state.dailyState.dayOnSec = 0;
+    state.dailyState.dayOffSec = 0;
+    state.dailyState.dayAirMin = null;
+    state.dailyState.dayAirMax = null;
+    state.dailyState.dayAirSum = 0;
+    state.dailyState.dayAirCount = 0;
+    state.dailyState.dayEvapMin = null;
+    state.dailyState.dayEvapMax = null;
+    state.dailyState.dayEvapSum = 0;
+    state.dailyState.dayEvapCount = 0;
+    state.dailyState.freezeCount = 0;
+    state.dailyState.highTempCount = 0;
+    state.dailyState.lastDailySummaryDate = summaryCheck.currentDate;
   }
 
   // Duty cycle reset check
-  if (shouldResetDutyCycle(t, newState.dutyLastReset, config.DUTY_INTERVAL_SEC)) {
+  if (shouldResetDutyCycle(t, state.dutyLastReset, config.DUTY_INTERVAL_SEC)) {
     commands.push({
       type: 'log',
       level: 1,
       message: "Duty cycle: " + dutyPercent.toFixed(1) + "% (on=" + (event.dutyOnSec / 60).toFixed(1) + "m, off=" + (event.dutyOffSec / 60).toFixed(1) + "m)"
     });
-    newState.dutyLastReset = t;
+    state.dutyLastReset = t;
   }
 
-  return { commands, state: newState };
+  return { commands, state: state };
 }
