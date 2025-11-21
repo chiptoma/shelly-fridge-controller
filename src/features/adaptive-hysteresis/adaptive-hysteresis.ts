@@ -43,9 +43,9 @@ export function calculateAdaptiveShift(
     return { changed: false, newShift: currentShift };
   }
 
-  const minShift = config.ADAPTIVE_MIN_SHIFT_C ?? 0;
+  const minShift = (config as any).ADAPTIVE_MIN_SHIFT_C ?? 0;
   const maxShift = config.ADAPTIVE_MAX_SHIFT_C;
-  const stepSize = config.ADAPTIVE_SHIFT_STEP_C ?? 0.1;
+  const stepSize = (config as any).ADAPTIVE_SHIFT_STEP_C ?? 0.1;
 
   // High duty cycle: widen hysteresis to reduce cycling
   if (dutyPercent > config.ADAPTIVE_HIGH_DUTY_PCT && currentShift < maxShift) {

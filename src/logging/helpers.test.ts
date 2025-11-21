@@ -2,7 +2,7 @@
  * Unit tests for logging helper functions
  */
 
-import { formatLogMessage, shouldLog } from './helpers';
+import { formatLogMessage, shouldLog, fmtTemp } from './helpers';
 import type { LogLevels } from './types';
 
 const LOG_LEVELS: LogLevels = {
@@ -287,6 +287,92 @@ describe('shouldLog', () => {
         demoteHours: 0.5 // 30 minutes
       }, LOG_LEVELS);
       expect(result).toBe(false);
+    });
+  });
+});
+
+describe('fmtTemp', () => {
+  describe('basic formatting', () => {
+    test('should format temperature with one decimal place', () => {
+      const result = fmtTemp(5.5, 5.5, false);
+      expect(result).toBe('5.5C');
+    });
+
+    test('should handle integer temperatures', () => {
+      const result = fmtTemp(5, 5, false);
+      expect(result).toBe('5.0C');
+    });
+
+    test('should handle negative temperatures', () => {
+      const result = fmtTemp(-10.5, -10.5, false);
+      expect(result).toBe('-10.5C');
+    });
+
+    test('should handle zero temperature', () => {
+      const result = fmtTemp(0, 0, false);
+      expect(result).toBe('0.0C');
+    });
+  });
+
+  describe('null value handling', () => {
+    test('should return n/a for null value', () => {
+      const result = fmtTemp(null, 5.0, false);
+      expect(result).toBe('n/a');
+    });
+
+    test('should return n/a for null value even with showRaw true', () => {
+      const result = fmtTemp(null, 5.0, true);
+      expect(result).toBe('n/a');
+    });
+  });
+
+  describe('raw value display', () => {
+    test('should show raw value when showRaw is true and values differ', () => {
+      const result = fmtTemp(5.5, 5.8, true);
+      expect(result).toBe('5.5C (raw=5.8C)');
+    });
+
+    test('should not show raw value when showRaw is false', () => {
+      const result = fmtTemp(5.5, 5.8, false);
+      expect(result).toBe('5.5C');
+    });
+
+    test('should not show raw value when values are equal', () => {
+      const result = fmtTemp(5.5, 5.5, true);
+      expect(result).toBe('5.5C');
+    });
+
+    test('should not show raw value when raw is null', () => {
+      const result = fmtTemp(5.5, null, true);
+      expect(result).toBe('5.5C');
+    });
+
+    test('should show raw value for negative temperatures', () => {
+      const result = fmtTemp(-10.0, -10.5, true);
+      expect(result).toBe('-10.0C (raw=-10.5C)');
+    });
+
+    test('should show raw value with proper formatting', () => {
+      const result = fmtTemp(4.12345, 4.56789, true);
+      expect(result).toBe('4.1C (raw=4.6C)');
+    });
+  });
+
+  describe('edge cases', () => {
+    test('should handle very small differences', () => {
+      const result = fmtTemp(5.0, 5.0001, true);
+      // Values differ, so raw should be shown
+      expect(result).toBe('5.0C (raw=5.0C)');
+    });
+
+    test('should handle large temperature values', () => {
+      const result = fmtTemp(125.0, 124.5, true);
+      expect(result).toBe('125.0C (raw=124.5C)');
+    });
+
+    test('should handle very small temperature values', () => {
+      const result = fmtTemp(-55.0, -54.5, true);
+      expect(result).toBe('-55.0C (raw=-54.5C)');
     });
   });
 });
