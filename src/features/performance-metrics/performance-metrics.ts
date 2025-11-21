@@ -5,6 +5,9 @@
 
 import type { PerformanceState, LoopTrackingResult } from './types';
 
+const MS_PER_SECOND = 1000;
+const PERCENT_MULTIPLIER = 100;
+
 /**
  * Track loop execution and update performance metrics
  *
@@ -47,12 +50,21 @@ export function trackLoopExecution(
   loopEndSec: number,
   slowThresholdMs: number
 ): LoopTrackingResult {
+  // Validate inputs
+  if (!Number.isFinite(loopStartSec) || !Number.isFinite(loopEndSec)) {
+    return {
+      performance,
+      wasSlow: false,
+      loopTime: 0,
+    };
+  }
+
   // Calculate loop execution time in seconds
-  const loopTime = loopEndSec - loopStartSec;
-  const loopTimeMs = loopTime * 1000;
+  const loopTime = Math.max(0, loopEndSec - loopStartSec);
+  const loopTimeMs = loopTime * MS_PER_SECOND;
 
   // Check if this loop was slow
-  const wasSlow = loopTimeMs > slowThresholdMs;
+  const wasSlow = slowThresholdMs > 0 && loopTimeMs > slowThresholdMs;
 
   // Update performance metrics
   const newPerformance: PerformanceState = {
@@ -61,13 +73,13 @@ export function trackLoopExecution(
     loopTimeMax: Math.max(performance.loopTimeMax, loopTime),
     loopTimeMin: Math.min(performance.loopTimeMin, loopTime),
     slowLoopCount: performance.slowLoopCount + (wasSlow ? 1 : 0),
-    lastPerfLog: performance.lastPerfLog
+    lastPerfLog: performance.lastPerfLog,
   };
 
   return {
     performance: newPerformance,
     wasSlow,
-    loopTime
+    loopTime,
   };
 }
 
@@ -97,14 +109,29 @@ export function formatPerformanceSummary(performance: PerformanceState): string 
     return 'Performance: No loops executed yet';
   }
 
-  const avgTimeMs = (performance.loopTimeSum / performance.loopCount) * 1000;
-  const minTimeMs = performance.loopTimeMin * 1000;
-  const maxTimeMs = performance.loopTimeMax * 1000;
-  const slowPct = (performance.slowLoopCount / performance.loopCount) * 100;
+  const avgTimeMs = (performance.loopTimeSum / performance.loopCount) * MS_PER_SECOND;
+  const minTimeMs = performance.loopTimeMin * MS_PER_SECOND;
+  const maxTimeMs = performance.loopTimeMax * MS_PER_SECOND;
+  const slowPct = (performance.slowLoopCount / performance.loopCount) * PERCENT_MULTIPLIER;
 
   return `Performance: ${performance.loopCount} loops, ` +
     `avg=${avgTimeMs.toFixed(1)}ms, ` +
     `min=${minTimeMs.toFixed(1)}ms, ` +
     `max=${maxTimeMs.toFixed(1)}ms, ` +
     `slow=${performance.slowLoopCount} (${slowPct.toFixed(1)}%)`;
+}
+
+/**
+ * Initialize performance state
+ * @returns Fresh performance state ready for tracking
+ */
+export function initPerformanceState(): PerformanceState {
+  return {
+    loopCount: 0,
+    loopTimeSum: 0,
+    loopTimeMax: 0,
+    loopTimeMin: Infinity,
+    slowLoopCount: 0,
+    lastPerfLog: 0,
+  };
 }
