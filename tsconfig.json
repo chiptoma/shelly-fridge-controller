@@ -1,0 +1,64 @@
+{
+  "compilerOptions": {
+    // Target & Module
+    "target": "ES2015",
+    "module": "ES2015",
+    "lib": ["ES2015"],
+
+    // Module Resolution
+    "baseUrl": ".",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+
+    // Output
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "noEmit": true,
+
+    // Type Checking (Strict Mode)
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // Other
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    // Allow JS during migration
+    "allowJs": true,
+    "checkJs": false,
+    "paths": {
+      "$types": ["src/types/index.ts"],
+      "$types/*": ["src/types/*"],
+      "@core": ["src/core/index.ts"],
+      "@core/*": ["src/core/*"],
+      "@features/*": ["src/features/*"],
+      "@boot/*": ["src/boot/*"],
+      "@system": ["src/system/index.ts"],
+      "@system/*": ["src/system/*"],
+      "@hardware": ["src/hardware/index.ts"],
+      "@hardware/*": ["src/hardware/*"],
+      "@utils": ["src/utils/index.ts"],
+      "@utils/*": ["src/utils/*"],
+      "@validation": ["src/validation/index.ts"],
+      "@validation/*": ["src/validation/*"],
+      "@logging": ["src/logging/index.ts"],
+      "@logging/*": ["src/logging/*"]
+    }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "__tests__",
+    "*.js"
+  ]
+}
