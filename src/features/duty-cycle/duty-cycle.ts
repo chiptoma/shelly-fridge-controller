@@ -1,34 +1,33 @@
 /**
  * Duty cycle tracking and calculation
+ *
+ * Tracks compressor on/off time to calculate duty cycle percentage.
+ * Used by adaptive hysteresis and daily summary features.
  */
 
 import type { DutyCycleState } from './types';
-
-export type { DutyCycleState };
 
 /**
  * Update duty cycle accumulators
  * @param dutyState - Current duty cycle state
  * @param dt - Time delta in seconds
  * @param relayOn - Whether relay is currently ON
- * @returns Updated duty state
+ * @returns New duty state with updated accumulators (immutable)
  */
 export function updateDutyCycle(
   dutyState: DutyCycleState,
   dt: number,
   relayOn: boolean
 ): DutyCycleState {
-  if (!dutyState || dt <= 0) {
+  if (!dutyState || dt <= 0 || !Number.isFinite(dt)) {
     return dutyState;
   }
 
-  if (relayOn) {
-    dutyState.dutyOnSec += dt;
-  } else {
-    dutyState.dutyOffSec += dt;
-  }
-
-  return dutyState;
+  return {
+    ...dutyState,
+    dutyOnSec: dutyState.dutyOnSec + (relayOn ? dt : 0),
+    dutyOffSec: dutyState.dutyOffSec + (relayOn ? 0 : dt),
+  };
 }
 
 /**
@@ -38,23 +37,28 @@ export function updateDutyCycle(
  * @returns Duty cycle percentage (0-100)
  */
 export function getDutyPercent(onSec: number, offSec: number): number {
-  const total = onSec + offSec;
-  if (total === 0) {
+  if (!Number.isFinite(onSec) || !Number.isFinite(offSec)) {
     return 0;
   }
+
+  const total = onSec + offSec;
+  if (total <= 0) {
+    return 0;
+  }
+
   return (onSec / total) * 100.0;
 }
 
 /**
  * Reset duty cycle accumulators
  * @param now - Current timestamp
- * @returns Reset duty state
+ * @returns Fresh duty state
  */
 export function resetDutyCycle(now: number): DutyCycleState {
   return {
     dutyOnSec: 0,
     dutyOffSec: 0,
-    dutyLastReset: now
+    dutyLastReset: now,
   };
 }
 
@@ -70,7 +74,7 @@ export function shouldResetDutyCycle(
   lastReset: number,
   intervalSec: number
 ): boolean {
-  if (lastReset === 0) {
+  if (lastReset === 0 || intervalSec <= 0) {
     return false;
   }
   return (now - lastReset) >= intervalSec;

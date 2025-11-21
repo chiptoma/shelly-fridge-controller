@@ -1,16 +1,22 @@
 /**
  * Daily summary statistics tracking
+ *
+ * Aggregates temperature readings and compressor runtime over a 24-hour period
+ * for monitoring and alerting purposes.
  */
 
 import type { TemperatureReading } from '$types/common';
 import type { DailyState, SummaryResult, SummaryCheckResult } from './types';
+import { updateMinMax, formatDateISO, formatTemp } from './helpers';
+
+const SECONDS_PER_HOUR = 3600;
 
 /**
  * Update daily temperature statistics
  * @param dailyState - Current daily state
  * @param airRaw - Raw air temperature
  * @param evapRaw - Raw evaporator temperature
- * @returns Updated daily state
+ * @returns New daily state with updated statistics (immutable)
  */
 export function updateDailyStats(
   dailyState: DailyState,
@@ -19,31 +25,20 @@ export function updateDailyStats(
 ): DailyState {
   if (!dailyState) return dailyState;
 
-  // Update air stats
-  if (airRaw !== null) {
-    if (dailyState.dayAirMin === null || airRaw < dailyState.dayAirMin) {
-      dailyState.dayAirMin = airRaw;
-    }
-    if (dailyState.dayAirMax === null || airRaw > dailyState.dayAirMax) {
-      dailyState.dayAirMax = airRaw;
-    }
-    dailyState.dayAirSum += airRaw;
-    dailyState.dayAirCount += 1;
-  }
+  const airStats = updateMinMax(airRaw, dailyState.dayAirMin, dailyState.dayAirMax);
+  const evapStats = updateMinMax(evapRaw, dailyState.dayEvapMin, dailyState.dayEvapMax);
 
-  // Update evap stats
-  if (evapRaw !== null) {
-    if (dailyState.dayEvapMin === null || evapRaw < dailyState.dayEvapMin) {
-      dailyState.dayEvapMin = evapRaw;
-    }
-    if (dailyState.dayEvapMax === null || evapRaw > dailyState.dayEvapMax) {
-      dailyState.dayEvapMax = evapRaw;
-    }
-    dailyState.dayEvapSum += evapRaw;
-    dailyState.dayEvapCount += 1;
-  }
-
-  return dailyState;
+  return {
+    ...dailyState,
+    dayAirMin: airStats.min,
+    dayAirMax: airStats.max,
+    dayAirSum: dailyState.dayAirSum + (airRaw ?? 0),
+    dayAirCount: dailyState.dayAirCount + (airRaw !== null ? 1 : 0),
+    dayEvapMin: evapStats.min,
+    dayEvapMax: evapStats.max,
+    dayEvapSum: dailyState.dayEvapSum + (evapRaw ?? 0),
+    dayEvapCount: dailyState.dayEvapCount + (evapRaw !== null ? 1 : 0),
+  };
 }
 
 /**
@@ -51,7 +46,7 @@ export function updateDailyStats(
  * @param dailyState - Current daily state
  * @param dt - Time delta in seconds
  * @param relayOn - Whether relay is ON
- * @returns Updated daily state
+ * @returns New daily state with updated runtime (immutable)
  */
 export function updateDailyRuntime(
   dailyState: DailyState,
@@ -62,18 +57,20 @@ export function updateDailyRuntime(
     return dailyState;
   }
 
-  if (relayOn) {
-    dailyState.dayOnSec += dt;
-  } else {
-    dailyState.dayOffSec += dt;
-  }
-
-  return dailyState;
+  return {
+    ...dailyState,
+    dayOnSec: dailyState.dayOnSec + (relayOn ? dt : 0),
+    dayOffSec: dailyState.dayOffSec + (relayOn ? 0 : dt),
+  };
 }
 
 /**
  * Check if daily summary should be generated
- * @param now - Current timestamp
+ *
+ * Summary is generated once per day at the configured hour to capture
+ * the previous day's statistics before reset.
+ *
+ * @param now - Current timestamp in seconds
  * @param lastDate - Last summary date (YYYY-MM-DD format)
  * @param summaryHour - Hour of day to generate summary (0-23)
  * @returns Result with shouldGenerate flag and currentDate
@@ -83,15 +80,10 @@ export function shouldGenerateSummary(
   lastDate: string,
   summaryHour: number
 ): SummaryCheckResult {
-  const d = new Date(now * 1000);
-  const month = d.getMonth() + 1;
-  const day = d.getDate();
-  const currentDate = d.getFullYear() + "-" +
-                     (month < 10 ? "0" + month : month) + "-" +
-                     (day < 10 ? "0" + day : day);
-  const currentHour = d.getHours();
+  const currentDate = formatDateISO(now);
+  const currentHour = new Date(now * 1000).getHours();
 
-  const shouldGenerate = (currentHour === summaryHour && lastDate !== currentDate);
+  const shouldGenerate = currentHour === summaryHour && lastDate !== currentDate;
 
   return { shouldGenerate, currentDate };
 }
@@ -104,12 +96,16 @@ export function shouldGenerateSummary(
 export function calculateSummary(dailyState: DailyState): SummaryResult {
   const total = dailyState.dayOnSec + dailyState.dayOffSec;
   const dutyPct = total > 0 ? (dailyState.dayOnSec / total) * 100.0 : 0.0;
-  const avgAir = dailyState.dayAirCount > 0 ? (dailyState.dayAirSum / dailyState.dayAirCount) : null;
-  const avgEvap = dailyState.dayEvapCount > 0 ? (dailyState.dayEvapSum / dailyState.dayEvapCount) : null;
+  const avgAir = dailyState.dayAirCount > 0
+    ? dailyState.dayAirSum / dailyState.dayAirCount
+    : null;
+  const avgEvap = dailyState.dayEvapCount > 0
+    ? dailyState.dayEvapSum / dailyState.dayEvapCount
+    : null;
 
   return {
-    onHours: dailyState.dayOnSec / 3600,
-    offHours: dailyState.dayOffSec / 3600,
+    onHours: dailyState.dayOnSec / SECONDS_PER_HOUR,
+    offHours: dailyState.dayOffSec / SECONDS_PER_HOUR,
     dutyPct,
     airMin: dailyState.dayAirMin,
     airMax: dailyState.dayAirMax,
@@ -118,7 +114,7 @@ export function calculateSummary(dailyState: DailyState): SummaryResult {
     evapMax: dailyState.dayEvapMax,
     evapAvg: avgEvap,
     freezeCount: dailyState.freezeCount,
-    highTempCount: dailyState.highTempCount
+    highTempCount: dailyState.highTempCount,
   };
 }
 
@@ -139,7 +135,7 @@ export function resetDailyStats(): DailyState {
     dayOnSec: 0,
     dayOffSec: 0,
     freezeCount: 0,
-    highTempCount: 0
+    highTempCount: 0,
   };
 }
 
@@ -150,13 +146,9 @@ export function resetDailyStats(): DailyState {
  * @returns Formatted summary string
  */
 export function formatDailySummary(summary: SummaryResult, date: string): string {
-  return "Daily Summary (" + date + "): " +
-    "ON " + summary.onHours.toFixed(1) + "h (" + summary.dutyPct.toFixed(0) + "%), " +
-    "Air " + (summary.airMin !== null ? summary.airMin.toFixed(1) : "n/a") + "/" +
-    (summary.airMax !== null ? summary.airMax.toFixed(1) : "n/a") + "/" +
-    (summary.airAvg !== null ? summary.airAvg.toFixed(1) : "n/a") + "C, " +
-    "Evap " + (summary.evapMin !== null ? summary.evapMin.toFixed(1) : "n/a") + "/" +
-    (summary.evapMax !== null ? summary.evapMax.toFixed(1) : "n/a") + "/" +
-    (summary.evapAvg !== null ? summary.evapAvg.toFixed(1) : "n/a") + "C, " +
-    "Freeze " + summary.freezeCount + ", HighTemp " + summary.highTempCount;
+  return `Daily Summary (${date}): ` +
+    `ON ${summary.onHours.toFixed(1)}h (${summary.dutyPct.toFixed(0)}%), ` +
+    `Air ${formatTemp(summary.airMin)}/${formatTemp(summary.airMax)}/${formatTemp(summary.airAvg)}C, ` +
+    `Evap ${formatTemp(summary.evapMin)}/${formatTemp(summary.evapMax)}/${formatTemp(summary.evapAvg)}C, ` +
+    `Freeze ${summary.freezeCount}, HighTemp ${summary.highTempCount}`;
 }
