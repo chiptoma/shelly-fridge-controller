@@ -38,6 +38,8 @@ jest.mock('@boot/config', () => ({
     ADAPTIVE_MAX_SHIFT_C: 0.5,
     ADAPTIVE_MIN_SHIFT_C: 0,
     ADAPTIVE_SHIFT_STEP_C: 0.1,
+    ADAPTIVE_STABILIZE_SEC: 300,
+    ADAPTIVE_MIN_LOOPS: 60,
     RELAY_ID: 0,
     MIN_ON_SEC: 180,
     MIN_OFF_SEC: 300,
@@ -137,9 +139,7 @@ jest.mock('@utils/time', () => ({
   now: jest.fn().mockReturnValue(1000)
 }));
 
-jest.mock('@logging', () => ({
-  fmtTemp: jest.fn().mockReturnValue('5.0C')
-}));
+jest.mock('@logging', () => ({}));
 
 import {
   applySensorHealthToState,
@@ -290,7 +290,8 @@ describe('Control Helpers', () => {
       dayEvapMax: null,
       dayEvapSum: 0,
       dayEvapCount: 0,
-      lastDailySummaryDate: ''
+      lastDailySummaryDate: '',
+      lastAdaptiveAdjust: 0
     } as any;
   });
 
@@ -567,7 +568,12 @@ describe('Control Helpers', () => {
     });
 
     it('should return raw values when buffer not full', () => {
-      (isBufferFull as jest.Mock).mockReturnValue(false);
+      (updateMovingAverage as jest.Mock).mockReturnValue({
+        buffer: { samples: [5.0] },
+        value: 5.0,
+        sampleCount: 1,
+        bufferFull: false
+      });
       const sensors = { airRaw: 5.0, evapRaw: -10.0 };
 
       const result = processSmoothing(mockState, sensors);
@@ -593,6 +599,12 @@ describe('Control Helpers', () => {
 
     it('should return null decisions for null sensors when buffer not full', () => {
       (isBufferFull as jest.Mock).mockReturnValue(false);
+      (updateMovingAverage as jest.Mock).mockReturnValue({
+        buffer: { samples: [-10.0] },
+        value: -10.0,
+        sampleCount: 1,
+        bufferFull: false
+      });
       const sensors = { airRaw: null, evapRaw: -10.0 };
       const result = processSmoothing(mockState, sensors);
       expect(result.airDecision).toBe(null);
@@ -736,13 +748,19 @@ describe('Control Helpers', () => {
   });
 
   describe('processAdaptiveHysteresis', () => {
+    beforeEach(() => {
+      // Set up state to pass guards: enough loops and time since last adjustment
+      mockState.loopCount = 100; // Past ADAPTIVE_MIN_LOOPS (60)
+      mockState.lastAdaptiveAdjust = 0; // Long time since last adjustment
+    });
+
     it('should update dynamic thresholds when shift changes', () => {
       (calculateAdaptiveShift as jest.Mock).mockReturnValue({
         newShift: 0.2,
         changed: true
       });
 
-      processAdaptiveHysteresis(mockState);
+      processAdaptiveHysteresis(mockState, 1000);
 
       expect(mockState.dynOnAbove).toBe(5.2);
       expect(mockState.dynOffBelow).toBe(2.8);
@@ -756,7 +774,7 @@ describe('Control Helpers', () => {
         changed: false
       });
 
-      processAdaptiveHysteresis(mockState);
+      processAdaptiveHysteresis(mockState, 1000);
 
       expect(mockState.dynOnAbove).toBe(5.0);
       expect(mockState.dynOffBelow).toBe(3.0);
@@ -768,7 +786,7 @@ describe('Control Helpers', () => {
         changed: true
       });
 
-      const result = processAdaptiveHysteresis(mockState);
+      const result = processAdaptiveHysteresis(mockState, 1000);
 
       expect(result).not.toBeNull();
       expect(result!.dutyPercent).toBeDefined();
@@ -781,9 +799,38 @@ describe('Control Helpers', () => {
         changed: false
       });
 
-      const result = processAdaptiveHysteresis(mockState);
+      const result = processAdaptiveHysteresis(mockState, 1000);
 
       expect(result).toBeNull();
+    });
+
+    it('should return null when below minimum loops (startup guard)', () => {
+      mockState.loopCount = 10; // Below ADAPTIVE_MIN_LOOPS (60)
+
+      const result = processAdaptiveHysteresis(mockState, 1000);
+
+      expect(result).toBeNull();
+      expect(calculateAdaptiveShift).not.toHaveBeenCalled();
+    });
+
+    it('should return null when within stabilization period', () => {
+      mockState.lastAdaptiveAdjust = 900; // 100s ago, less than ADAPTIVE_STABILIZE_SEC (300)
+
+      const result = processAdaptiveHysteresis(mockState, 1000);
+
+      expect(result).toBeNull();
+      expect(calculateAdaptiveShift).not.toHaveBeenCalled();
+    });
+
+    it('should update lastAdaptiveAdjust when shift changes', () => {
+      (calculateAdaptiveShift as jest.Mock).mockReturnValue({
+        newShift: 0.2,
+        changed: true
+      });
+
+      processAdaptiveHysteresis(mockState, 1500);
+
+      expect(mockState.lastAdaptiveAdjust).toBe(1500);
     });
   });
 

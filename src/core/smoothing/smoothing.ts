@@ -63,9 +63,9 @@ export function updateMovingAverage(
   // Add new value to end
   buffer.samples.push(newValue);
 
-  // Remove from front if exceeding max (shift is O(n) but n is small ~6)
+  // Remove from front if exceeding max - use splice since shift() not available in Shelly ES5
   while (buffer.samples.length > maxSamples) {
-    buffer.samples.shift();
+    buffer.samples.splice(0, 1);
   }
 
   // Calculate average - manual sum for Shelly compatibility

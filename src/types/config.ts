@@ -62,6 +62,8 @@ export interface FridgeUserConfig {
   readonly ADAPTIVE_MAX_SHIFT_C: number;
   readonly ADAPTIVE_MIN_SHIFT_C: number;
   readonly ADAPTIVE_SHIFT_STEP_C: number;
+  readonly ADAPTIVE_STABILIZE_SEC: number;
+  readonly ADAPTIVE_MIN_LOOPS: number;
 
   // ───────── WATCHDOG ─────────
   readonly WATCHDOG_TIMEOUT_SEC: number;

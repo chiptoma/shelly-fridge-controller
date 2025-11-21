@@ -163,34 +163,40 @@ describe('Features Processor', () => {
         expect(result.state.dailyState.highTempCount).toBe(1);
       });
 
-      it('should handle null temperature in instant alert message', () => {
+      it('should format instant alert message with temperature value', () => {
+        // Start with alert already tracking (startTime set)
         state.alertState.instantStart = 1000;
         state.alertState.instantFired = false;
 
+        // Create high temp event that triggers the alert
         const event = createStateEvent({
-          airTemp: null, // null temperature
+          airTemp: 15.0, // Above threshold
           timestamp: 1000 + 180 + 1
         });
 
         const result = processStateEvent(event, state, defaultConfig, () => 1200);
 
-        // Alert won't fire because updateHighTempAlerts handles null
-        // But we're testing the code path
-        expect(result.state.alertState.instantStart).toBe(0);
+        expect(result.state.alertState.instantFired).toBe(true);
+        const alertCommand = result.commands.find(c => c.message?.includes('HIGH TEMP INSTANT'));
+        expect(alertCommand).toBeDefined();
+        expect(alertCommand?.message).toContain('15');
       });
 
-      it('should handle null temperature in sustained alert message', () => {
+      it('should format sustained alert message with temperature value', () => {
         state.alertState.sustainedStart = 1000;
         state.alertState.sustainedFired = false;
 
         const event = createStateEvent({
-          airTemp: null,
+          airTemp: 15.0,
           timestamp: 1000 + 600 + 1
         });
 
         const result = processStateEvent(event, state, defaultConfig, () => 1700);
 
-        expect(result.state.alertState.sustainedStart).toBe(0);
+        expect(result.state.alertState.sustainedFired).toBe(true);
+        const alertCommand = result.commands.find(c => c.message?.includes('HIGH TEMP SUSTAINED'));
+        expect(alertCommand).toBeDefined();
+        expect(alertCommand?.message).toContain('15');
       });
 
       it('should generate sustained recovery message', () => {

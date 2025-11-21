@@ -70,6 +70,7 @@ export function createInitialState(
     // Tracks control loop execution timing for delta calculations.
     // ═══════════════════════════════════════════════════════════════
 
+    startTime: nowSec,  // Controller start time for uptime calculation
     lastLoopTime: 0,  // Timestamp of previous loop (used to calculate dt for accumulators)
 
     // ═══════════════════════════════════════════════════════════════

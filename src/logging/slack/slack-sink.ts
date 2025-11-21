@@ -49,14 +49,21 @@ export function loadWebhookUrl(
   }
 
   try {
-    shellyApi.call<KVSGetResult>('KVS.Get', { key: config.webhookKvsKey }, function(result, error_code, _error_message) {
+    // Build params object - avoid bundler issues with object literals
+    const kvsKey = config.webhookKvsKey;
+    const params = Object.create(null);
+    params.key = kvsKey;
+    shellyApi.call<KVSGetResult>('KVS.Get', params, function(result, error_code, error_message) {
       if (error_code === 0 && result && result.value) {
         callback(result.value);
       } else {
+        // Log failure for debugging
+        console.log('KVS.Get failed:', error_code, error_message);
         callback(null);
       }
     });
-  } catch (_err) {
+  } catch (err) {
+    console.log('KVS.Get exception:', err);
     callback(null);
   }
 }

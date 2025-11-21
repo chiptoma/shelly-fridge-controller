@@ -61,6 +61,8 @@ const createMockConfig = (overrides: Partial<FridgeConfig> = {}): FridgeConfig =
   ADAPTIVE_MAX_SHIFT_C: 0.5,
   ADAPTIVE_MIN_SHIFT_C: 0,
   ADAPTIVE_SHIFT_STEP_C: 0.1,
+  ADAPTIVE_STABILIZE_SEC: 300,
+  ADAPTIVE_MIN_LOOPS: 60,
 
   // Watchdog
   WATCHDOG_TIMEOUT_SEC: 120,

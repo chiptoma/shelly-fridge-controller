@@ -217,6 +217,18 @@ export const USER_CONFIG: Readonly<FridgeUserConfig> = {
   ADAPTIVE_MIN_SHIFT_C: 0,
   ADAPTIVE_SHIFT_STEP_C: 0.1,
 
+  // ADAPTIVE_STABILIZE_SEC
+  //   Role: Minimum time between adaptive hysteresis adjustments.
+  //   Critical: 60–3600 s (error if <60 or >3600).
+  //   Recommended: 300 s (5 min) to allow system to stabilize after each adjustment.
+  ADAPTIVE_STABILIZE_SEC: 300,
+
+  // ADAPTIVE_MIN_LOOPS
+  //   Role: Minimum number of loops before first adaptive adjustment (startup guard).
+  //   Critical: 12–720 (error if <12 or >720).
+  //   Recommended: 60 loops (5 min at 5s loop) to build meaningful duty data.
+  ADAPTIVE_MIN_LOOPS: 60,
+
   // WATCHDOG_TIMEOUT_SEC
   //   Role: Maximum allowed time between healthy loop iterations.
   //   Critical: 5–120 s (error if <5 or >120).

@@ -83,7 +83,7 @@ export function run(controller: Controller): void {
 
     // Adaptive hysteresis
     if (CONFIG.FEATURE_ADAPTIVE_HYSTERESIS) {
-      const adaptiveResult = processAdaptiveHysteresis(state);
+      const adaptiveResult = processAdaptiveHysteresis(state, t);
       if (adaptiveResult && isDebug) {
         logger.debug("Adaptive: duty=" + adaptiveResult.dutyPercent.toFixed(1) + "%, shift=" + adaptiveResult.newShift.toFixed(2) + "C");
       }
@@ -119,6 +119,7 @@ export function run(controller: Controller): void {
     }
 
     // Update tracking
+    state.loopCount++;
     updateDutyCycle(state as unknown as DutyCycleState, dt, sensors.relayOn);
     updateDailyStats(state as unknown as DailyState, sensors.airRaw, sensors.evapRaw);
     updateDailyRuntime(state as unknown as DailyState, dt, sensors.relayOn);

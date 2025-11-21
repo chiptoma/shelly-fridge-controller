@@ -77,6 +77,8 @@ jest.mock('./config', () => {
     ADAPTIVE_MAX_SHIFT_C: 0.5,
     ADAPTIVE_MIN_SHIFT_C: 0,
     ADAPTIVE_SHIFT_STEP_C: 0.1,
+    ADAPTIVE_STABILIZE_SEC: 300,
+    ADAPTIVE_MIN_LOOPS: 60,
     DAILY_SUMMARY_HOUR: 6,
     DUTY_INTERVAL_SEC: 3600,
     GLOBAL_LOG_LEVEL: 1,
@@ -330,11 +332,13 @@ describe('initialize', () => {
   });
 
   describe('logger initialization callback', () => {
-    it('should log info for successful init messages', () => {
+    it('should skip successful init messages (only log warnings)', () => {
       const loggerInfoSpy = jest.fn();
+      const loggerWarningSpy = jest.fn();
       (createLogger as jest.Mock).mockReturnValue({
         ...mockLogger,
         info: loggerInfoSpy,
+        warning: loggerWarningSpy,
         initialize: jest.fn((callback: any) => {
           callback(true, [{ success: true, message: 'Sink initialized' }]);
         })
@@ -342,8 +346,9 @@ describe('initialize', () => {
 
       initialize();
 
-      // Init messages go through logger.info after sinks are ready
-      expect(loggerInfoSpy).toHaveBeenCalledWith('Sink initialized');
+      // Success messages should NOT be logged
+      expect(loggerInfoSpy).not.toHaveBeenCalledWith('Sink initialized');
+      expect(loggerWarningSpy).not.toHaveBeenCalledWith('Sink initialized');
     });
 
     it('should log warning for failed init messages', () => {

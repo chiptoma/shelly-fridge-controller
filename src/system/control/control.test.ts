@@ -237,6 +237,81 @@ describe('Control Loop', () => {
         expect.stringContaining('Relay=ON')
       );
     });
+
+    it('should log smoothed temps when buffers are full', () => {
+      mockController.isDebug = true;
+      (processSmoothing as jest.Mock).mockReturnValue({
+        airDecision: 5.5,
+        evapDecision: -10.5,
+        airBufferFull: true,
+        evapBufferFull: true
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('smoothed')
+      );
+    });
+
+    it('should log raw temps when buffers are not full', () => {
+      mockController.isDebug = true;
+      (processSmoothing as jest.Mock).mockReturnValue({
+        airDecision: 5.0,
+        evapDecision: -10.0,
+        airBufferFull: false,
+        evapBufferFull: false
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('buffer filling')
+      );
+    });
+
+    it('should handle null airDecision when buffer is full', () => {
+      mockController.isDebug = true;
+      (processSmoothing as jest.Mock).mockReturnValue({
+        airDecision: null,
+        evapDecision: -10.0,
+        airBufferFull: true,
+        evapBufferFull: true
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('n/a')
+      );
+    });
+
+    it('should handle null evapDecision when buffer is full', () => {
+      mockController.isDebug = true;
+      (processSmoothing as jest.Mock).mockReturnValue({
+        airDecision: 5.0,
+        evapDecision: null,
+        airBufferFull: true,
+        evapBufferFull: true
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('n/a')
+      );
+    });
+
+    it('should handle null raw sensors when buffers are full with smoothed values', () => {
+      mockController.isDebug = true;
+      (readAllSensors as jest.Mock).mockReturnValue({
+        airRaw: null,
+        evapRaw: null,
+        relayOn: false
+      });
+      (processSmoothing as jest.Mock).mockReturnValue({
+        airDecision: 5.0,
+        evapDecision: -10.0,
+        airBufferFull: true,
+        evapBufferFull: true
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('n/a')
+      );
+    });
   });
 
   describe('sensor health processing', () => {
@@ -350,6 +425,28 @@ describe('Control Loop', () => {
     it('should process daily summary when feature enabled', () => {
       run(mockController);
       expect(processDailySummary).toHaveBeenCalled();
+    });
+
+    it('should log debug message when freeze protection activates', () => {
+      mockController.isDebug = true;
+      (mockController.state as any).dayFreezeCount = 3;
+      (processFreezeProtection as jest.Mock).mockReturnValue(true);
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Freeze protection activated')
+      );
+    });
+
+    it('should log debug message when adaptive hysteresis adjusts', () => {
+      mockController.isDebug = true;
+      (processAdaptiveHysteresis as jest.Mock).mockReturnValue({
+        dutyPercent: 75.5,
+        newShift: 0.25
+      });
+      run(mockController);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Adaptive: duty=')
+      );
     });
   });
 

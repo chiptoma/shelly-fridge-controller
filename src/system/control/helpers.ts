@@ -19,7 +19,6 @@ import {
   formatDailySummary
 } from '@features/daily-summary';
 import { now } from '@utils/time';
-import { fmtTemp } from '@logging';
 
 import type { Logger } from '@logging';
 import type { ControllerState } from '@system/state/types';
@@ -255,11 +254,25 @@ export function processHighTempAlerts(
 
 /**
  * Process adaptive hysteresis
+ * @param state - Controller state
+ * @param t - Current timestamp
  * @returns debug info if changed, null otherwise
  */
 export function processAdaptiveHysteresis(
-  state: ControllerState
+  state: ControllerState,
+  t: number
 ): { dutyPercent: number; newShift: number } | null {
+  // Startup guard: wait for minimum loops to build meaningful duty data
+  if (state.loopCount < CONFIG.ADAPTIVE_MIN_LOOPS) {
+    return null;
+  }
+
+  // Stabilization guard: wait between adjustments
+  const timeSinceLastAdjust = t - state.lastAdaptiveAdjust;
+  if (timeSinceLastAdjust < CONFIG.ADAPTIVE_STABILIZE_SEC) {
+    return null;
+  }
+
   const dutyPercent = getDutyPercent(state.dutyOnSec, state.dutyOffSec);
   const baseOnAbove = CONFIG.SETPOINT_C + CONFIG.HYSTERESIS_C;
   const baseOffBelow = CONFIG.SETPOINT_C - CONFIG.HYSTERESIS_C;
@@ -270,6 +283,7 @@ export function processAdaptiveHysteresis(
   if (result.changed) {
     state.dynOnAbove = baseOnAbove + result.newShift;
     state.dynOffBelow = baseOffBelow - result.newShift;
+    state.lastAdaptiveAdjust = t;
     return { dutyPercent: dutyPercent, newShift: result.newShift };
   }
   return null;
@@ -298,7 +312,13 @@ export function executeRelayChange(
   state.minOnWaitLogged = false;
   state.minOffWaitLogged = false;
 
-  const reason = "air=" + fmtTemp(airDecision, sensors.airRaw, true) + ", evap=" + fmtTemp(evapDecision, sensors.evapRaw, true);
+  // Format temps with Raw/Smoothed style
+  const airRaw = sensors.airRaw !== null ? sensors.airRaw.toFixed(1) : "-";
+  const airSmooth = airDecision !== null ? airDecision.toFixed(1) : "-";
+  const evapRaw = sensors.evapRaw !== null ? sensors.evapRaw.toFixed(1) : "-";
+  const evapSmooth = evapDecision !== null ? evapDecision.toFixed(1) : "-";
+
+  const reason = "🌡️ Air: " + airRaw + "R/" + airSmooth + "S | ❄️ Evap: " + evapRaw + "R/" + evapSmooth + "S";
 
   setRelay(wantCool, Shelly, function(error_code: number, error_message: string) {
     const callbackTime = now();
@@ -315,7 +335,8 @@ export function executeRelayChange(
     }
   });
 
-  logger.info((wantCool ? "Compressor ON: " : "Compressor OFF: ") + reason);
+  const emoji = wantCool ? "🟢" : "🔴";
+  logger.info(emoji + " Compressor " + (wantCool ? "ON" : "OFF") + " | " + reason);
 }
 
 /**
