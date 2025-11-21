@@ -1,9 +1,34 @@
 /**
  * Sensor health monitoring helper functions
+ *
+ * Internal logic for detecting sensor failures:
+ * - Offline sensors (no readings)
+ * - Stuck sensors (value not changing)
  */
 
 import type { TemperatureReading } from '$types/common';
-import type { NoReadingResult, StuckSensorResult } from './types';
+import type { NoReadingResult, StuckSensorResult, SensorHealthConfig } from './types';
+
+/**
+ * Validate sensor health configuration
+ * @throws {Error} If configuration is invalid
+ */
+export function validateSensorHealthConfig(config: SensorHealthConfig): void {
+  if (config.SENSOR_NO_READING_SEC <= 0) {
+    throw new Error(`SENSOR_NO_READING_SEC must be positive, got ${config.SENSOR_NO_READING_SEC}`);
+  }
+  if (config.SENSOR_CRITICAL_FAILURE_SEC <= config.SENSOR_NO_READING_SEC) {
+    throw new Error(
+      `SENSOR_CRITICAL_FAILURE_SEC (${config.SENSOR_CRITICAL_FAILURE_SEC}) must be greater than SENSOR_NO_READING_SEC (${config.SENSOR_NO_READING_SEC})`
+    );
+  }
+  if (config.SENSOR_STUCK_SEC <= 0) {
+    throw new Error(`SENSOR_STUCK_SEC must be positive, got ${config.SENSOR_STUCK_SEC}`);
+  }
+  if (config.SENSOR_STUCK_EPSILON_C < 0) {
+    throw new Error(`SENSOR_STUCK_EPSILON_C must be non-negative, got ${config.SENSOR_STUCK_EPSILON_C}`);
+  }
+}
 
 /**
  * Check for sensor no-reading condition

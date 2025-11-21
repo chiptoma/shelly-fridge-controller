@@ -1,5 +1,8 @@
 /**
  * Smoothing feature type definitions
+ *
+ * Temperature smoothing reduces sensor noise using a moving average filter.
+ * This prevents false thermostat triggers from momentary temperature spikes.
  */
 
 /**
@@ -14,9 +17,20 @@ export interface SmoothingConfig {
 }
 
 /**
+ * Smoothing buffer state (immutable)
+ */
+export interface SmoothingBufferState {
+  /** Array of temperature readings */
+  readonly samples: readonly number[];
+}
+
+/**
  * Result of smoothing operation
  */
 export interface SmoothingResult {
+  /** New buffer state (immutable) */
+  buffer: SmoothingBufferState;
+
   /** Smoothed temperature value */
   value: number;
 

@@ -3,22 +3,29 @@ import type { WatchdogState } from './types';
 
 describe('loop-watchdog', () => {
   describe('petWatchdog', () => {
-    it('should update lastWatchdogPet timestamp', () => {
+    it('should return new state with updated timestamp', () => {
       const state: WatchdogState = { lastWatchdogPet: 1000 };
-      petWatchdog(state, 1005);
-      expect(state.lastWatchdogPet).toBe(1005);
-    });
+      const newState = petWatchdog(state, 1005);
 
-    it('should allow updating with same timestamp', () => {
-      const state: WatchdogState = { lastWatchdogPet: 1000 };
-      petWatchdog(state, 1000);
-      expect(state.lastWatchdogPet).toBe(1000);
+      expect(newState.lastWatchdogPet).toBe(1005);
+      expect(newState).not.toBe(state); // Immutable update
+      expect(state.lastWatchdogPet).toBe(1000); // Original unchanged
     });
 
     it('should work with initial zero state', () => {
       const state: WatchdogState = { lastWatchdogPet: 0 };
-      petWatchdog(state, 100);
-      expect(state.lastWatchdogPet).toBe(100);
+      const newState = petWatchdog(state, 100);
+      expect(newState.lastWatchdogPet).toBe(100);
+    });
+
+    it('should throw on negative timestamp', () => {
+      const state: WatchdogState = { lastWatchdogPet: 0 };
+      expect(() => petWatchdog(state, -1)).toThrow();
+    });
+
+    it('should throw on NaN', () => {
+      const state: WatchdogState = { lastWatchdogPet: 0 };
+      expect(() => petWatchdog(state, NaN)).toThrow();
     });
   });
 
@@ -41,6 +48,14 @@ describe('loop-watchdog', () => {
 
     it('should handle zero lastPet (never pet)', () => {
       expect(isWatchdogStarved(0, 100, 30)).toBe(true);
+    });
+
+    it('should throw on zero timeout', () => {
+      expect(() => isWatchdogStarved(1000, 1010, 0)).toThrow();
+    });
+
+    it('should throw on negative timeout', () => {
+      expect(() => isWatchdogStarved(1000, 1010, -30)).toThrow();
     });
   });
 
