@@ -2,7 +2,7 @@
  * Helper functions for daily summary calculations
  */
 
-import { TIME_CONSTANTS } from '$utils/constants';
+import { TIME_CONSTANTS } from '@utils/constants';
 
 /**
  * Update min/max tracking for a temperature reading
