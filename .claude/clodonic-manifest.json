@@ -1,0 +1,20 @@
+{
+  "auto-run-tests": {
+    "id": 159,
+    "type": "hook",
+    "version": "1.0.0",
+    "installed": "2025-11-28T00:00:00Z",
+    "files": [
+      "~/.claude/settings.json"
+    ]
+  },
+  "debug-systematically": {
+    "id": 153,
+    "type": "prompt",
+    "version": "1.0.0",
+    "installed": "2025-11-28T00:00:00Z",
+    "files": [
+      ".claude/prompts/clodonic-debug-systematically.md"
+    ]
+  }
+}

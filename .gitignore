@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Test coverage
+coverage/
+
+# Build outputs
+dist/
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.tmp.*
+*.temp.*
+.cache/
+*.cache.*
+*.lock.*
+
+# Backup files
+*.bak
+*.backup
+*.backup.*
+*.old.*
