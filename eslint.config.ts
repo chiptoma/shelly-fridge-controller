@@ -23,7 +23,7 @@ type Rules = Linter.RulesRecord
 // ----------------------------------------------------------
 // * SHELLY ENVIRONMENT GLOBALS
 // ? Define Shelly-specific globals to prevent "undefined" errors.
-// ? Reference: SHELLY_DOCUMENTATION.md
+// ? Reference: https://shelly-api-docs.shelly.cloud/gen2/Scripts/ShellyScriptLanguageFeatures
 // ----------------------------------------------------------
 const shellyGlobals: Globals = {
   // Core Shelly APIs
@@ -70,7 +70,7 @@ const shellyGlobals: Globals = {
 
 // ----------------------------------------------------------
 // * SHELLY LANGUAGE RESTRICTIONS
-// ? Rules enforcing Shelly Script limitations from SHELLY_DOCUMENTATION.md
+// ? Rules enforcing Shelly Script limitations (see official Shelly docs).
 // ? These are NOT SUPPORTED in Shelly's Espruino-based JS engine.
 // ----------------------------------------------------------
 const shellyLanguageRules: Rules = {

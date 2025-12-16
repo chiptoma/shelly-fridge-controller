@@ -1,7 +1,7 @@
 // ==============================================================================
 // * MQTT COMMAND INTEGRATION TESTS
 // ? Tests all MQTT command handling in setupMqttCommands().
-// ? Validates turbo, turbo_off, status, reset_alarms commands.
+// ? Validates turbo_on, turbo_off, status, reset_alarms commands.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -62,7 +62,7 @@ describe('MQTT: Turbo Command', () => {
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
-      JSON.stringify({ cmd: 'turbo' }),
+      JSON.stringify({ cmd: 'turbo_on' }),
     )
 
     expect(script.V.turbo_active).toBe(true)
@@ -78,7 +78,7 @@ describe('MQTT: Turbo Command', () => {
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
-      JSON.stringify({ cmd: 'turbo' }),
+      JSON.stringify({ cmd: 'turbo_on' }),
     )
 
     expect(script.V.turbo_active).toBe(false)
@@ -365,7 +365,7 @@ describe('MQTT: Command Edge Cases', () => {
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
       JSON.stringify({
-        cmd: 'turbo',
+        cmd: 'turbo_on',
         duration: 3600, // Extra field (ignored)
         source: 'app',  // Extra field (ignored)
       }),
@@ -397,7 +397,7 @@ describe('MQTT: Command Edge Cases', () => {
     // Send turbo, then turbo_off rapidly - second should be rate limited
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
-      JSON.stringify({ cmd: 'turbo' }),
+      JSON.stringify({ cmd: 'turbo_on' }),
     )
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,

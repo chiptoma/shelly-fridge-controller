@@ -1,7 +1,7 @@
 // ==============================================================================
 // * MQTT TESTS
 // ? Validates MQTT command handling.
-// ? Current mqtt.js only exports setupMqttCommands - handles turbo, turbo_off,
+// ? Current mqtt.js only exports setupMqttCommands - handles turbo_on, turbo_off,
 // ? status, reset_alarms, and setpoint commands.
 // ==============================================================================
 
@@ -67,11 +67,11 @@ describe('MQTT Commands', () => {
       expect(mockMqttSubscribe).toHaveBeenCalledWith('fridge/cmd', expect.any(Function))
     })
 
-    it('should handle turbo command', () => {
+    it('should handle turbo_on command', () => {
       setupMqttCommands()
       const handler = mockMqttSubscribe.mock.calls[0][1]
 
-      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo' }))
+      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
       expect(mockV.turbo_active).toBe(true)
       expect(mockV.turbo_remSec).toBe(3600)
@@ -189,7 +189,7 @@ describe('MQTT Commands', () => {
       setupMqttCommands()
       const handler = mockMqttSubscribe.mock.calls[0][1]
 
-      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo' }))
+      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
       expect(mockV.turbo_active).toBe(false)
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Turbo disabled'))
@@ -247,7 +247,7 @@ describe('MQTT Commands', () => {
       // Second command at t=11000 (1 second later) - should be rate limited
       global.Shelly.getUptimeMs.mockReturnValue(11000)
       global.print.mockClear()
-      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo' }))
+      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Rate limited'))
       expect(mockV.turbo_active).toBe(false) // turbo should NOT have activated
@@ -263,7 +263,7 @@ describe('MQTT Commands', () => {
 
       // Second command at t=12001 (>2 seconds later) - should be allowed
       global.Shelly.getUptimeMs.mockReturnValue(12001)
-      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo' }))
+      handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
       expect(mockV.turbo_active).toBe(true)
     })
