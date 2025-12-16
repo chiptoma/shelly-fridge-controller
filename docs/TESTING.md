@@ -250,14 +250,14 @@ npm run test:watch
 ## Test Coverage
 
 The project maintains high test coverage:
-- **816+ total tests**
-- **~100% coverage** on core modules
+- **818+ total tests**
+- **~98% coverage** on core modules
 
 ### Coverage by Area
-- Unit tests: ~350 tests (src/*.test.js)
-- Integration tests: ~210 tests (test/integration/)
+- Unit tests: ~380 tests (src/*.test.js)
+- Integration tests: ~215 tests (test/integration/)
 - Simulations: ~85 tests (test/simulations/)
-- Bundle tests: ~40 tests (test/bundle/)
+- Bundle tests: ~38 tests (test/bundle/)
 
 ## Key Testing Patterns
 
@@ -284,4 +284,4 @@ Key features:
 - **Dynamic Import Pattern**: Modules are loaded AFTER mocks are configured
 - **Full TypeScript**: Tests have full type checking
 - **Module Isolation**: Each test gets fresh module instances
-- **Fast Execution**: 816 tests run in ~2s
+- **Fast Execution**: 818 tests run in ~1s

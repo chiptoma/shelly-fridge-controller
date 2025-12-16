@@ -19,7 +19,7 @@ let mqttLastCmdMs = -2000
  * * setupMqttCommands - Register MQTT command handler
  *
  * Subscribes to command topic and processes validated commands.
- * Commands: turbo, turbo_off, status, reset_alarms, setpoint
+ * Commands: turbo_on, turbo_off, status, reset_alarms, setpoint
  *
  * @mutates V.turbo_active  - For turbo commands
  * @mutates V.turbo_remSec  - For turbo commands
@@ -121,7 +121,7 @@ function handleMqttMessage(topic, message) {
 
   let c = cmd.cmd
 
-  if (c === 'turbo') { handleTurbo(); return }
+  if (c === 'turbo_on') { handleTurbo(); return }
   if (c === 'turbo_off') { handleTurboOff(); return }
   if (c === 'status') { handleStatus(); return }
   if (c === 'reset_alarms') { handleResetAlarms(); return }

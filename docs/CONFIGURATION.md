@@ -18,10 +18,11 @@ Configuration can be changed via:
 
 1. **MQTT Command**: Publish to `fridge/command` topic
    ```json
-   {"ctrl_targetDeg": 3.5, "ctrl_hystDeg": 1.5}
+   {"cmd": "setpoint", "value": 3.5}
    ```
+   Note: Currently only `ctrl_targetDeg` can be changed via MQTT.
 
-2. **KVS Direct**: Use Shelly's KVS.Set API
+2. **KVS Direct**: Use Shelly's KVS.Set API (for advanced users)
    ```javascript
    KVS.Set("fridge_cfg_ctrl", "4.0,1.0,0.08")
    ```
@@ -52,7 +53,7 @@ Core temperature control parameters.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `ctrl_targetDeg` | 4.0 | -5 to 15 | °C | Target temperature setpoint |
-| `ctrl_hystDeg` | 1.0 | 0.5-5.0 | °C | Base hysteresis band (ON at target+hyst, OFF at target) |
+| `ctrl_hystDeg` | 1.0 | 0.1-5.0 | °C | Base hysteresis band (±hyst around target) |
 | `ctrl_smoothAlpha` | 0.08 | 0.01-1.0 | - | EMA smoothing factor (lower = smoother, slower response) |
 
 ### How Thermostat Works
@@ -64,11 +65,12 @@ Core temperature control parameters.
   target ───┼─────────┼─────────── target
             │         ↓
             └─────────────────────
-       OFF threshold = target
+       OFF threshold = target - hysteresis
 
 Example (target=4°C, hyst=1°C):
-  - Compressor turns ON when air temp rises to 5°C
-  - Compressor turns OFF when air temp drops to 4°C
+  - Compressor turns ON when air temp rises above 5°C
+  - Compressor turns OFF when air temp drops below 3°C
+  - Dead band: 3°C to 5°C (no change while in this range)
 ```
 
 ---
@@ -80,10 +82,10 @@ Self-adjusting temperature control based on cycle times.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `adapt_enable` | true | boolean | - | Enable adaptive hysteresis |
-| `adapt_hystMinDeg` | 0.5 | 0.3-2.0 | °C | Minimum allowed hysteresis |
-| `adapt_hystMaxDeg` | 3.0 | 1.0-5.0 | °C | Maximum allowed hysteresis |
-| `adapt_targetMinSec` | 600 | 300-1200 | seconds | Target minimum cycle time (10 min) |
-| `adapt_targetMaxSec` | 1200 | 600-3600 | seconds | Target maximum cycle time (20 min) |
+| `adapt_hystMinDeg` | 0.5 | 0.1-5.0 | °C | Minimum allowed hysteresis |
+| `adapt_hystMaxDeg` | 3.0 | 0.1-5.0 | °C | Maximum allowed hysteresis |
+| `adapt_targetMinSec` | 600 | 300-3600 | seconds | Target minimum cycle time (10 min) |
+| `adapt_targetMaxSec` | 1200 | 600-7200 | seconds | Target maximum cycle time (20 min) |
 
 ### Why Adaptive Hysteresis?
 
@@ -104,9 +106,9 @@ Prevents compressor damage from improper cycling.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `comp_minOnSec` | 180 | 60-600 | seconds | Minimum run time (3 min) |
-| `comp_minOffSec` | 300 | 120-900 | seconds | Minimum off time (5 min) |
+| `comp_minOffSec` | 300 | 60-900 | seconds | Minimum off time (5 min) |
 | `comp_maxRunSec` | 7200 | 1800-14400 | seconds | Maximum continuous run (2 hours) |
-| `comp_freezeCutDeg` | 0.5 | -2 to 3 | °C | Emergency shutoff if air drops below this |
+| `comp_freezeCutDeg` | 0.5 | -2 to 2 | °C | Emergency shutoff if air drops below this |
 
 ### Why These Limits?
 
@@ -146,8 +148,8 @@ Detects door openings via rapid temperature rise.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `door_enable` | true | boolean | - | Enable door detection |
-| `door_rateDegMin` | 5.0 | 2.0-10.0 | °C/min | Temperature rise rate to trigger |
-| `door_pauseSec` | 300 | 60-600 | seconds | Pause cooling duration (5 min) |
+| `door_rateDegMin` | 5.0 | 0.5-20.0 | °C/min | Temperature rise rate to trigger |
+| `door_pauseSec` | 300 | 30-3600 | seconds | Pause cooling duration (5 min) |
 
 ### Why Pause on Door Open?
 
@@ -167,9 +169,9 @@ Ice removal from evaporator coil.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `defr_dynEnable` | true | boolean | - | Enable dynamic defrost |
-| `defr_dynTrigDeg` | -16.0 | -25 to -10 | °C | Evap temp that triggers defrost |
-| `defr_dynEndDeg` | -5.0 | -10 to 0 | °C | Evap temp that ends defrost |
-| `defr_dynDwellSec` | 300 | 120-600 | seconds | Must hold end temp for this duration |
+| `defr_dynTrigDeg` | -16.0 | -40 to 0 | °C | Evap temp that triggers defrost |
+| `defr_dynEndDeg` | -5.0 | -20 to 5 | °C | Evap temp that ends defrost |
+| `defr_dynDwellSec` | 300 | 60-7200 | seconds | Must hold end temp for this duration |
 
 ### Scheduled Defrost (Time-Based)
 
@@ -177,7 +179,7 @@ Ice removal from evaporator coil.
 |---------|---------|-------|------|-------------|
 | `defr_schedEnable` | true | boolean | - | Enable scheduled defrost |
 | `defr_schedHour` | 1 | 0-23 | hour | Hour to start defrost (24h format) |
-| `defr_schedDurSec` | 3600 | 900-7200 | seconds | Maximum defrost duration (1 hour) |
+| `defr_schedDurSec` | 3600 | 300-14400 | seconds | Maximum defrost duration (1 hour) |
 
 ---
 
@@ -188,9 +190,9 @@ Detects if relay contacts have fused together.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `weld_enable` | true | boolean | - | Enable weld detection |
-| `weld_waitSec` | 600 | 300-1200 | seconds | Wait after OFF before checking (10 min) |
-| `weld_winSec` | 1800 | 600-3600 | seconds | Detection window end (30 min) |
-| `weld_dropDeg` | 0.2 | 0.1-1.0 | °C | Temp drop that triggers alarm |
+| `weld_waitSec` | 600 | 60-7200 | seconds | Wait after OFF before checking (10 min) |
+| `weld_winSec` | 1800 | 300-14400 | seconds | Detection window end (30 min) |
+| `weld_dropDeg` | 0.2 | 0.05-5.0 | °C | Temp drop that triggers alarm |
 
 ### How Weld Detection Works
 
@@ -210,8 +212,8 @@ Monitors sensor reliability.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `sens_stuckEnable` | true | boolean | - | Enable stuck sensor detection |
-| `sens_stuckTimeSec` | 14400 | 3600-86400 | seconds | Time unchanged before alarm (4 hours) |
-| `sens_stuckEpsDeg` | 0.2 | 0.1-0.5 | °C | Minimum change to reset timer |
+| `sens_stuckTimeSec` | 14400 | 300-86400 | seconds | Time unchanged before alarm (4 hours) |
+| `sens_stuckEpsDeg` | 0.2 | 0.05-5.0 | °C | Minimum change to reset timer |
 
 ---
 
@@ -222,8 +224,8 @@ Warns when fridge is too warm.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `alarm_highEnable` | true | boolean | - | Enable high temp alerts |
-| `alarm_highDeg` | 10.0 | 6.0-15.0 | °C | Temperature threshold |
-| `alarm_highDelaySec` | 600 | 300-1800 | seconds | Must persist before alerting (10 min) |
+| `alarm_highDeg` | 10.0 | 0-40 | °C | Temperature threshold |
+| `alarm_highDelaySec` | 600 | 60-7200 | seconds | Must persist before alerting (10 min) |
 
 ---
 
@@ -234,10 +236,10 @@ Monitors compressor power consumption.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `pwr_enable` | true | boolean | - | Enable power monitoring |
-| `pwr_startMaskSec` | 15 | 5-60 | seconds | Ignore inrush current period |
-| `pwr_runMinW` | 10 | 5-50 | watts | Minimum expected running power |
-| `pwr_runMaxW` | 400 | 200-1000 | watts | Maximum expected running power |
-| `pwr_ghostTripSec` | 60 | 30-120 | seconds | Low power duration before alarm |
+| `pwr_startMaskSec` | 15 | 1-120 | seconds | Ignore inrush current period |
+| `pwr_runMinW` | 10 | 1-1000 | watts | Minimum expected running power |
+| `pwr_runMaxW` | 400 | 50-2000 | watts | Maximum expected running power |
+| `pwr_ghostTripSec` | 60 | 5-600 | seconds | Low power duration before alarm |
 | `pwr_ghostMaxCount` | 3 | 1-10 | count | Ghost runs before fatal alarm |
 
 ### Power Alarm Conditions
@@ -258,13 +260,18 @@ Rapid cooldown mode (e.g., after loading groceries).
 | `turbo_enable` | true | boolean | - | Enable turbo mode |
 | `turbo_targetDeg` | 1.0 | -2 to 3 | °C | Turbo target temperature |
 | `turbo_hystDeg` | 0.5 | 0.3-1.0 | °C | Turbo hysteresis (tighter control) |
-| `turbo_maxTimeSec` | 10800 | 1800-14400 | seconds | Maximum turbo duration (3 hours) |
+| `turbo_maxTimeSec` | 10800 | 1800-21600 | seconds | Maximum turbo duration (3 hours) |
 
 ### Activating Turbo Mode
 
 Send MQTT command:
 ```json
-{"turbo": true}
+{"cmd": "turbo_on"}
+```
+
+To deactivate:
+```json
+{"cmd": "turbo_off"}
 ```
 
 ---
@@ -275,8 +282,8 @@ Detects refrigerant leak or valve failure.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `gas_checkSec` | 900 | 600-1800 | seconds | Check interval (15 min) |
-| `gas_failDiff` | 5.0 | 3.0-10.0 | °C | Required temp difference |
+| `gas_checkSec` | 900 | 60-7200 | seconds | Check interval (15 min) |
+| `gas_failDiff` | 5.0 | 1.0-20.0 | °C | Required temp difference |
 
 ### How Gas Leak Detection Works
 
@@ -349,27 +356,70 @@ Topic: `fridge/status` (default)
   "status": "COOLING",
   "reason": "NONE",
   "alarm": "NONE",
-  "tAir": 4.2,
+  "tAirRaw": 4.3,
+  "tAirSmt": 4.2,
   "tEvap": -8.5,
-  "relay": true,
-  "power": 95,
-  "uptime": 3600,
-  "duty": 45,
-  "cycles": 12,
-  "hyst": 1.2
+  "tDev": 32.1,
+  "relayOn": 1,
+  "watts": 95,
+  "dutyHr": 45,
+  "dutyDay": 42,
+  "dutyLife": 40,
+  "hoursLife": 127,
+  "hyst": 1.2,
+  "avgOnSec": 420,
+  "avgOffSec": 510,
+  "defrostOn": 0,
+  "doorOpen": 0,
+  "turboOn": 0,
+  "health": 0.25
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | Current status code (IDLE, COOLING, etc.) |
+| `reason` | string | Blocking reason if any |
+| `alarm` | string | Active alarm code |
+| `tAirRaw` | number | Raw air temperature (°C) |
+| `tAirSmt` | number | Smoothed air temperature (°C) |
+| `tEvap` | number | Evaporator temperature (°C) |
+| `tDev` | number | Shelly device internal temperature (°C) |
+| `relayOn` | 0/1 | Relay state (1=ON, 0=OFF) |
+| `watts` | number | Power consumption (W, null if no PM) |
+| `dutyHr` | number | Duty cycle this hour (%) |
+| `dutyDay` | number | Average duty cycle over 24h (%) |
+| `dutyLife` | number | Lifetime average duty cycle (%) |
+| `hoursLife` | number | Lifetime compressor run hours |
+| `hyst` | number | Current effective hysteresis (°C) |
+| `avgOnSec` | number | Average ON time this hour (seconds) |
+| `avgOffSec` | number | Average OFF time this hour (seconds) |
+| `defrostOn` | 0/1 | Defrost active (1=yes) |
+| `doorOpen` | 0/1 | Door pause active (1=yes) |
+| `turboOn` | 0/1 | Turbo mode active (1=yes) |
+| `health` | number | Cooling efficiency (°C/min) - higher is better |
 
 ### Command Message (Received)
 
 Topic: `fridge/command` (default)
 
+Commands use a `{"cmd": "...", ...}` structure:
+
 ```json
-{
-  "ctrl_targetDeg": 3.5,
-  "turbo": true
-}
+{"cmd": "setpoint", "value": 3.5}
+{"cmd": "turbo_on"}
+{"cmd": "turbo_off"}
+{"cmd": "reset_alarms"}
+{"cmd": "status"}
 ```
+
+| Command | Parameters | Description |
+|---------|------------|-------------|
+| `setpoint` | `value` (number) | Change target temperature |
+| `turbo_on` | - | Activate turbo mode |
+| `turbo_off` | - | Deactivate turbo mode |
+| `reset_alarms` | - | Clear active alarms |
+| `status` | - | Request status (logs only) |
 
 ---
 

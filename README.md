@@ -1,5 +1,7 @@
 # Shelly Fridge Controller
 
+[![CI](https://github.com/chiptoma/shelly-fridge-controller/actions/workflows/ci.yml/badge.svg)](https://github.com/chiptoma/shelly-fridge-controller/actions/workflows/ci.yml)
+
 A thermostat controller for Shelly Plus 1PM devices. I built this to replace the mechanical thermostat on my garage fridge with something smarter that protects the compressor and lets me monitor things remotely.
 
 ## What It Does
@@ -10,6 +12,8 @@ A thermostat controller for Shelly Plus 1PM devices. I built this to replace the
 - **Fault detection** - Catches stuck relays, sensor failures, and cooling problems
 - **Limp mode** - Keeps running (blind cycling) if sensors fail
 - **MQTT reporting** - Sends status to Home Assistant or any MQTT client
+
+![Console debug demo](docs/assets/console.gif)
 
 ## Hardware
 
@@ -55,7 +59,7 @@ The Shelly switches the **Live wire only**. Neutral goes direct to the compresso
 
 ```bash
 # Clone and install
-git clone <repository>
+git clone https://github.com/chiptoma/shelly-fridge-controller.git
 cd shelly-fridge-controller
 pnpm install
 
@@ -110,7 +114,7 @@ pnpm run shelly:monitor
 ### Change via MQTT
 
 ```json
-{"ctrl_targetDeg": 3.5}
+{"cmd": "setpoint", "value": 3.5}
 ```
 
 See **[docs/CONFIGURATION.md](docs/CONFIGURATION.md)** for all 50+ settings with valid ranges.
@@ -171,11 +175,11 @@ After turning OFF, monitors temperature for 20+ minutes. If temp drops while rel
 {
   "status": "COOLING",
   "alarm": "NONE",
-  "tAir": 4.2,
+  "tAirSmt": 4.2,
   "tEvap": -8.5,
-  "relay": true,
-  "power": 95,
-  "duty": 45,
+  "relayOn": 1,
+  "watts": 95,
+  "dutyHr": 45,
   "hyst": 1.2
 }
 ```
@@ -183,9 +187,11 @@ After turning OFF, monitors temperature for 20+ minutes. If temp drops while rel
 ### Commands (publish to `fridge/command`)
 
 ```json
-{"ctrl_targetDeg": 3.5}
-{"turbo": true}
-{"turbo": false}
+{"cmd": "setpoint", "value": 3.5}
+{"cmd": "turbo_on"}
+{"cmd": "turbo_off"}
+{"cmd": "reset_alarms"}
+{"cmd": "status"}
 ```
 
 ### Home Assistant
@@ -195,15 +201,15 @@ sensor:
   - platform: mqtt
     name: "Fridge Temperature"
     state_topic: "fridge/status"
-    value_template: "{{ value_json.tAir }}"
+    value_template: "{{ value_json.tAirSmt }}"
     unit_of_measurement: "°C"
 
 switch:
   - platform: mqtt
     name: "Fridge Turbo"
     command_topic: "fridge/command"
-    payload_on: '{"turbo": true}'
-    payload_off: '{"turbo": false}'
+    payload_on: '{"cmd": "turbo_on"}'
+    payload_off: '{"cmd": "turbo_off"}'
 ```
 
 ### Security
@@ -258,7 +264,7 @@ src/
 | [Deployment](docs/DEPLOYMENT.md) | Build tools |
 | [Testing](docs/TESTING.md) | Test infrastructure |
 | [Linting](docs/LINTING.md) | ESLint config |
-| [Shelly API](SHELLY_DOCUMENTATION.md) | Shelly Script reference |
+| [Shelly API](https://shelly-api-docs.shelly.cloud/gen2/Scripts/ShellyScriptLanguageFeatures) | Official Shelly Script reference |
 
 ---
 

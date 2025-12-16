@@ -185,9 +185,9 @@ describe('ShellyRuntime', () => {
         received = { topic, msg }
       })
 
-      runtime.mqttReceive('fridge/command', '{"cmd":"turbo"}')
+      runtime.mqttReceive('fridge/command', '{"cmd":"turbo_on"}')
 
-      expect(received.msg).toBe('{"cmd":"turbo"}')
+      expect(received.msg).toBe('{"cmd":"turbo_on"}')
     })
   })
 

@@ -12,16 +12,15 @@ Memory-constrained Shelly Plus 1PM device controller for refrigeration system wi
 
 ## Shelly API Reference
 
-**IMPORTANT:** For detailed information about Shelly Script APIs, language features, and platform capabilities, refer to [SHELLY_DOCUMENTATION.md](./SHELLY_DOCUMENTATION.md).
+**IMPORTANT:** For detailed information about Shelly Script APIs, language features, and platform capabilities, refer to the official Shelly documentation:
+- [Script Language Features](https://shelly-api-docs.shelly.cloud/gen2/Scripts/ShellyScriptLanguageFeatures) - JavaScript features and limitations
+- [Script Tutorial](https://shelly-api-docs.shelly.cloud/gen2/Scripts/Tutorial) - Getting started guide
+- [KVS API](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/KVS) - Key-Value Store persistence
 
-This comprehensive reference covers:
-- JavaScript language features and limitations (mJS runtime)
-- Shelly global APIs (`Shelly.call()`, `Shelly.getComponentStatus()`, etc.)
-- Timer and event handling (`Timer.set()`, `Shelly.addStatusHandler()`)
-- MQTT, Bluetooth, and HTTP support
-- KVS (Key-Value Store) persistence
-- Memory constraints and best practices
-- Known issues and workarounds
+Key points for this project:
+- JavaScript engine: mJS (ES5-ish with ES6 modules)
+- Global APIs: `Shelly.call()`, `Shelly.getComponentStatus()`, `Timer.set()`, `MQTT.*`, `print()`
+- Memory constraints: ~25KB heap limit, no classes, minimal closures
 
 ---
 
