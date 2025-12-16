@@ -55,11 +55,11 @@ jobs:
       - run: pnpm install
       - run: pnpm run build
 
-      # Bundle size check (critical - we're at 98% of limit)
+      # Bundle size check (Shelly script upload limit is ~32KB)
       - name: Check bundle size
         run: |
           SIZE=$(stat -c%s dist/main.js 2>/dev/null || stat -f%z dist/main.js)
-          LIMIT=30000
+          LIMIT=32000
           PERCENT=$((SIZE * 100 / LIMIT))
           echo "Bundle size: $SIZE bytes ($PERCENT% of $LIMIT limit)"
           if [ $SIZE -gt $LIMIT ]; then
