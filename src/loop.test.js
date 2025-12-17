@@ -39,11 +39,11 @@ describe('Loop', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1000000000)
 
     // Create mock state objects
-    mockS = { sys_relayState: false, sys_tsRelayOn: 0 }
+    mockS = { sys_isRelayOn: false, sys_relayOnTs: 0 }
     mockV = {
-      sys_alarm: 'NONE', sys_reason: 'NONE', sys_status: 'IDLE',
-      sys_statusDetail: 'NONE', sens_smoothAir: 5.0, sens_errCount: 0,
-      sens_wasError: false, hw_hasPM: true, lastSave: 0,
+      sys_alarm: 'NONE', sys_statusReason: 'NONE', sys_status: 'IDLE',
+      sys_detail: 'NONE', sns_airSmoothDeg: 5.0, sns_errCnt: 0,
+      sns_wasErr: false, hw_hasPM: true, lop_lastSaveTs: 0, lop_nowTs: 0,
     }
     mockC = { sys_loopSec: 5, sys_sensAirId: 100, sys_sensEvapId: 101, sys_sensFailLimit: 5 }
 
@@ -269,14 +269,14 @@ describe('Loop', () => {
       expect(mockHandleSensorError).toHaveBeenCalled()
     })
 
-    it('should set sens_wasError on fatal sensor error', () => {
+    it('should set sns_wasErr on fatal sensor error', () => {
       mockValidateSensorReadings.mockReturnValue(false)
       mockHandleSensorError.mockReturnValue(true)
-      mockV.sens_wasError = false
+      mockV.sns_wasErr = false
 
       mainLoopTick()
 
-      expect(mockV.sens_wasError).toBe(true)
+      expect(mockV.sns_wasErr).toBe(true)
     })
 
     it('should process sensor data when valid', () => {
@@ -287,7 +287,7 @@ describe('Loop', () => {
     })
 
     it('should handle sensor recovery', () => {
-      mockV.sens_wasError = true
+      mockV.sns_wasErr = true
 
       mainLoopTick()
 
@@ -313,8 +313,8 @@ describe('Loop', () => {
     })
 
     it('should check locked rotor when relay on with PM', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 999000
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 999000
       mockV.hw_hasPM = true
 
       mainLoopTick()
@@ -400,12 +400,12 @@ describe('Loop', () => {
       mainLoopTick()
 
       expect(mockV.sys_status).toBe('COOLING')
-      expect(mockV.sys_reason).toBe('TEST_REASON')
-      expect(mockV.sys_statusDetail).toBe('TEST_DETAIL')
+      expect(mockV.sys_statusReason).toBe('TEST_REASON')
+      expect(mockV.sys_detail).toBe('TEST_DETAIL')
     })
 
     it('should persist state hourly', () => {
-      mockV.lastSave = 0 // More than 1 hour ago
+      mockV.lop_lastSaveTs = 0 // More than 1 hour ago
 
       mainLoopTick()
 
@@ -413,7 +413,7 @@ describe('Loop', () => {
     })
 
     it('should not persist state within hour', () => {
-      mockV.lastSave = 999999 // Recent save
+      mockV.lop_lastSaveTs = 999999 // Recent save
 
       mainLoopTick()
 

@@ -22,7 +22,7 @@ import { recordFault } from './alarms.js'
  * @returns {boolean}    - True if safe to turn on
  */
 function canTurnOn(now) {
-  return (now - S.sys_tsRelayOff) >= C.comp_minOffSec
+  return (now - S.sys_relayOffTs) >= C.comp_minOffSec
 }
 
 /**
@@ -33,7 +33,7 @@ function canTurnOn(now) {
  * @returns {boolean}    - True if safe to turn off
  */
 function canTurnOff(now) {
-  let elapsed = now - S.sys_tsRelayOn
+  let elapsed = now - S.sys_relayOnTs
   return elapsed >= C.comp_minOnSec
 }
 
@@ -45,7 +45,7 @@ function canTurnOff(now) {
  * @returns {number}     - Seconds remaining (0 if already allowed)
  */
 function getTimeUntilOnAllowed(now) {
-  let remaining = C.comp_minOffSec - (now - S.sys_tsRelayOff)
+  let remaining = C.comp_minOffSec - (now - S.sys_relayOffTs)
   return remaining > 0 ? remaining : 0
 }
 
@@ -57,7 +57,7 @@ function getTimeUntilOnAllowed(now) {
  * @returns {number}     - Seconds remaining (0 if already allowed)
  */
 function getTimeUntilOffAllowed(now) {
-  let remaining = C.comp_minOnSec - (now - S.sys_tsRelayOn)
+  let remaining = C.comp_minOnSec - (now - S.sys_relayOnTs)
   return remaining > 0 ? remaining : 0
 }
 
@@ -74,9 +74,9 @@ function getTimeUntilOffAllowed(now) {
  * @returns {boolean}    - True if max run exceeded
  */
 function isMaxRunExceeded(now) {
-  if (!S.sys_relayState) return false
-  if (V.turbo_active) return false
-  return (now - S.sys_tsRelayOn) > C.comp_maxRunSec
+  if (!S.sys_isRelayOn) return false
+  if (V.trb_isActive) return false
+  return (now - S.sys_relayOnTs) > C.comp_maxRunSec
 }
 
 // ----------------------------------------------------------
@@ -115,18 +115,18 @@ function isFreezeProtectionActive(tCtrl) {
  */
 function checkWeldDetection(tCtrl, now) {
   if (!C.weld_enable) return false
-  if (S.sys_relayState) return false
+  if (S.sys_isRelayOn) return false
 
-  let offDur = now - S.sys_tsRelayOff
+  let offDur = now - S.sys_relayOffTs
   let inWindow = (offDur > C.weld_waitSec && offDur < C.weld_winSec)
 
   if (!inWindow) return false
 
   // If temp dropped more than threshold while "off", relay is welded
-  if (tCtrl < (S.weld_snapAir - C.weld_dropDeg)) {
+  if (tCtrl < (S.wld_airSnapDeg - C.weld_dropDeg)) {
     V.sys_alarm = ALM.WELD
-    recordFault('fatal', 'WELD', S.weld_snapAir + '>' + tCtrl)
-    print('PROT 🚨 Relay weld: temp dropped ' + S.weld_snapAir.toFixed(1) + '>' + tCtrl.toFixed(1) + ' while OFF')
+    recordFault('fatal', 'WELD', S.wld_airSnapDeg + '>' + tCtrl)
+    print('PROT 🚨 Relay weld: temp dropped ' + S.wld_airSnapDeg.toFixed(1) + '>' + tCtrl.toFixed(1) + ' while OFF')
     return true
   }
 
@@ -151,18 +151,18 @@ function checkWeldDetection(tCtrl, now) {
  */
 function checkCoolingHealth(tEvap, now) {
   // Only check while running, after minimum check time
-  if (!S.sys_relayState) return false
-  if ((now - S.sys_tsRelayOn) <= C.gas_checkSec) return false
-  if (V.turbo_active) return false
+  if (!S.sys_isRelayOn) return false
+  if ((now - S.sys_relayOnTs) <= C.gas_checkSec) return false
+  if (V.trb_isActive) return false
 
   // ? Skip check if fridge already at/below target - minimal thermal load
   // ? When cold, evap-air differential is naturally small (equilibrium)
-  if (V.sens_smoothAir <= C.ctrl_targetDeg) return false
+  if (V.sns_airSmoothDeg <= C.ctrl_targetDeg) return false
 
   // Evap should be colder than air. If not, suspect gas leak
-  if (tEvap > (V.sens_smoothAir - C.gas_failDiff)) {
+  if (tEvap > (V.sns_airSmoothDeg - C.gas_failDiff)) {
     V.sys_alarm = ALM.COOL
-    print('PROT 🚨 Cooling failure: air=' + V.sens_smoothAir.toFixed(1) + ' evap=' + tEvap.toFixed(1))
+    print('PROT 🚨 Cooling failure: air=' + V.sns_airSmoothDeg.toFixed(1) + ' evap=' + tEvap.toFixed(1))
     return true
   }
 
@@ -190,7 +190,7 @@ function checkCoolingHealth(tEvap, now) {
 function checkLockedRotor(watts, runDur) {
   if (!C.pwr_enable) return false
   if (!V.hw_hasPM) return false
-  if (!S.sys_relayState) return false
+  if (!S.sys_isRelayOn) return false
   if (runDur < C.pwr_startMaskSec) return false
 
   if (watts > C.pwr_runMaxW) {
@@ -213,37 +213,37 @@ function checkLockedRotor(watts, runDur) {
  * @param  {number} runDur  - How long relay has been on (seconds)
  * @returns {boolean}        - True if ghost run detected
  *
- * @mutates V.pwr_ghostTimer - Accumulated low-power duration
- * @mutates V.pwr_ghostCount - Incremented on each ghost trip
+ * @mutates V.pwr_ghostSec - Accumulated low-power duration
+ * @mutates V.pwr_ghostCnt - Incremented on each ghost trip
  * @mutates V.sys_alarm      - Set to ALM.GHOST or ALM.LOCKED (escalated)
  *
  * @sideeffect Calls recordFault('fatal', 'GHOST_ESC', ...) on escalation
  */
 function checkGhostRun(watts, runDur) {
   if (!V.hw_hasPM) return false
-  if (!S.sys_relayState) {
-    V.pwr_ghostTimer = 0
+  if (!S.sys_isRelayOn) {
+    V.pwr_ghostSec = 0
     return false
   }
   if (runDur < C.pwr_startMaskSec) return false
 
   if (watts < C.pwr_runMinW) {
-    V.pwr_ghostTimer += C.sys_loopSec
-    if (V.pwr_ghostTimer >= C.pwr_ghostTripSec) {
-      V.pwr_ghostCount++
+    V.pwr_ghostSec += C.sys_loopSec
+    if (V.pwr_ghostSec >= C.pwr_ghostTripSec) {
+      V.pwr_ghostCnt++
       // ? Check for escalation to fatal after repeated ghost runs
-      if (V.pwr_ghostCount >= C.pwr_ghostMaxCount) {
+      if (V.pwr_ghostCnt >= C.pwr_ghostMaxCount) {
         V.sys_alarm = ALM.LOCKED
-        recordFault('fatal', 'GHOST_ESC', V.pwr_ghostCount + 'x')
-        print('🚨 PROT Ghost run #' + V.pwr_ghostCount + ' (fatal): motor not drawing power')
+        recordFault('fatal', 'GHOST_ESC', V.pwr_ghostCnt + 'x')
+        print('🚨 PROT Ghost run #' + V.pwr_ghostCnt + ' (fatal): motor not drawing power')
         return true
       }
       V.sys_alarm = ALM.GHOST
-      print('⚠️ PROT Ghost run #' + V.pwr_ghostCount + ': motor drawing <' + C.pwr_runMinW + 'W')
+      print('⚠️ PROT Ghost run #' + V.pwr_ghostCnt + ': motor drawing <' + C.pwr_runMinW + 'W')
       return true
     }
   } else {
-    V.pwr_ghostTimer = 0
+    V.pwr_ghostSec = 0
   }
 
   return false
@@ -255,7 +255,7 @@ function checkGhostRun(watts, runDur) {
  * ? Call this after compressor runs normally for a period.
  */
 function resetGhostCount() {
-  V.pwr_ghostCount = 0
+  V.pwr_ghostCnt = 0
 }
 
 // ----------------------------------------------------------

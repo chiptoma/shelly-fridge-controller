@@ -119,8 +119,8 @@ describe('KVS Utilities', () => {
       loadChunksSeq(mapping, target, onDone)
       timerCallbacks[0]() // Initial kick-off
 
-      // Simulate error response
-      mockShelly.call.mock.calls[0][2](null, -1)
+      // Simulate "key not found" response (error code -104)
+      mockShelly.call.mock.calls[0][2](null, -104)
       timerCallbacks[1]() // GC pause callback
       timerCallbacks[2]() // Final callback
 

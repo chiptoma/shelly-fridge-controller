@@ -4,7 +4,6 @@
 // ? Tracks compressor runtime, cycle counts, and historical duty%.
 // ==============================================================================
 
-import { ALM } from './constants.js'
 import { C } from './config.js'
 import { S, V, persistState } from './state.js'
 import { r1 } from './utils/math.js'
@@ -18,19 +17,16 @@ import { adaptHysteresis } from './features.js'
 /**
  * * UPDATE RUNTIME STATS
  * ? Increments lifetime and hourly statistics.
- * ? Skips when in sensor failure mode.
+ * ? Always accumulates regardless of alarm state.
  *
  * @param  {boolean} isOn - Current relay state
  * @param  {number}  dt   - Time delta (seconds)
  */
 function updateRuntimeStats(isOn, dt) {
-  // Skip stat tracking during sensor failure
-  if (V.sys_alarm === ALM.FAIL || V.sys_alarm === ALM.STUCK) return
-
-  S.stats_lifeTime += dt
-  if (isOn) S.stats_lifeRun += dt
-  S.stats_hourTime += dt
-  if (isOn) S.stats_hourRun += dt
+  S.sts_lifeTotalSec += dt
+  if (isOn) S.sts_lifeRunSec += dt
+  S.sts_hourTotalSec += dt
+  if (isOn) S.sts_hourRunSec += dt
 }
 
 /**
@@ -38,7 +34,7 @@ function updateRuntimeStats(isOn, dt) {
  * ? Call this when relay turns OFF to count completed cycles.
  */
 function incrementCycleCount() {
-  S.stats_cycleCount += 1
+  S.sts_cycleCnt += 1
 }
 
 // ----------------------------------------------------------
@@ -53,7 +49,7 @@ function incrementCycleCount() {
  * @returns {boolean} - True if rollover needed
  */
 function isHourlyRolloverDue() {
-  return S.stats_hourTime >= 3600
+  return S.sts_hourTotalSec >= 3600
 }
 
 /**
@@ -68,23 +64,23 @@ function processHourlyRollover() {
   let avgOn = 0
   let avgOff = 0
 
-  if (S.stats_cycleCount >= 1) {
-    avgOn = S.stats_hourRun / S.stats_cycleCount
-    avgOff = (S.stats_hourTime - S.stats_hourRun) / S.stats_cycleCount
+  if (S.sts_cycleCnt >= 1) {
+    avgOn = S.sts_hourRunSec / S.sts_cycleCnt
+    avgOff = (S.sts_hourTotalSec - S.sts_hourRunSec) / S.sts_cycleCnt
   }
 
   // Trigger adaptive hysteresis (if enabled)
-  let adapted = adaptHysteresis(avgOn, avgOff, S.stats_cycleCount)
+  let adapted = adaptHysteresis(avgOn, avgOff, S.sts_cycleCnt)
 
   // Calculate and store duty%
-  let duty = (S.stats_hourRun / S.stats_hourTime) * 100
-  S.stats_history[S.stats_hourIdx] = r1(duty)
-  S.stats_hourIdx = (S.stats_hourIdx + 1) % 24
+  let duty = (S.sts_hourRunSec / S.sts_hourTotalSec) * 100
+  S.sts_dutyHistArr[S.sts_histIdx] = r1(duty)
+  S.sts_histIdx = (S.sts_histIdx + 1) % 24
 
   // Reset hourly counters
-  S.stats_hourTime = 0
-  S.stats_hourRun = 0
-  S.stats_cycleCount = 0
+  S.sts_hourTotalSec = 0
+  S.sts_hourRunSec = 0
+  S.sts_cycleCnt = 0
 
   // Save state after rollover (critical for history preservation)
   persistState()
@@ -105,14 +101,22 @@ function processHourlyRollover() {
 /**
  * * GET 24-HOUR AVERAGE DUTY
  * ? Calculates average duty% over the last 24 hours.
+ * ? Includes current partial hour in place of oldest slot.
  *
  * @returns {number} - Average duty percentage (0-100)
  */
 function getAvgDuty24h() {
   let sum = 0
   for (let i = 0; i < 24; i++) {
-    sum += S.stats_history[i]
+    sum += S.sts_dutyHistArr[i]
   }
+
+  // ? Include current hour: replace the slot that will be overwritten on rollover
+  if (S.sts_hourTotalSec > 0) {
+    let currentDuty = (S.sts_hourRunSec / S.sts_hourTotalSec) * 100
+    sum = sum - S.sts_dutyHistArr[S.sts_histIdx] + currentDuty
+  }
+
   return r1(sum / 24)
 }
 
@@ -123,8 +127,8 @@ function getAvgDuty24h() {
  * @returns {number} - Current hour duty percentage (0-100)
  */
 function getCurrentHourDuty() {
-  if (S.stats_hourTime <= 0) return 0
-  return r1((S.stats_hourRun / S.stats_hourTime) * 100)
+  if (S.sts_hourTotalSec <= 0) return 0
+  return r1((S.sts_hourRunSec / S.sts_hourTotalSec) * 100)
 }
 
 /**
@@ -134,9 +138,9 @@ function getCurrentHourDuty() {
  * @returns {object} - { avgOn, avgOff, cycleCount }
  */
 function getCurrentHourAverages() {
-  let cc = S.stats_cycleCount
-  let avgOn = cc > 0 ? S.stats_hourRun / cc : S.stats_hourRun
-  let avgOff = cc > 0 ? (S.stats_hourTime - S.stats_hourRun) / cc : (S.stats_hourTime - S.stats_hourRun)
+  let cc = S.sts_cycleCnt
+  let avgOn = cc > 0 ? S.sts_hourRunSec / cc : S.sts_hourRunSec
+  let avgOff = cc > 0 ? (S.sts_hourTotalSec - S.sts_hourRunSec) / cc : (S.sts_hourTotalSec - S.sts_hourRunSec)
   return { avgOn: avgOn, avgOff: avgOff, cycleCount: cc }
 }
 
@@ -147,8 +151,8 @@ function getCurrentHourAverages() {
  * @returns {number} - Lifetime duty percentage (0-100)
  */
 function getLifetimeDuty() {
-  if (S.stats_lifeTime <= 0) return 0
-  return r1((S.stats_lifeRun / S.stats_lifeTime) * 100)
+  if (S.sts_lifeTotalSec <= 0) return 0
+  return r1((S.sts_lifeRunSec / S.sts_lifeTotalSec) * 100)
 }
 
 /**
@@ -158,7 +162,7 @@ function getLifetimeDuty() {
  * @returns {number} - Total run hours
  */
 function getLifetimeRunHours() {
-  return r1(S.stats_lifeRun / 3600)
+  return r1(S.sts_lifeRunSec / 3600)
 }
 
 // ----------------------------------------------------------

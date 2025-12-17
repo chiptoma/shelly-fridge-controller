@@ -16,13 +16,13 @@ import { r2, getMedian3, calcEMA } from './utils/math.js'
 /**
  * * checkSensorStuck - Check if sensor value is stuck
  * ? Updates reference value and timestamp if sensor moved.
- * ? Returns true if sensor stuck longer than threshold.
  *
  * @param {number} val - Current sensor value
- * @param {string} refKey - Key for reference value in V (e.g., 'sens_stuckRefAir')
- * @param {string} tsKey - Key for timestamp in V (e.g., 'sens_stuckTsAir')
+ * @param {string} refKey - Key for reference value in V
+ * @param {string} tsKey - Key for timestamp in V
  * @param {number} now - Current timestamp (seconds)
- * @returns {boolean} - True if sensor is stuck
+ * @returns {boolean} True if sensor is stuck
+ * @mutates V[refKey], V[tsKey] - Updated when value changes
  */
 function checkSensorStuck(val, refKey, tsKey, now) {
   // Skip if stuck detection disabled
@@ -55,11 +55,12 @@ function checkSensorStuck(val, refKey, tsKey, now) {
  * * handleSensorError - Handle sensor read failure
  * ? Increments error counter and returns true if limit exceeded.
  *
- * @returns {boolean} - True if sensor fail limit exceeded
+ * @returns {boolean} True if sensor fail limit exceeded
+ * @mutates V.sns_errCnt - Incremented on each call
  */
 function handleSensorError() {
-  V.sens_errCount++
-  return V.sens_errCount >= C.sys_sensFailLimit
+  V.sns_errCnt++
+  return V.sns_errCnt >= C.sys_sensFailLimit
 }
 
 // ----------------------------------------------------------
@@ -72,19 +73,23 @@ function handleSensorError() {
  * ? Resets buffers and re-initializes smoothing.
  *
  * @param {number} tAirRaw - Raw air temperature reading
+ * @mutates V.sns_airBuf, V.sns_bufIdx, V.sns_airSmoothDeg - Buffer reset
+ * @mutates V.dor_refTs, V.dor_refDeg - Door detection reset
+ * @mutates V.sns_airStuckRefDeg, V.sns_evpStuckRefDeg - Stuck detection reset
+ * @mutates V.sns_wasErr - Cleared
  */
 function handleSensorRecovery(tAirRaw) {
-  V.sens_bufAir[0] = tAirRaw
-  V.sens_bufAir[1] = tAirRaw
-  V.sens_bufAir[2] = tAirRaw
-  V.sens_bufIdx = 0
-  V.sens_smoothAir = r2(tAirRaw)
-  V.door_refTs = 0
-  V.door_refTemp = 0
+  V.sns_airBuf[0] = tAirRaw
+  V.sns_airBuf[1] = tAirRaw
+  V.sns_airBuf[2] = tAirRaw
+  V.sns_bufIdx = 0
+  V.sns_airSmoothDeg = r2(tAirRaw)
+  V.dor_refTs = 0
+  V.dor_refDeg = 0
   // ? Reset stuck detection to prevent false alarms after recovery
-  V.sens_stuckRefAir = null
-  V.sens_stuckRefEvap = null
-  V.sens_wasError = false
+  V.sns_airStuckRefDeg = null
+  V.sns_evpStuckRefDeg = null
+  V.sns_wasErr = false
   print('ℹ️ SENS  : Sensors recovered after errors')
 }
 
@@ -98,28 +103,30 @@ function handleSensorRecovery(tAirRaw) {
  * ? Applies median filter for spike rejection, then EMA for smoothing.
  *
  * @param {number} tAirRaw - Raw air temperature reading
- * @returns {number} - Median-filtered air temperature (before EMA)
+ * @returns {number} Median-filtered air temperature
+ * @mutates V.sns_airBuf, V.sns_bufIdx - Circular buffer update
+ * @mutates V.sns_airSmoothDeg - EMA smoothed value
  */
 function processSensorData(tAirRaw) {
   // First valid reading warmup: seed buffer and smoothing for clean startup
-  if (V.sens_smoothAir === null) {
-    V.sens_bufAir[0] = tAirRaw
-    V.sens_bufAir[1] = tAirRaw
-    V.sens_bufAir[2] = tAirRaw
-    V.sens_bufIdx = 0
-    V.sens_smoothAir = r2(tAirRaw)
+  if (V.sns_airSmoothDeg === null) {
+    V.sns_airBuf[0] = tAirRaw
+    V.sns_airBuf[1] = tAirRaw
+    V.sns_airBuf[2] = tAirRaw
+    V.sns_bufIdx = 0
+    V.sns_airSmoothDeg = r2(tAirRaw)
     return tAirRaw
   }
 
   // Update circular buffer
-  V.sens_bufAir[V.sens_bufIdx] = tAirRaw
-  V.sens_bufIdx = (V.sens_bufIdx + 1) % 3
+  V.sns_airBuf[V.sns_bufIdx] = tAirRaw
+  V.sns_bufIdx = (V.sns_bufIdx + 1) % 3
 
   // Calculate median of last 3 readings
-  let tAirMedian = getMedian3(V.sens_bufAir[0], V.sens_bufAir[1], V.sens_bufAir[2])
+  let tAirMedian = getMedian3(V.sns_airBuf[0], V.sns_airBuf[1], V.sns_airBuf[2])
 
   // Apply EMA smoothing
-  V.sens_smoothAir = r2(calcEMA(tAirMedian, V.sens_smoothAir, C.ctrl_smoothAlpha))
+  V.sns_airSmoothDeg = r2(calcEMA(tAirMedian, V.sns_airSmoothDeg, C.ctrl_smoothAlpha))
 
   return tAirMedian
 }
@@ -144,9 +151,11 @@ function validateSensorReadings(rAir, rEvap) {
 /**
  * * resetSensorError - Reset sensor error counter
  * ? Called when valid reading received.
+ *
+ * @mutates V.sns_errCnt - Reset to 0
  */
 function resetSensorError() {
-  V.sens_errCount = 0
+  V.sns_errCnt = 0
 }
 
 // ----------------------------------------------------------

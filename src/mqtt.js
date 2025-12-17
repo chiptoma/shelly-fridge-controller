@@ -17,12 +17,10 @@ let mqttLastCmdMs = -2000
 
 /**
  * * setupMqttCommands - Register MQTT command handler
+ * ? Subscribes to command topic and processes validated commands.
  *
- * Subscribes to command topic and processes validated commands.
- * Commands: turbo_on, turbo_off, status, reset_alarms, setpoint
- *
- * @mutates V.turbo_active  - For turbo commands
- * @mutates V.turbo_remSec  - For turbo commands
+ * @mutates V.trb_isActive  - For turbo commands
+ * @mutates V.trb_remSec  - For turbo commands
  * @mutates V.sys_alarm     - For reset_alarms
  * @mutates C.*             - For setpoint (validated)
  *
@@ -39,22 +37,22 @@ function setupMqttCommands() {
 
 /**
  * * handleTurbo - Activate turbo cooling mode via MQTT
- * @mutates V.turbo_active, V.turbo_remSec
+ * @mutates V.trb_isActive, V.trb_remSec
  */
 function handleTurbo() {
   if (!C.turbo_enable) { print('⚠️ MQTT Turbo disabled: ignoring command (feature disabled)'); return }
-  V.turbo_active = true
-  V.turbo_remSec = C.turbo_maxTimeSec
+  V.trb_isActive = true
+  V.trb_remSec = C.turbo_maxTimeSec
   print('✅ MQTT Turbo ON: timer started')
 }
 
 /**
  * * handleTurboOff - Deactivate turbo cooling mode via MQTT
- * @mutates V.turbo_active, V.turbo_remSec
+ * @mutates V.trb_isActive, V.trb_remSec
  */
 function handleTurboOff() {
-  V.turbo_active = false
-  V.turbo_remSec = 0
+  V.trb_isActive = false
+  V.trb_remSec = 0
   print('✅ MQTT Turbo OFF: timer cleared')
 }
 

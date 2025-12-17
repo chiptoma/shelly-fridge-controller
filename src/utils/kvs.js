@@ -28,20 +28,71 @@ function pickKeys(obj, keys) {
 // ----------------------------------------------------------
 // * SEQUENTIAL KVS LOADING
 // ? Loads chunks one at a time to reduce peak memory.
-// ? Allows GC between each chunk parse/merge.
+// ? Retries on KVS errors, marks parse errors for rewrite.
 // ----------------------------------------------------------
 
 /**
- * * loadChunksSeq - Load KVS chunks sequentially
+ * * loadChunksSeq - Load KVS chunks sequentially with retry
+ * ? Retries KVS.Get errors up to 3 times. Parse errors marked for rewrite.
+ * ? loadedChunks[key] = false means corrupted data, needs defaults.
  *
  * @param {object} mapping - Key mappings (e.g., CFG_KEYS)
  * @param {object} target - Target object to merge into
  * @param {Function} onDone - Callback with loadedChunks object
+ * @mutates target - Merged with values from KVS
  */
 function loadChunksSeq(mapping, target, onDone) {
   let keys = Object.keys(mapping)
   let loadedChunks = {}
   let idx = 0
+
+  /**
+   * * loadWithRetry - Load a single chunk with retry logic
+   * @param {string} key - KVS key to load
+   * @param {number} retries - Remaining retry attempts
+   * @internal
+   */
+  function loadWithRetry(key, retries) {
+    Shelly.call('KVS.Get', { key: key }, function ($_r, $_e) {
+      // ? KVS error (not "key not found") - retry
+      if ($_e !== 0 && $_e !== -104 && retries > 0) {
+        print('⚠️ KVS   : Retry ' + key + ' (attempt ' + (4 - retries) + '/3)')
+        Timer.set(100, false, function () { loadWithRetry(key, retries - 1) })
+        return
+      }
+
+      // ! KVS error after all retries - FATAL (abnormal hardware state)
+      if ($_e !== 0 && $_e !== -104) {
+        print('🛑 KVS   : FATAL - Cannot read ' + key + ' after 3 retries, error=' + $_e)
+        // ? Don't continue loading - script should be stopped
+        return
+      }
+
+      // ? Key not found (first boot) - loadedChunks[key] stays undefined
+      if ($_e === -104 || !$_r || !$_r.value) {
+        idx++
+        Timer.set(0, false, next)
+        return
+      }
+
+      // ? Parse JSON
+      try {
+        let chunk = JSON.parse($_r.value)
+        loadedChunks[key] = chunk
+        // ? Merge immediately to allow chunk to be GC'd
+        let chunkKeys = Object.keys(chunk)
+        for (let i = 0; i < chunkKeys.length; i++) {
+          target[chunkKeys[i]] = chunk[chunkKeys[i]]
+        }
+      } catch (e) {
+        print('⚠️ KVS   : Parse error for ' + key + ' - will save defaults')
+        loadedChunks[key] = false  // ? MARKER: corrupted, needs rewrite
+      }
+
+      idx++
+      Timer.set(0, false, next)
+    })
+  }
 
   /**
    * * next - Load next chunk in sequence
@@ -52,25 +103,7 @@ function loadChunksSeq(mapping, target, onDone) {
       if (onDone) Timer.set(0, false, function () { onDone(loadedChunks) })
       return
     }
-
-    let key = keys[idx]
-    Shelly.call('KVS.Get', { key: key }, function ($_r, $_e) {
-      if ($_e === 0 && $_r && $_r.value) {
-        try {
-          let chunk = JSON.parse($_r.value)
-          loadedChunks[key] = chunk
-          // ? Merge immediately to allow chunk to be GC'd
-          let chunkKeys = Object.keys(chunk)
-          for (let i = 0; i < chunkKeys.length; i++) {
-            target[chunkKeys[i]] = chunk[chunkKeys[i]]
-          }
-        } catch (e) {
-          print('⚠️ KVS   : Parse error for ' + key + ': ' + (e.message || e))
-        }
-      }
-      idx++
-      Timer.set(0, false, next) // ? GC pause between chunks
-    })
+    loadWithRetry(keys[idx], 3)  // ? 3 retries
   }
 
   Timer.set(0, false, next)
@@ -108,16 +141,16 @@ function chunkNeedsSync(loadedChunk, expectedKeys) {
 
 // ----------------------------------------------------------
 // * SYNC TO KVS
+// ? Smart sync: preserves loaded values, only adds missing fields.
 // ----------------------------------------------------------
 
 /**
- * * syncToKvs - Sync chunks to KVS storage
- *
- * Compares loaded chunks with expected keys, saves/deletes as needed.
- * Uses Timer.set(0) to break callback chains and free stack.
+ * * syncToKvs - Sync chunks to KVS storage with smart merging
+ * ? Parse error (false) or first boot (undefined): saves defaults.
+ * ? Schema mismatch: preserves loaded values, adds missing from defaults.
  *
  * @param {object} mapping - Key mappings (e.g., ST_KEYS)
- * @param {object} source - Source object to sync from
+ * @param {object} source - Source object to sync from (defaults)
  * @param {object} loadedChunks - Already loaded chunks from KVS
  * @param {Function} onDone - Callback when sync complete
  * @param {string} label - Label for logging
@@ -128,11 +161,38 @@ function syncToKvs(mapping, source, loadedChunks, onDone, label) {
 
   let mapKeys = Object.keys(mapping)
   for (let i = 0; i < mapKeys.length; i++) {
-    if (chunkNeedsSync(loadedChunks[mapKeys[i]], mapping[mapKeys[i]])) toSave.push(mapKeys[i])
+    let key = mapKeys[i]
+    let chunk = loadedChunks[key]
+    let expectedKeys = mapping[key]
+
+    if (chunk === false) {
+      // ? Parse error - data corrupted, save defaults
+      toSave.push({ key: key, data: pickKeys(source, expectedKeys) })
+    } else if (chunk === undefined) {
+      // ? First boot - key not found, save defaults
+      toSave.push({ key: key, data: pickKeys(source, expectedKeys) })
+    } else if (chunkNeedsSync(chunk, expectedKeys)) {
+      // ? Schema mismatch - MERGE: preserve loaded, add missing from defaults
+      let merged = {}
+      for (let j = 0; j < expectedKeys.length; j++) {
+        let field = expectedKeys[j]
+        if (chunk[field] !== undefined) {
+          merged[field] = chunk[field]  // ? PRESERVE loaded value
+        } else {
+          merged[field] = source[field]  // ? ADD missing from default
+        }
+      }
+      // ? Extra fields automatically excluded (only iterate expectedKeys)
+      toSave.push({ key: key, data: merged })
+    }
   }
+
+  // ? Check for orphaned KVS keys to delete
   let loadKeys = Object.keys(loadedChunks)
   for (let i = 0; i < loadKeys.length; i++) {
-    if (!mapping[loadKeys[i]]) toDelete.push(loadKeys[i])
+    if (loadedChunks[loadKeys[i]] !== false && !mapping[loadKeys[i]]) {
+      toDelete.push(loadKeys[i])
+    }
   }
 
   if (toSave.length === 0 && toDelete.length === 0) {
@@ -141,7 +201,7 @@ function syncToKvs(mapping, source, loadedChunks, onDone, label) {
   }
 
   let ops = []
-  for (let i = 0; i < toSave.length; i++) ops.push({ type: 'save', name: toSave[i] })
+  for (let i = 0; i < toSave.length; i++) ops.push({ type: 'save', item: toSave[i] })
   for (let i = 0; i < toDelete.length; i++) ops.push({ type: 'del', name: toDelete[i] })
 
   let idx = 0
@@ -152,7 +212,9 @@ function syncToKvs(mapping, source, loadedChunks, onDone, label) {
   function next() {
     if (idx >= ops.length) {
       if (label && (toSave.length > 0 || toDelete.length > 0)) {
-        let info = toSave.length > 0 ? ' [' + toSave.join(',') + ']' : ''
+        let names = []
+        for (let i = 0; i < toSave.length; i++) names.push(toSave[i].key)
+        let info = names.length > 0 ? ' [' + names.join(',') + ']' : ''
         print('🔄 KVS   : ' + label + ' sync: ' + toSave.length + ' saved, ' + toDelete.length + ' removed' + info)
       }
       if (onDone) Timer.set(0, false, onDone)
@@ -160,9 +222,8 @@ function syncToKvs(mapping, source, loadedChunks, onDone, label) {
     }
     let op = ops[idx]
     if (op.type === 'save') {
-      let chunk = pickKeys(source, mapping[op.name])
-      Shelly.call('KVS.Set', { key: op.name, value: JSON.stringify(chunk) }, function ($_r, $_e, $_m) {
-        if ($_e !== 0) print('⚠️ KVS   : Save ' + op.name + ' failed: ' + $_m)
+      Shelly.call('KVS.Set', { key: op.item.key, value: JSON.stringify(op.item.data) }, function ($_r, $_e, $_m) {
+        if ($_e !== 0) print('⚠️ KVS   : Save ' + op.item.key + ' failed: ' + $_m)
         idx++
         Timer.set(0, false, next)
       })

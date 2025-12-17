@@ -222,8 +222,8 @@ describe('Fridge Controller Integration', () => {
 
   describe('State Module', () => {
     it('should initialize with default state values', () => {
-      expect(script.S.sys_relayState).toBe(false)
-      expect(script.S.stats_lifeTime).toBe(0)
+      expect(script.S.sys_isRelayOn).toBe(false)
+      expect(script.S.sts_lifeTotalSec).toBe(0)
     })
 
     it('should track volatile state', () => {
@@ -290,7 +290,7 @@ describe('Protection Integration', () => {
 
     // Set relay off timestamp to "now"
     const now = Date.now() / 1000
-    S.sys_tsRelayOff = now
+    S.sys_relayOffTs = now
 
     // Should NOT be able to turn on immediately
     expect(canTurnOn(now)).toBe(false)
@@ -308,9 +308,9 @@ describe('Protection Integration', () => {
     Object.assign(C, DEFAULT)
 
     // Setup: Relay just turned off, snapshot temp = 10C
-    S.sys_relayState = false
-    S.sys_tsRelayOff = 0
-    S.weld_snapAir = 10.0
+    S.sys_isRelayOn = false
+    S.sys_relayOffTs = 0
+    S.wld_airSnapDeg = 10.0
     C.weld_waitSec = 60
     C.weld_winSec = 300
     C.weld_dropDeg = 1.0
@@ -348,15 +348,15 @@ describe('Sensor Integration', () => {
 
     // Pre-warm the buffer with stable readings (buffer starts at [0,0,0])
     // This ensures median calculation isn't affected by initial zeros
-    V.sens_bufAir = [5.0, 5.0, 5.0]
-    V.sens_smoothAir = 5.0
+    V.sns_airBuf = [5.0, 5.0, 5.0]
+    V.sns_airSmoothDeg = 5.0
 
     // Now process a new reading
     processSensorData(5.3)
 
     // Median of (5.0, 5.0, 5.3) = 5.0, EMA smooths toward it
     // Result should be close to 5.0 (slightly higher due to 5.3 influence)
-    expect(V.sens_smoothAir).toBeCloseTo(5.0, 0)
+    expect(V.sns_airSmoothDeg).toBeCloseTo(5.0, 0)
   })
 
   it('should handle sensor errors', async () => {
@@ -366,7 +366,7 @@ describe('Sensor Integration', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.sens_errCount = 0
+    V.sns_errCnt = 0
 
     // Accumulate errors
     for (let i = 0; i < C.sys_sensFailLimit; i++) {
@@ -374,7 +374,7 @@ describe('Sensor Integration', () => {
     }
 
     // Should have hit the limit
-    expect(V.sens_errCount).toBe(C.sys_sensFailLimit)
+    expect(V.sns_errCnt).toBe(C.sys_sensFailLimit)
   })
 })
 
@@ -443,13 +443,13 @@ describe('Features Integration', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.adapt_hystCurrent = 0.5
+    S.adt_hystDeg = 0.5
 
     // Short cycles should widen hysteresis
     const result = adaptHysteresis(200, 200, 3) // 200s ON, 200s OFF, 3 cycles
 
     expect(result).toBe('widen')
-    expect(S.adapt_hystCurrent).toBeGreaterThan(0.5)
+    expect(S.adt_hystDeg).toBeGreaterThan(0.5)
   })
 
   it('should handle turbo mode activation', async () => {
@@ -459,13 +459,13 @@ describe('Features Integration', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.turbo_lastSw = false
+    V.trb_prevSw = false
 
     // Rising edge on switch
     checkTurboSwitch(true)
 
-    expect(V.turbo_active).toBe(true)
-    expect(V.turbo_remSec).toBe(C.turbo_maxTimeSec)
+    expect(V.trb_isActive).toBe(true)
+    expect(V.trb_remSec).toBe(C.turbo_maxTimeSec)
 
     // Handle turbo should return override params
     const turbo = handleTurboMode(5)
@@ -480,9 +480,9 @@ describe('Features Integration', () => {
 
     Object.assign(C, DEFAULT)
 
-    // Set reference point (door_refTs must be > 0 for detection to trigger)
-    V.door_refTemp = 4.0
-    V.door_refTs = 1
+    // Set reference point (dor_refTs must be > 0 for detection to trigger)
+    V.dor_refDeg = 4.0
+    V.dor_refTs = 1
 
     // Rapid temp rise (simulating door open)
     // Rate = (10 - 4) / 4 * 60 = 90 deg/min >> 5 deg/min threshold
@@ -490,7 +490,7 @@ describe('Features Integration', () => {
 
     expect(detected).toBe(true)
     // Timer is set to pauseSec then immediately decremented by loopSec
-    expect(V.door_timer).toBe(C.door_pauseSec - C.sys_loopSec)
+    expect(V.dor_pauseRemSec).toBe(C.door_pauseSec - C.sys_loopSec)
   })
 })
 
@@ -514,17 +514,17 @@ describe('Metrics Integration', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.stats_lifeTime = 0
-    S.stats_lifeRun = 0
+    S.sts_lifeTotalSec = 0
+    S.sts_lifeRunSec = 0
 
     // Simulate 1 hour of running
     for (let i = 0; i < 720; i++) { // 720 * 5s = 3600s = 1 hour
       updateRuntimeStats(true, 5)
     }
 
-    expect(S.stats_lifeRun).toBe(3600)
-    // ? getLifetimeRunHours is internal to metrics.js, verify via S.stats_lifeRun
-    expect(S.stats_lifeRun / 3600).toBeCloseTo(1.0, 1)
+    expect(S.sts_lifeRunSec).toBe(3600)
+    // ? getLifetimeRunHours is internal to metrics.js, verify via S.sts_lifeRunSec
+    expect(S.sts_lifeRunSec / 3600).toBeCloseTo(1.0, 1)
   })
 
   it('should trigger hourly rollover', async () => {
@@ -534,9 +534,9 @@ describe('Metrics Integration', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.stats_hourTime = 3599
-    S.stats_hourRun = 1800
-    S.stats_cycleCount = 3
+    S.sts_hourTotalSec = 3599
+    S.sts_hourRunSec = 1800
+    S.sts_cycleCnt = 3
 
     // Verify rollover is NOT yet due
     expect(isHourlyRolloverDue()).toBe(false)
@@ -605,7 +605,7 @@ describe('Alarm Integration', () => {
     C.alarm_highDelaySec = 30
     C.sys_loopSec = 10
     V.sys_alarm = ALM.NONE
-    V.turbo_active = false
+    V.trb_isActive = false
 
     // High temp but not long enough - first call starts timer
     checkHighTempAlarm(12.0, false) // 10s
@@ -666,7 +666,7 @@ describe('Freeze Protection Scenarios', () => {
     const { RSN } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true // Compressor running
+    S.sys_isRelayOn = true // Compressor running
 
     // Temp drops below freeze cut
     const mode = determineMode(0.3, -10.0)
@@ -683,7 +683,7 @@ describe('Freeze Protection Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = 'NONE'
 
     // Temp back in normal range, should allow normal thermostat
@@ -713,11 +713,11 @@ describe('Max Run and Timing Guard Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
-    V.turbo_active = false
+    S.sys_isRelayOn = true
+    V.trb_isActive = false
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOn = now - C.comp_maxRunSec - 1 // Just past max run
+    S.sys_relayOnTs = now - C.comp_maxRunSec - 1 // Just past max run
 
     expect(isMaxRunExceeded(now)).toBe(true)
   })
@@ -729,11 +729,11 @@ describe('Max Run and Timing Guard Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
-    V.turbo_active = true // Turbo exempts max run
+    S.sys_isRelayOn = true
+    V.trb_isActive = true // Turbo exempts max run
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOn = now - C.comp_maxRunSec - 1000
+    S.sys_relayOnTs = now - C.comp_maxRunSec - 1000
 
     expect(isMaxRunExceeded(now)).toBe(false)
   })
@@ -747,7 +747,7 @@ describe('Max Run and Timing Guard Scenarios', () => {
     Object.assign(C, DEFAULT)
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOff = now - 100 // 100 seconds ago
+    S.sys_relayOffTs = now - 100 // 100 seconds ago
 
     const remaining = getTimeUntilOnAllowed(now)
     expect(remaining).toBe(C.comp_minOffSec - 100)
@@ -762,7 +762,7 @@ describe('Max Run and Timing Guard Scenarios', () => {
     Object.assign(C, DEFAULT)
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOn = now - 60 // 60 seconds ago
+    S.sys_relayOnTs = now - 60 // 60 seconds ago
 
     const remaining = getTimeUntilOffAllowed(now)
     expect(remaining).toBe(C.comp_minOnSec - 60)
@@ -777,8 +777,8 @@ describe('Max Run and Timing Guard Scenarios', () => {
     Object.assign(C, DEFAULT)
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOff = now - C.comp_minOffSec - 100
-    S.sys_tsRelayOn = now - C.comp_minOnSec - 100
+    S.sys_relayOffTs = now - C.comp_minOffSec - 100
+    S.sys_relayOnTs = now - C.comp_minOnSec - 100
 
     expect(getTimeUntilOnAllowed(now)).toBe(0)
     expect(getTimeUntilOffAllowed(now)).toBe(0)
@@ -805,7 +805,7 @@ describe('Sensor Failure Cascade Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.sens_errCount = 0
+    V.sns_errCnt = 0
 
     // Should return false until limit reached
     for (let i = 0; i < C.sys_sensFailLimit - 1; i++) {
@@ -826,12 +826,12 @@ describe('Sensor Failure Cascade Scenarios', () => {
 
     // Initialize reference
     const startTime = 1000
-    V.sens_stuckRefAir = null
-    checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', startTime)
+    V.sns_airStuckRefDeg = null
+    checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', startTime)
 
     // Sensor reads same value for longer than threshold
     const stuckTime = startTime + C.sens_stuckTimeSec + 1
-    const result = checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', stuckTime)
+    const result = checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', stuckTime)
 
     expect(result).toBe(true)
   })
@@ -845,15 +845,15 @@ describe('Sensor Failure Cascade Scenarios', () => {
     Object.assign(C, DEFAULT)
 
     // Initialize
-    V.sens_stuckRefAir = null
-    checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 1000)
+    V.sns_airStuckRefDeg = null
+    checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 1000)
 
     // Move sensor significantly (> stuckEpsDeg)
-    const result = checkSensorStuck(5.5, 'sens_stuckRefAir', 'sens_stuckTsAir', 2000)
+    const result = checkSensorStuck(5.5, 'sns_airStuckRefDeg', 'sns_airStuckTs', 2000)
 
     expect(result).toBe(false)
-    expect(V.sens_stuckRefAir).toBe(5.5) // Reference updated
-    expect(V.sens_stuckTsAir).toBe(2000) // Timer reset
+    expect(V.sns_airStuckRefDeg).toBe(5.5) // Reference updated
+    expect(V.sns_airStuckTs).toBe(2000) // Timer reset
   })
 
   it('should enter limp mode when sensor alarm active', async () => {
@@ -876,15 +876,15 @@ describe('Sensor Failure Cascade Scenarios', () => {
     const { handleSensorRecovery } = await import('../../src/sensors.js')
     const { V } = await import('../../src/state.js')
 
-    V.sens_bufAir = [0, 0, 0]
-    V.sens_wasError = true
+    V.sns_airBuf = [0, 0, 0]
+    V.sns_wasErr = true
 
     handleSensorRecovery(5.0)
 
-    expect(V.sens_bufAir).toEqual([5.0, 5.0, 5.0])
-    expect(V.sens_smoothAir).toBe(5.0)
-    expect(V.sens_wasError).toBe(false)
-    expect(V.door_refTs).toBe(0)
+    expect(V.sns_airBuf).toEqual([5.0, 5.0, 5.0])
+    expect(V.sns_airSmoothDeg).toBe(5.0)
+    expect(V.sns_wasErr).toBe(false)
+    expect(V.dor_refTs).toBe(0)
   })
 
   it('should validate sensor readings correctly', async () => {
@@ -921,7 +921,7 @@ describe('Full Cooling Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = 'NONE'
 
     // Temp = 6.0 > target(4.0) + hyst(1.0) = 5.0
@@ -938,7 +938,7 @@ describe('Full Cooling Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
+    S.sys_isRelayOn = true
     V.sys_alarm = 'NONE'
 
     // Temp = 2.5 < target(4.0) - hyst(1.0) = 3.0
@@ -964,11 +964,11 @@ describe('Full Cooling Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = 'NONE'
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOff = now - C.comp_minOffSec - 10 // Timing satisfied
+    S.sys_relayOffTs = now - C.comp_minOffSec - 10 // Timing satisfied
 
     // Should be able to turn on
     const result = executeSwitchDecision(true, now, 5.0, -10.0, false)
@@ -985,11 +985,11 @@ describe('Full Cooling Cycle Scenarios', () => {
     const { RSN } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = 'NONE'
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOff = now - 10 // Only 10 seconds ago
+    S.sys_relayOffTs = now - 10 // Only 10 seconds ago
 
     const result = executeSwitchDecision(true, now, 5.0, -10.0, false)
 
@@ -1005,11 +1005,11 @@ describe('Full Cooling Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = 'NONE'
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOff = now // Just turned off
+    S.sys_relayOffTs = now // Just turned off
 
     // Limp mode should skip timing guards
     const result = executeSwitchDecision(true, now, 0, 0, true)
@@ -1039,14 +1039,14 @@ describe('Defrost Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.defr_isActive = false
-    V.turbo_active = false
+    S.dfr_isActive = false
+    V.trb_isActive = false
 
     // Evap hits defrost trigger temp (default -16C)
     const result = checkDefrostTrigger(-17.0)
 
     expect(result).toBe(true)
-    expect(S.defr_isActive).toBe(true)
+    expect(S.dfr_isActive).toBe(true)
   })
 
   it('should NOT trigger defrost when already active', async () => {
@@ -1056,8 +1056,8 @@ describe('Defrost Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.defr_isActive = true // Already in defrost
-    V.turbo_active = false
+    S.dfr_isActive = true // Already in defrost
+    V.trb_isActive = false
 
     const result = checkDefrostTrigger(-20.0)
 
@@ -1071,8 +1071,8 @@ describe('Defrost Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.defr_isActive = false
-    V.turbo_active = true // Turbo active
+    S.dfr_isActive = false
+    V.trb_isActive = true // Turbo active
 
     const result = checkDefrostTrigger(-20.0)
 
@@ -1086,8 +1086,8 @@ describe('Defrost Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.defr_isActive = true
-    V.turbo_active = false
+    S.dfr_isActive = true
+    V.trb_isActive = false
 
     // Evap has warmed up to end temp
     // Call multiple times to accumulate dwell timer
@@ -1096,7 +1096,7 @@ describe('Defrost Cycle Scenarios', () => {
     }
 
     // ? Verify behavior: defrost should be complete
-    expect(S.defr_isActive).toBe(false)
+    expect(S.dfr_isActive).toBe(false)
   })
 
   it('should reset dwell timer if evap drops again', async () => {
@@ -1109,8 +1109,8 @@ describe('Defrost Cycle Scenarios', () => {
     // ? Use short dwell for testing
     C.defr_dynDwellSec = 30
     C.sys_loopSec = 10
-    S.defr_isActive = true
-    V.turbo_active = false
+    S.dfr_isActive = true
+    V.trb_isActive = false
 
     // ? Accumulate some dwell time with warm evap
     handleDynamicDefrost(C.defr_dynEndDeg) // 10s
@@ -1123,13 +1123,13 @@ describe('Defrost Cycle Scenarios', () => {
     // ? If timer didn't reset, defrost would complete after just 1 more call
     // ? defr_dynDwellSec = 30, sys_loopSec = 10, need >= 30s (3 calls) to complete
     handleDynamicDefrost(C.defr_dynEndDeg) // 10s (after reset)
-    expect(S.defr_isActive).toBe(true) // Still in defrost
+    expect(S.dfr_isActive).toBe(true) // Still in defrost
 
     handleDynamicDefrost(C.defr_dynEndDeg) // 20s
-    expect(S.defr_isActive).toBe(true) // Still in defrost
+    expect(S.dfr_isActive).toBe(true) // Still in defrost
 
     handleDynamicDefrost(C.defr_dynEndDeg) // 30s = threshold, defrost completes
-    expect(S.defr_isActive).toBe(false) // Now complete (>= threshold)
+    expect(S.dfr_isActive).toBe(false) // Now complete (>= threshold)
   })
 
   it('should return defrost mode in determineMode when scheduled', async () => {
@@ -1140,9 +1140,9 @@ describe('Defrost Cycle Scenarios', () => {
     const { RSN } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = 'NONE'
-    S.defr_isActive = true // Active defrost
+    S.dfr_isActive = true // Active defrost
 
     // Dynamic defrost is active
     const mode = determineMode(6.0, -6.0) // Evap at end temp
@@ -1173,7 +1173,7 @@ describe('Power Monitoring Fault Scenarios', () => {
     const { ALM } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
+    S.sys_isRelayOn = true
     V.hw_hasPM = true
 
     // Power exceeds max threshold after startup mask
@@ -1190,7 +1190,7 @@ describe('Power Monitoring Fault Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
+    S.sys_isRelayOn = true
     V.hw_hasPM = true
 
     // High power during startup mask (inrush current)
@@ -1207,9 +1207,9 @@ describe('Power Monitoring Fault Scenarios', () => {
     const { ALM } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
+    S.sys_isRelayOn = true
     V.hw_hasPM = true
-    V.pwr_ghostTimer = 0
+    V.pwr_ghostSec = 0
 
     // Accumulate ghost timer
     for (let i = 0; i <= C.pwr_ghostTripSec / C.sys_loopSec; i++) {
@@ -1226,14 +1226,14 @@ describe('Power Monitoring Fault Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
+    S.sys_isRelayOn = true
     V.hw_hasPM = true
-    V.pwr_ghostTimer = 30 // Partially accumulated
+    V.pwr_ghostSec = 30 // Partially accumulated
 
     // Normal power reading
     checkGhostRun(100, C.pwr_startMaskSec + 10)
 
-    expect(V.pwr_ghostTimer).toBe(0)
+    expect(V.pwr_ghostSec).toBe(0)
   })
 
   it('should skip power checks when PM not available', async () => {
@@ -1243,7 +1243,7 @@ describe('Power Monitoring Fault Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
+    S.sys_isRelayOn = true
     V.hw_hasPM = false // No power monitoring
 
     expect(checkLockedRotor(500, 100)).toBe(false)
@@ -1271,15 +1271,15 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.adapt_hystCurrent = 1.0
-    V.turbo_active = false
+    S.adt_hystDeg = 1.0
+    V.trb_isActive = false
 
     // ? New algorithm uses TOTAL cycle time
     // ? totalCycle = 200 + 200 = 400s = 6.7 min < 10 min (adapt_targetMinSec) → WIDEN
     const result = adaptHysteresis(200, 200, 5)
 
     expect(result).toBe('widen')
-    expect(S.adapt_hystCurrent).toBeGreaterThan(1.0)
+    expect(S.adt_hystDeg).toBeGreaterThan(1.0)
   })
 
   it('should tighten hysteresis when system has idle headroom (avgOff > avgOn)', async () => {
@@ -1289,10 +1289,10 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.adapt_hystCurrent = 2.0
-    V.turbo_active = false
-    V.adapt_lastDir = null
-    V.adapt_consecCount = 0
+    S.adt_hystDeg = 2.0
+    V.trb_isActive = false
+    V.adt_lastDir = null
+    V.adt_consecCnt = 0
 
     // ? New algorithm requires trend confirmation (2 consecutive triggers)
     // ? totalCycle = 2300s = 38 min > maxCycle (28 min)
@@ -1301,12 +1301,12 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     // First call - starts tracking
     let result = adaptHysteresis(800, 1500, 3) // 35% duty, idle headroom
     expect(result).toBeNull()
-    expect(V.adapt_lastDir).toBe('tighten')
+    expect(V.adt_lastDir).toBe('tighten')
 
     // Second call - confirms and acts
     result = adaptHysteresis(800, 1500, 3)
     expect(result).toBe('tighten')
-    expect(S.adapt_hystCurrent).toBeLessThan(2.0)
+    expect(S.adt_hystDeg).toBeLessThan(2.0)
   })
 
   it('should block widening near freeze protection zone', async () => {
@@ -1319,14 +1319,14 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     // Set hysteresis high so widening would push below freeze cut
     // Guard check: target - (hyst + 0.1) <= freezeCut + 0.3
     // 4.0 - (3.5 + 0.1) = 0.4 <= 0.5 + 0.3 = 0.8 → canWiden = false
-    S.adapt_hystCurrent = 3.5
-    V.turbo_active = false
+    S.adt_hystDeg = 3.5
+    V.trb_isActive = false
 
     // ? New algorithm: totalCycle = 200 + 200 = 400s < 600s → would widen, but freeze guard blocks
     const result = adaptHysteresis(200, 200, 5)
 
     expect(result).toBe('blocked')
-    expect(S.adapt_hystCurrent).toBe(3.5) // Unchanged
+    expect(S.adt_hystDeg).toBe(3.5) // Unchanged
   })
 
   it('should not adapt during turbo mode', async () => {
@@ -1336,13 +1336,13 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.adapt_hystCurrent = 1.0
-    V.turbo_active = true // Turbo active
+    S.adt_hystDeg = 1.0
+    V.trb_isActive = true // Turbo active
 
     const result = adaptHysteresis(300, 300, 5)
 
     expect(result).toBe(null)
-    expect(S.adapt_hystCurrent).toBe(1.0)
+    expect(S.adt_hystDeg).toBe(1.0)
   })
 
   it('should require at least 1 cycle before adapting', async () => {
@@ -1352,10 +1352,10 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.adapt_hystCurrent = 1.0
-    V.turbo_active = false
-    V.adapt_lastDir = null
-    V.adapt_consecCount = 0
+    S.adt_hystDeg = 1.0
+    V.trb_isActive = false
+    V.adt_lastDir = null
+    V.adt_consecCnt = 0
 
     // Zero cycles - not enough data
     const result0 = adaptHysteresis(300, 300, 0)
@@ -1376,15 +1376,15 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     Object.assign(C, DEFAULT)
 
     // Below minimum
-    S.adapt_hystCurrent = 0.1
+    S.adt_hystDeg = 0.1
     expect(getEffectiveHysteresis()).toBe(C.adapt_hystMinDeg)
 
     // Above maximum
-    S.adapt_hystCurrent = 10.0
+    S.adt_hystDeg = 10.0
     expect(getEffectiveHysteresis()).toBe(C.adapt_hystMaxDeg)
 
     // Within bounds
-    S.adapt_hystCurrent = 1.5
+    S.adt_hystDeg = 1.5
     expect(getEffectiveHysteresis()).toBe(1.5)
   })
 })
@@ -1435,14 +1435,14 @@ describe('Alarm State Machine Scenarios', () => {
     const { V } = await import('../../src/state.js')
     const { ALM } = await import('../../src/constants.js')
 
-    V.fault_pending = null
-    V.sens_smoothAir = 12.0
+    V.flt_pendCode = null
+    V.sns_airSmoothDeg = 12.0
 
     // Rising edge: NONE -> HIGH
     processAlarmEdges(ALM.NONE, ALM.HIGH, 0)
 
-    expect(V.fault_pending).not.toBeNull()
-    expect(V.fault_pending.alarm).toBe(ALM.HIGH)
+    expect(V.flt_pendCode).not.toBeNull()
+    expect(V.flt_pendCode.alarm).toBe(ALM.HIGH)
   })
 
   it('should log fault on alarm falling edge', async () => {
@@ -1451,19 +1451,19 @@ describe('Alarm State Machine Scenarios', () => {
     const { ALM } = await import('../../src/constants.js')
 
     // Setup pending alarm
-    V.fault_pending = {
+    V.flt_pendCode = {
       t: Math.floor(Date.now() / 1000) - 300,
       alarm: ALM.HIGH,
       peak: 12.0,
       watts: 0,
     }
-    S.fault_critical = []
+    S.flt_critArr = []
 
     // Falling edge: HIGH -> NONE
     processAlarmEdges(ALM.HIGH, ALM.NONE, 0)
 
-    expect(V.fault_pending).toBeNull()
-    expect(S.fault_critical.length).toBe(1)
+    expect(V.flt_pendCode).toBeNull()
+    expect(S.flt_critArr.length).toBe(1)
   })
 
   it('should apply sensor alarms correctly', async () => {
@@ -1489,11 +1489,11 @@ describe('Alarm State Machine Scenarios', () => {
     const { ALM } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = ALM.WELD
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOff = now - 1000 // Timing would be OK
+    S.sys_relayOffTs = now - 1000 // Timing would be OK
 
     const result = executeSwitchDecision(true, now, 5.0, -10.0, false)
 
@@ -1522,9 +1522,9 @@ describe('Weld Detection Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
-    S.sys_tsRelayOff = 0
-    S.weld_snapAir = 10.0
+    S.sys_isRelayOn = false
+    S.sys_relayOffTs = 0
+    S.wld_airSnapDeg = 10.0
 
     // Check before window starts (< waitSec)
     const result = checkWeldDetection(5.0, C.weld_waitSec - 10)
@@ -1539,9 +1539,9 @@ describe('Weld Detection Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
-    S.sys_tsRelayOff = 0
-    S.weld_snapAir = 10.0
+    S.sys_isRelayOn = false
+    S.sys_relayOffTs = 0
+    S.wld_airSnapDeg = 10.0
 
     // Check after window ends (> winSec)
     const result = checkWeldDetection(5.0, C.weld_winSec + 10)
@@ -1556,9 +1556,9 @@ describe('Weld Detection Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true // Relay on
-    S.sys_tsRelayOff = 0
-    S.weld_snapAir = 10.0
+    S.sys_isRelayOn = true // Relay on
+    S.sys_relayOffTs = 0
+    S.wld_airSnapDeg = 10.0
 
     const result = checkWeldDetection(5.0, C.weld_waitSec + 10)
 
@@ -1572,9 +1572,9 @@ describe('Weld Detection Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
-    S.sys_tsRelayOff = 0
-    S.weld_snapAir = 10.0
+    S.sys_isRelayOn = false
+    S.sys_relayOffTs = 0
+    S.wld_airSnapDeg = 10.0
 
     // Temp has NOT dropped significantly
     const result = checkWeldDetection(10.0, C.weld_waitSec + 10)
@@ -1604,12 +1604,12 @@ describe('Cooling Health Scenarios', () => {
     const { ALM } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
-    V.turbo_active = false
-    V.sens_smoothAir = 5.0
+    S.sys_isRelayOn = true
+    V.trb_isActive = false
+    V.sns_airSmoothDeg = 5.0
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOn = now - C.gas_checkSec - 10 // Past check time
+    S.sys_relayOnTs = now - C.gas_checkSec - 10 // Past check time
 
     // Evap is too warm (should be < air - failDiff)
     // failDiff = 5, so evap should be < 0 to be OK, but it's 3.0
@@ -1626,12 +1626,12 @@ describe('Cooling Health Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
-    V.turbo_active = false
-    V.sens_smoothAir = 5.0
+    S.sys_isRelayOn = true
+    V.trb_isActive = false
+    V.sns_airSmoothDeg = 5.0
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOn = now - 10 // Just started
+    S.sys_relayOnTs = now - 10 // Just started
 
     const result = checkCoolingHealth(3.0, now)
 
@@ -1645,12 +1645,12 @@ describe('Cooling Health Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = true
-    V.turbo_active = true // Turbo active
-    V.sens_smoothAir = 5.0
+    S.sys_isRelayOn = true
+    V.trb_isActive = true // Turbo active
+    V.sns_airSmoothDeg = 5.0
 
     const now = Date.now() / 1000
-    S.sys_tsRelayOn = now - C.gas_checkSec - 10
+    S.sys_relayOnTs = now - C.gas_checkSec - 10
 
     const result = checkCoolingHealth(3.0, now)
 
@@ -1678,14 +1678,14 @@ describe('Turbo Mode Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.turbo_lastSw = false
-    V.turbo_active = false
+    V.trb_prevSw = false
+    V.trb_isActive = false
 
     const result = checkTurboSwitch(true)
 
     expect(result).toBe(true)
-    expect(V.turbo_active).toBe(true)
-    expect(V.turbo_remSec).toBe(C.turbo_maxTimeSec)
+    expect(V.trb_isActive).toBe(true)
+    expect(V.trb_remSec).toBe(C.turbo_maxTimeSec)
   })
 
   it('should not reactivate turbo on sustained switch', async () => {
@@ -1695,8 +1695,8 @@ describe('Turbo Mode Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.turbo_lastSw = true // Already high
-    V.turbo_active = false
+    V.trb_prevSw = true // Already high
+    V.trb_isActive = false
 
     const result = checkTurboSwitch(true)
 
@@ -1710,12 +1710,12 @@ describe('Turbo Mode Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.turbo_active = true
-    V.turbo_remSec = 100
+    V.trb_isActive = true
+    V.trb_remSec = 100
 
     handleTurboMode(5)
 
-    expect(V.turbo_remSec).toBe(95)
+    expect(V.trb_remSec).toBe(95)
   })
 
   it('should deactivate turbo when timer expires', async () => {
@@ -1725,15 +1725,15 @@ describe('Turbo Mode Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.turbo_active = true
-    V.turbo_remSec = 3 // About to expire
+    V.trb_isActive = true
+    V.trb_remSec = 3 // About to expire
 
     // First call decrements to -2 (still returns turbo object)
     handleTurboMode(5)
     // Second call sees remSec <= 0 and deactivates
     handleTurboMode(5)
 
-    expect(V.turbo_active).toBe(false)
+    expect(V.trb_isActive).toBe(false)
   })
 
   it('should return override targets during turbo', async () => {
@@ -1743,8 +1743,8 @@ describe('Turbo Mode Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.turbo_active = true
-    V.turbo_remSec = 1000
+    V.trb_isActive = true
+    V.trb_remSec = 1000
 
     const turbo = handleTurboMode(5)
 
@@ -1758,7 +1758,7 @@ describe('Turbo Mode Scenarios', () => {
     const { handleTurboMode } = await import('../../src/features.js')
     const { V } = await import('../../src/state.js')
 
-    V.turbo_active = false
+    V.trb_isActive = false
 
     const result = handleTurboMode(5)
 
@@ -1786,14 +1786,14 @@ describe('Door Pause Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.door_refTemp = 4.0
-    V.door_refTs = 100
+    V.dor_refDeg = 4.0
+    V.dor_refTs = 100
 
     // Rate = (12 - 4) / (110 - 100) * 60 = 48 deg/min
     const result = detectDoorOpen(12.0, 110)
 
     expect(result).toBe(true)
-    expect(V.door_timer).toBeGreaterThan(0)
+    expect(V.dor_pauseRemSec).toBeGreaterThan(0)
   })
 
   it('should not detect door if rate below threshold', async () => {
@@ -1803,28 +1803,28 @@ describe('Door Pause Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    V.door_refTemp = 4.0
-    V.door_refTs = 100
-    V.door_timer = 0
+    V.dor_refDeg = 4.0
+    V.dor_refTs = 100
+    V.dor_pauseRemSec = 0
 
     // Slow rise: rate = (4.2 - 4.0) / 60 * 60 = 0.2 deg/min
     const result = detectDoorOpen(4.2, 160)
 
     expect(result).toBe(false)
-    expect(V.door_timer).toBeLessThanOrEqual(0)
+    expect(V.dor_pauseRemSec).toBeLessThanOrEqual(0)
   })
 
   it('should report door pause active when timer > 0', async () => {
     const { isDoorPauseActive } = await import('../../src/features.js')
     const { V } = await import('../../src/state.js')
 
-    V.door_timer = 100
+    V.dor_pauseRemSec = 100
     expect(isDoorPauseActive()).toBe(true)
 
-    V.door_timer = 0
+    V.dor_pauseRemSec = 0
     expect(isDoorPauseActive()).toBe(false)
 
-    V.door_timer = -5
+    V.dor_pauseRemSec = -5
     expect(isDoorPauseActive()).toBe(false)
   })
 
@@ -1836,9 +1836,9 @@ describe('Door Pause Scenarios', () => {
     const { RSN } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = 'NONE'
-    V.door_timer = 100 // Door pause active
+    V.dor_pauseRemSec = 100 // Door pause active
 
     const mode = determineMode(6.0, -10.0)
 
@@ -1904,7 +1904,7 @@ describe('Limp Mode Scenarios', () => {
     const { ALM, ST } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    S.sys_relayState = false
+    S.sys_isRelayOn = false
     V.sys_alarm = ALM.FAIL // Sensor failure
 
     const mode = determineMode(0, 0) // Temps don't matter in limp

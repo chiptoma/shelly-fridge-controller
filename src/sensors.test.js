@@ -15,17 +15,17 @@ describe('Sensors', () => {
 
     // Create mock state
     mockV = {
-      sens_errCount: 0,
-      sens_wasError: true,
-      sens_bufAir: [0, 0, 0],
-      sens_bufIdx: 0,
-      sens_smoothAir: null,
-      sens_stuckRefAir: null,
-      sens_stuckTsAir: 0,
-      sens_stuckRefEvap: null,
-      sens_stuckTsEvap: 0,
-      door_refTemp: 0,
-      door_refTs: 0,
+      sns_errCnt: 0,
+      sns_wasErr: true,
+      sns_airBuf: [0, 0, 0],
+      sns_bufIdx: 0,
+      sns_airSmoothDeg: null,
+      sns_airStuckRefDeg: null,
+      sns_airStuckTs: 0,
+      sns_evpStuckRefDeg: null,
+      sns_evpStuckTs: 0,
+      dor_refDeg: 0,
+      dor_refTs: 0,
     }
 
     // Create mock config
@@ -77,50 +77,50 @@ describe('Sensors', () => {
 
   describe('checkSensorStuck', () => {
     it('should initialize reference on first call', () => {
-      mockV.sens_stuckRefAir = null
-      const result = checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 1000)
+      mockV.sns_airStuckRefDeg = null
+      const result = checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 1000)
 
       expect(result).toBe(false)
-      expect(mockV.sens_stuckRefAir).toBe(5.0)
-      expect(mockV.sens_stuckTsAir).toBe(1000)
+      expect(mockV.sns_airStuckRefDeg).toBe(5.0)
+      expect(mockV.sns_airStuckTs).toBe(1000)
     })
 
     it('should reset timer when value changes significantly', () => {
-      mockV.sens_stuckRefAir = 5.0
-      mockV.sens_stuckTsAir = 1000
+      mockV.sns_airStuckRefDeg = 5.0
+      mockV.sns_airStuckTs = 1000
 
-      const result = checkSensorStuck(5.5, 'sens_stuckRefAir', 'sens_stuckTsAir', 2000)
+      const result = checkSensorStuck(5.5, 'sns_airStuckRefDeg', 'sns_airStuckTs', 2000)
 
       expect(result).toBe(false)
-      expect(mockV.sens_stuckRefAir).toBe(5.5)
-      expect(mockV.sens_stuckTsAir).toBe(2000)
+      expect(mockV.sns_airStuckRefDeg).toBe(5.5)
+      expect(mockV.sns_airStuckTs).toBe(2000)
     })
 
     it('should not reset timer for small changes', () => {
-      mockV.sens_stuckRefAir = 5.0
-      mockV.sens_stuckTsAir = 1000
+      mockV.sns_airStuckRefDeg = 5.0
+      mockV.sns_airStuckTs = 1000
 
-      const result = checkSensorStuck(5.1, 'sens_stuckRefAir', 'sens_stuckTsAir', 2000)
+      const result = checkSensorStuck(5.1, 'sns_airStuckRefDeg', 'sns_airStuckTs', 2000)
 
       expect(result).toBe(false)
-      expect(mockV.sens_stuckTsAir).toBe(1000) // Unchanged
+      expect(mockV.sns_airStuckTs).toBe(1000) // Unchanged
     })
 
     it('should return true when stuck too long', () => {
-      mockV.sens_stuckRefAir = 5.0
-      mockV.sens_stuckTsAir = 1000
+      mockV.sns_airStuckRefDeg = 5.0
+      mockV.sns_airStuckTs = 1000
 
       // 14400 + 1 seconds later
-      const result = checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 15401)
+      const result = checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 15401)
 
       expect(result).toBe(true)
     })
 
     it('should not return true if not stuck long enough', () => {
-      mockV.sens_stuckRefAir = 5.0
-      mockV.sens_stuckTsAir = 1000
+      mockV.sns_airStuckRefDeg = 5.0
+      mockV.sns_airStuckTs = 1000
 
-      const result = checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 10000)
+      const result = checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 10000)
 
       expect(result).toBe(false)
     })
@@ -132,22 +132,22 @@ describe('Sensors', () => {
 
   describe('handleSensorError', () => {
     it('should increment error count', () => {
-      mockV.sens_errCount = 0
+      mockV.sns_errCnt = 0
       handleSensorError()
-      expect(mockV.sens_errCount).toBe(1)
+      expect(mockV.sns_errCnt).toBe(1)
     })
 
     it('should return false when under limit', () => {
-      mockV.sens_errCount = 3
+      mockV.sns_errCnt = 3
       const result = handleSensorError()
       expect(result).toBe(false)
     })
 
     it('should return true when limit exceeded', () => {
-      mockV.sens_errCount = 5
+      mockV.sns_errCnt = 5
       const result = handleSensorError()
       expect(result).toBe(true)
-      expect(mockV.sens_errCount).toBe(6)
+      expect(mockV.sns_errCnt).toBe(6)
     })
   })
 
@@ -159,35 +159,35 @@ describe('Sensors', () => {
     it('should initialize buffer with raw value', () => {
       handleSensorRecovery(4.5)
 
-      expect(mockV.sens_bufAir[0]).toBe(4.5)
-      expect(mockV.sens_bufAir[1]).toBe(4.5)
-      expect(mockV.sens_bufAir[2]).toBe(4.5)
+      expect(mockV.sns_airBuf[0]).toBe(4.5)
+      expect(mockV.sns_airBuf[1]).toBe(4.5)
+      expect(mockV.sns_airBuf[2]).toBe(4.5)
     })
 
     it('should reset buffer index', () => {
-      mockV.sens_bufIdx = 2
+      mockV.sns_bufIdx = 2
       handleSensorRecovery(4.5)
-      expect(mockV.sens_bufIdx).toBe(0)
+      expect(mockV.sns_bufIdx).toBe(0)
     })
 
     it('should initialize smoothed value', () => {
       handleSensorRecovery(4.5)
-      expect(mockV.sens_smoothAir).toBe(4.5)
+      expect(mockV.sns_airSmoothDeg).toBe(4.5)
     })
 
     it('should reset door reference', () => {
-      mockV.door_refTs = 1000
-      mockV.door_refTemp = 5.0
+      mockV.dor_refTs = 1000
+      mockV.dor_refDeg = 5.0
       handleSensorRecovery(4.5)
 
-      expect(mockV.door_refTs).toBe(0)
-      expect(mockV.door_refTemp).toBe(0)
+      expect(mockV.dor_refTs).toBe(0)
+      expect(mockV.dor_refDeg).toBe(0)
     })
 
     it('should clear error flag', () => {
-      mockV.sens_wasError = true
+      mockV.sns_wasErr = true
       handleSensorRecovery(4.5)
-      expect(mockV.sens_wasError).toBe(false)
+      expect(mockV.sns_wasErr).toBe(false)
     })
 
     it('should print recovery message', () => {
@@ -202,28 +202,28 @@ describe('Sensors', () => {
 
   describe('processSensorData', () => {
     it('should update circular buffer', () => {
-      // ? Must set sens_smoothAir to non-null to skip warmup path
-      mockV.sens_smoothAir = 4.0
-      mockV.sens_bufIdx = 0
+      // ? Must set sns_airSmoothDeg to non-null to skip warmup path
+      mockV.sns_airSmoothDeg = 4.0
+      mockV.sns_bufIdx = 0
       processSensorData(5.0)
 
-      expect(mockV.sens_bufAir[0]).toBe(5.0)
-      expect(mockV.sens_bufIdx).toBe(1)
+      expect(mockV.sns_airBuf[0]).toBe(5.0)
+      expect(mockV.sns_bufIdx).toBe(1)
     })
 
     it('should wrap buffer index at 3', () => {
-      // ? Must set sens_smoothAir to non-null to skip warmup path
-      mockV.sens_smoothAir = 4.0
-      mockV.sens_bufIdx = 2
+      // ? Must set sns_airSmoothDeg to non-null to skip warmup path
+      mockV.sns_airSmoothDeg = 4.0
+      mockV.sns_bufIdx = 2
       processSensorData(5.0)
 
-      expect(mockV.sens_bufIdx).toBe(0)
+      expect(mockV.sns_bufIdx).toBe(0)
     })
 
     it('should return median value', () => {
-      mockV.sens_bufAir = [3.0, 5.0, 4.0]
-      mockV.sens_bufIdx = 0
-      mockV.sens_smoothAir = 4.0
+      mockV.sns_airBuf = [3.0, 5.0, 4.0]
+      mockV.sns_bufIdx = 0
+      mockV.sns_airSmoothDeg = 4.0
 
       const median = processSensorData(6.0)
 
@@ -233,24 +233,24 @@ describe('Sensors', () => {
     })
 
     it('should update smoothed value with EMA', () => {
-      mockV.sens_bufAir = [4.0, 4.0, 4.0]
-      mockV.sens_bufIdx = 0
-      mockV.sens_smoothAir = 4.0
+      mockV.sns_airBuf = [4.0, 4.0, 4.0]
+      mockV.sns_bufIdx = 0
+      mockV.sns_airSmoothDeg = 4.0
 
       processSensorData(4.0)
 
-      expect(mockV.sens_smoothAir).toBeDefined()
+      expect(mockV.sns_airSmoothDeg).toBeDefined()
     })
 
     it('should handle first reading (null smoothAir)', () => {
-      mockV.sens_smoothAir = null
-      mockV.sens_bufAir = [5.0, 5.0, 5.0]  // Pre-fill buffer
-      mockV.sens_bufIdx = 0
+      mockV.sns_airSmoothDeg = null
+      mockV.sns_airBuf = [5.0, 5.0, 5.0]  // Pre-fill buffer
+      mockV.sns_bufIdx = 0
 
       processSensorData(5.0)
 
       // Median of [5, 5, 5] = 5, EMA with null prev returns current
-      expect(mockV.sens_smoothAir).toBe(5.0)
+      expect(mockV.sns_airSmoothDeg).toBe(5.0)
     })
   })
 
@@ -301,9 +301,9 @@ describe('Sensors', () => {
 
   describe('resetSensorError', () => {
     it('should reset error count to zero', () => {
-      mockV.sens_errCount = 5
+      mockV.sns_errCnt = 5
       resetSensorError()
-      expect(mockV.sens_errCount).toBe(0)
+      expect(mockV.sns_errCnt).toBe(0)
     })
   })
 })

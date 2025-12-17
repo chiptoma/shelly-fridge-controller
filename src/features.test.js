@@ -38,25 +38,25 @@ describe('Features', () => {
 
     // Create mock state
     mockS = {
-      adapt_hystCurrent: 0.5,
-      defr_isActive: false,
-      sys_relayState: false,
+      adt_hystDeg: 0.5,
+      dfr_isActive: false,
+      sys_isRelayOn: false,
     }
 
     // Create mock volatile state
     // ? defr_dwellTimer is now module-local in features.js
     mockV = {
-      turbo_active: false,
-      turbo_remSec: 0,
-      turbo_lastSw: false,
-      door_refTemp: 0,
-      door_refTs: 0,
-      door_timer: 0,
+      trb_isActive: false,
+      trb_remSec: 0,
+      trb_prevSw: false,
+      dor_refDeg: 0,
+      dor_refTs: 0,
+      dor_pauseRemSec: 0,
       hw_hasPM: true,
       sys_alarm: 'NONE',
-      pwr_ghostTimer: 0,
-      adapt_lastDir: null,
-      adapt_consecCount: 0,
+      pwr_ghostSec: 0,
+      adt_lastDir: null,
+      adt_consecCnt: 0,
     }
 
     // Create mock config
@@ -129,17 +129,17 @@ describe('Features', () => {
 
   describe('getEffectiveHysteresis', () => {
     it('should return current value within bounds', () => {
-      mockS.adapt_hystCurrent = 0.5
+      mockS.adt_hystDeg = 0.5
       expect(getEffectiveHysteresis()).toBe(0.5)
     })
 
     it('should clamp to max when exceeded', () => {
-      mockS.adapt_hystCurrent = 2.0
+      mockS.adt_hystDeg = 2.0
       expect(getEffectiveHysteresis()).toBe(1.5)
     })
 
     it('should clamp to min when below', () => {
-      mockS.adapt_hystCurrent = 0.1
+      mockS.adt_hystDeg = 0.1
       expect(getEffectiveHysteresis()).toBe(0.3)
     })
   })
@@ -156,32 +156,32 @@ describe('Features', () => {
     it('should widen IMMEDIATELY when below danger zone (<7.5 min)', () => {
       // ? totalCycle = 200 + 200 = 400s = 6.7 min < 450s (dangerZone)
       // ? Danger zone bypasses trend confirmation for compressor protection
-      mockS.adapt_hystCurrent = 0.5
+      mockS.adt_hystDeg = 0.5
       const result = adaptHysteresis(200, 200, 3)
       expect(result).toBe('widen')
-      expect(mockS.adapt_hystCurrent).toBe(0.8) // +0.3 step for danger zone
+      expect(mockS.adt_hystDeg).toBe(0.8) // +0.3 step for danger zone
     })
 
     it('should widen after trend confirmation (2 consecutive short cycles)', () => {
       // ? totalCycle = 250 + 250 = 500s > dangerZone (450s), but < minCycle (540s)
       // ? Needs 2 consecutive triggers for widen
-      mockS.adapt_hystCurrent = 0.5
+      mockS.adt_hystDeg = 0.5
       // First call - starts tracking
       let result = adaptHysteresis(250, 250, 3)
       expect(result).toBeNull()
-      expect(mockV.adapt_lastDir).toBe('widen')
-      expect(mockV.adapt_consecCount).toBe(1)
+      expect(mockV.adt_lastDir).toBe('widen')
+      expect(mockV.adt_consecCnt).toBe(1)
 
       // Second call - confirms and acts
       result = adaptHysteresis(250, 250, 3)
       expect(result).toBe('widen')
-      expect(mockS.adapt_hystCurrent).toBe(0.7) // +0.2 step
+      expect(mockS.adt_hystDeg).toBe(0.7) // +0.2 step
     })
 
     it('should NOT adapt when total cycle is in stable zone (9-40 min)', () => {
       // ? totalCycle = 720 + 540 = 1260s = 21 min → STABLE (real device profile)
       // ? Stable zone is 540s to 2400s (wider than before)
-      mockS.adapt_hystCurrent = 1.0
+      mockS.adt_hystDeg = 1.0
       const result = adaptHysteresis(720, 540, 3) // 12m ON + 9m OFF
       expect(result).toBeNull()
       // ? Stable zone maintains tracking - doesn't reset direction
@@ -189,36 +189,36 @@ describe('Features', () => {
 
     it('should maintain tracking direction through stable zone periods', () => {
       // ? If tracking widen, stable zone shouldn't reset it
-      mockS.adapt_hystCurrent = 1.0
-      mockV.adapt_lastDir = 'widen'
-      mockV.adapt_consecCount = 1
+      mockS.adt_hystDeg = 1.0
+      mockV.adt_lastDir = 'widen'
+      mockV.adt_consecCnt = 1
 
       // Stable zone cycle (21 min)
       const result = adaptHysteresis(720, 540, 3)
       expect(result).toBeNull()
-      expect(mockV.adapt_lastDir).toBe('widen') // Maintained, not reset
-      expect(mockV.adapt_consecCount).toBe(1)   // Unchanged
+      expect(mockV.adt_lastDir).toBe('widen') // Maintained, not reset
+      expect(mockV.adt_consecCnt).toBe(1)   // Unchanged
     })
 
     it('should tighten after trend confirmation (2 consecutive long cycles with idle headroom)', () => {
       // ? maxCycle = 1680s, totalCycle = 2000s > 1680s, avgOff > avgOn (55% OFF, 45% ON)
       // ? New logic: only tighten when system has idle headroom (avgOff > avgOn)
-      mockS.adapt_hystCurrent = 1.0
+      mockS.adt_hystDeg = 1.0
       // First call - starts tracking
       let result = adaptHysteresis(900, 1100, 3) // 45% duty, has idle headroom
       expect(result).toBeNull()
-      expect(mockV.adapt_lastDir).toBe('tighten')
-      expect(mockV.adapt_consecCount).toBe(1)
+      expect(mockV.adt_lastDir).toBe('tighten')
+      expect(mockV.adt_consecCnt).toBe(1)
 
       // Second call - confirms and acts
       result = adaptHysteresis(900, 1100, 3)
       expect(result).toBe('tighten')
-      expect(mockS.adapt_hystCurrent).toBe(0.8) // -0.2 step
+      expect(mockS.adt_hystDeg).toBe(0.8) // -0.2 step
     })
 
     it('should NOT tighten when duty cycle is too high (system struggling)', () => {
       // ? totalCycle = 2000 + 500 = 2500s > 2400s, but duty = 80% → no action
-      mockS.adapt_hystCurrent = 1.0
+      mockS.adt_hystDeg = 1.0
       const result = adaptHysteresis(2000, 500, 3) // 80% duty
       expect(result).toBeNull()
     })
@@ -226,41 +226,41 @@ describe('Features', () => {
     it('should widen immediately on high cycle count (>=5 cycles)', () => {
       // ? High cycle count indicates short cycling despite averaged data
       // ? totalCycle = 1000s (16.7 min), but cycleCount = 6 → treat as danger
-      mockS.adapt_hystCurrent = 0.5
+      mockS.adt_hystDeg = 0.5
       const result = adaptHysteresis(600, 400, 6) // totalCycle = 1000s < 1200s, count >= 5
       expect(result).toBe('widen')
-      expect(mockS.adapt_hystCurrent).toBe(0.8) // +0.3 step (danger zone)
+      expect(mockS.adt_hystDeg).toBe(0.8) // +0.3 step (danger zone)
     })
 
     it('should tighten easier on low cycle count (<=3 cycles) when system has idle headroom', () => {
       // ? Low cycle count indicates long cycles (efficient), lower maxCycle threshold
       // ? totalCycle = 1600s (26.7 min), cycleCount = 3 → lower maxCycle to 1500s
       // ? avgOff > avgOn (62.5% OFF) → system has idle headroom → tighten
-      mockS.adapt_hystCurrent = 1.0
-      mockV.adapt_lastDir = 'tighten'
-      mockV.adapt_consecCount = 1  // Already tracking
+      mockS.adt_hystDeg = 1.0
+      mockV.adt_lastDir = 'tighten'
+      mockV.adt_consecCnt = 1  // Already tracking
 
       const result = adaptHysteresis(600, 1000, 3) // totalCycle = 1600s, 37.5% duty, idle headroom
       expect(result).toBe('tighten')
-      expect(mockS.adapt_hystCurrent).toBe(0.8) // -0.2 step
+      expect(mockS.adt_hystDeg).toBe(0.8) // -0.2 step
     })
 
     it('should reset tracking when direction changes', () => {
-      mockS.adapt_hystCurrent = 1.0
+      mockS.adt_hystDeg = 1.0
       // Start tracking tighten
-      mockV.adapt_lastDir = 'tighten'
-      mockV.adapt_consecCount = 1
+      mockV.adt_lastDir = 'tighten'
+      mockV.adt_consecCnt = 1
 
       // Now get a cycle between danger and min (wants widen tracking)
       // ? totalCycle = 500s > dangerZone (450s), < minCycle (540s)
       adaptHysteresis(250, 250, 3)
-      expect(mockV.adapt_lastDir).toBe('widen')
-      expect(mockV.adapt_consecCount).toBe(1) // Reset to 1, not 2
+      expect(mockV.adt_lastDir).toBe('widen')
+      expect(mockV.adt_consecCnt).toBe(1) // Reset to 1, not 2
     })
 
     it('should block widen near freeze limit', () => {
       // ? Short cycle in danger zone, but freeze guard blocks widening
-      mockS.adapt_hystCurrent = 1.4
+      mockS.adt_hystDeg = 1.4
       mockC.ctrl_targetDeg = -1.0
       mockC.comp_freezeCutDeg = -2.0
       const result = adaptHysteresis(130, 130, 3) // totalCycle = 260s < 360s
@@ -268,7 +268,7 @@ describe('Features', () => {
     })
 
     it('should return null during turbo', () => {
-      mockV.turbo_active = true
+      mockV.trb_isActive = true
       const result = adaptHysteresis(200, 500, 3)
       expect(result).toBeNull()
     })
@@ -291,20 +291,20 @@ describe('Features', () => {
 
   describe('checkTurboSwitch', () => {
     it('should activate on rising edge', () => {
-      mockV.turbo_lastSw = false
+      mockV.trb_prevSw = false
       const result = checkTurboSwitch(true)
 
       expect(result).toBe(true)
-      expect(mockV.turbo_active).toBe(true)
-      expect(mockV.turbo_remSec).toBe(3600)
+      expect(mockV.trb_isActive).toBe(true)
+      expect(mockV.trb_remSec).toBe(3600)
     })
 
     it('should not activate on high state (no edge)', () => {
-      mockV.turbo_lastSw = true
+      mockV.trb_prevSw = true
       const result = checkTurboSwitch(true)
 
       expect(result).toBe(false)
-      expect(mockV.turbo_active).toBe(false)
+      expect(mockV.trb_isActive).toBe(false)
     })
 
     it('should not activate when disabled', () => {
@@ -315,34 +315,34 @@ describe('Features', () => {
     })
 
     it('should update lastSw state', () => {
-      mockV.turbo_lastSw = false
+      mockV.trb_prevSw = false
       checkTurboSwitch(true)
-      expect(mockV.turbo_lastSw).toBe(true)
+      expect(mockV.trb_prevSw).toBe(true)
     })
   })
 
   describe('handleTurboMode', () => {
     it('should return null when not active', () => {
-      mockV.turbo_active = false
+      mockV.trb_isActive = false
       expect(handleTurboMode(5)).toBeNull()
     })
 
     it('should decrement timer and return override', () => {
-      mockV.turbo_active = true
-      mockV.turbo_remSec = 600
+      mockV.trb_isActive = true
+      mockV.trb_remSec = 600
       const result = handleTurboMode(5)
 
-      expect(mockV.turbo_remSec).toBe(595)
+      expect(mockV.trb_remSec).toBe(595)
       expect(result.target).toBe(-2.0)
       expect(result.hyst).toBe(0.3)
     })
 
     it('should deactivate when timer expires', () => {
-      mockV.turbo_active = true
-      mockV.turbo_remSec = 0
+      mockV.trb_isActive = true
+      mockV.trb_remSec = 0
       const result = handleTurboMode(5)
 
-      expect(mockV.turbo_active).toBe(false)
+      expect(mockV.trb_isActive).toBe(false)
       expect(result).toBeNull()
     })
   })
@@ -353,19 +353,19 @@ describe('Features', () => {
 
   describe('detectDoorOpen', () => {
     it('should detect rapid temperature rise', () => {
-      mockV.door_refTemp = 4.0
-      mockV.door_refTs = 100
+      mockV.dor_refDeg = 4.0
+      mockV.dor_refTs = 100
       // Rate = (5.0 - 4.0) / 60 * 60 = 1.0 deg/min > 0.5 threshold
       const result = detectDoorOpen(5.0, 160)
 
       expect(result).toBe(true)
       // Timer set to 180, then decremented by sys_loopSec (5) = 175
-      expect(mockV.door_timer).toBe(175)
+      expect(mockV.dor_pauseRemSec).toBe(175)
     })
 
     it('should not detect slow temperature change', () => {
-      mockV.door_refTemp = 4.0
-      mockV.door_refTs = 100
+      mockV.dor_refDeg = 4.0
+      mockV.dor_refTs = 100
       // Rate = (4.1 - 4.0) / 60 * 60 = 0.1 deg/min < 0.5 threshold
       const result = detectDoorOpen(4.1, 160)
 
@@ -373,19 +373,19 @@ describe('Features', () => {
     })
 
     it('should update reference values', () => {
-      mockV.door_refTemp = 0
-      mockV.door_refTs = 0
+      mockV.dor_refDeg = 0
+      mockV.dor_refTs = 0
       detectDoorOpen(5.0, 100)
 
-      expect(mockV.door_refTemp).toBe(5.0)
-      expect(mockV.door_refTs).toBe(100)
+      expect(mockV.dor_refDeg).toBe(5.0)
+      expect(mockV.dor_refTs).toBe(100)
     })
 
     it('should decrement timer', () => {
-      mockV.door_timer = 60
+      mockV.dor_pauseRemSec = 60
       detectDoorOpen(5.0, 100)
 
-      expect(mockV.door_timer).toBe(55)
+      expect(mockV.dor_pauseRemSec).toBe(55)
     })
 
     it('should return false when disabled', () => {
@@ -398,36 +398,36 @@ describe('Features', () => {
     it('should ignore small dt values to prevent false positives', () => {
       // ? This guards against timer overlap or clock jitter causing false door events.
       // ? With sys_loopSec = 5, dt must be >= 2.5 seconds.
-      mockV.door_refTemp = 2.0
-      mockV.door_refTs = 100
+      mockV.dor_refDeg = 2.0
+      mockV.dor_refTs = 100
       // ? dt = 0.1 seconds (too small), rate would be (2.1 - 2.0) / 0.1 * 60 = 60 deg/min
       // ? But this should be ignored because dt < sys_loopSec * 0.5 (2.5s)
       const result = detectDoorOpen(2.1, 100.1)
 
       expect(result).toBe(false)
-      expect(mockV.door_timer).toBe(0) // Timer should not be triggered
+      expect(mockV.dor_pauseRemSec).toBe(0) // Timer should not be triggered
     })
 
     it('should accept dt values at minimum threshold', () => {
       // ? dt = 2.5 seconds (exactly at threshold: sys_loopSec * 0.5)
       // ? rate = (10.0 - 4.0) / 2.5 * 60 = 144 deg/min > 0.5 threshold
-      mockV.door_refTemp = 4.0
-      mockV.door_refTs = 100
+      mockV.dor_refDeg = 4.0
+      mockV.dor_refTs = 100
       const result = detectDoorOpen(10.0, 102.5)
 
       expect(result).toBe(true)
-      expect(mockV.door_timer).toBe(175) // 180 - 5 (sys_loopSec)
+      expect(mockV.dor_pauseRemSec).toBe(175) // 180 - 5 (sys_loopSec)
     })
   })
 
   describe('isDoorPauseActive', () => {
     it('should return true when timer active', () => {
-      mockV.door_timer = 100
+      mockV.dor_pauseRemSec = 100
       expect(isDoorPauseActive()).toBe(true)
     })
 
     it('should return false when timer expired', () => {
-      mockV.door_timer = 0
+      mockV.dor_pauseRemSec = 0
       expect(isDoorPauseActive()).toBe(false)
     })
   })
@@ -472,14 +472,14 @@ describe('Features', () => {
       const result = checkDefrostTrigger(-22.0)
 
       expect(result).toBe(true)
-      expect(mockS.defr_isActive).toBe(true)
+      expect(mockS.dfr_isActive).toBe(true)
     })
 
     it('should not trigger when evap too warm', () => {
       const result = checkDefrostTrigger(-15.0)
 
       expect(result).toBe(false)
-      expect(mockS.defr_isActive).toBe(false)
+      expect(mockS.dfr_isActive).toBe(false)
     })
 
     it('should not trigger when disabled', () => {
@@ -490,14 +490,14 @@ describe('Features', () => {
     })
 
     it('should not trigger during turbo', () => {
-      mockV.turbo_active = true
+      mockV.trb_isActive = true
       const result = checkDefrostTrigger(-22.0)
 
       expect(result).toBe(false)
     })
 
     it('should not trigger when already active', () => {
-      mockS.defr_isActive = true
+      mockS.dfr_isActive = true
       const result = checkDefrostTrigger(-22.0)
 
       expect(result).toBe(false)
@@ -507,7 +507,7 @@ describe('Features', () => {
   describe('handleDynamicDefrost', () => {
     // ? defr_dwellTimer is now module-local, so tests verify behavior via multiple calls
     beforeEach(() => {
-      mockS.defr_isActive = true
+      mockS.dfr_isActive = true
     })
 
     it('should return true while active and evap cold', () => {
@@ -519,7 +519,7 @@ describe('Features', () => {
       // Evap is warm, dwell timer starts but not complete
       const result = handleDynamicDefrost(1.0) // Above 0.0 threshold
       expect(result).toBe(true)
-      expect(mockS.defr_isActive).toBe(true) // Still active
+      expect(mockS.dfr_isActive).toBe(true) // Still active
     })
 
     it('should complete defrost after dwell via multiple calls', () => {
@@ -528,11 +528,11 @@ describe('Features', () => {
       for (let i = 0; i < 59; i++) {
         handleDynamicDefrost(1.0)
       }
-      expect(mockS.defr_isActive).toBe(true) // Not yet (59 * 5 = 295s < 300s)
+      expect(mockS.dfr_isActive).toBe(true) // Not yet (59 * 5 = 295s < 300s)
 
       const result = handleDynamicDefrost(1.0) // 60th call = 300s >= threshold
       expect(result).toBe(false)
-      expect(mockS.defr_isActive).toBe(false)
+      expect(mockS.dfr_isActive).toBe(false)
     })
 
     it('should reset dwell timer if evap cools', () => {
@@ -548,14 +548,14 @@ describe('Features', () => {
       for (let i = 0; i < 59; i++) {
         handleDynamicDefrost(1.0)
       }
-      expect(mockS.defr_isActive).toBe(true) // Timer was reset, not complete yet
+      expect(mockS.dfr_isActive).toBe(true) // Timer was reset, not complete yet
 
       handleDynamicDefrost(1.0) // 60th call = 300s = threshold
-      expect(mockS.defr_isActive).toBe(false) // Now complete
+      expect(mockS.dfr_isActive).toBe(false) // Now complete
     })
 
     it('should return false when not active', () => {
-      mockS.defr_isActive = false
+      mockS.dfr_isActive = false
       const result = handleDynamicDefrost(-10.0)
       expect(result).toBe(false)
     })

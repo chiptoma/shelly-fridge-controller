@@ -89,43 +89,43 @@ describe('State', () => {
 
   describe('S (Persisted State)', () => {
     it('should have relay state fields', () => {
-      expect(S.sys_tsRelayOn).toBeDefined()
-      expect(S.sys_tsRelayOff).toBeDefined()
-      expect(S.sys_relayState).toBe(false)
+      expect(S.sys_relayOnTs).toBeDefined()
+      expect(S.sys_relayOffTs).toBeDefined()
+      expect(S.sys_isRelayOn).toBe(false)
     })
 
     it('should have weld snapshot field', () => {
       // ? weld_snapEvap was removed (dead code - never read)
-      expect(S.weld_snapAir).toBe(0)
+      expect(S.wld_airSnapDeg).toBe(0)
     })
 
     it('should have adaptive hysteresis field', () => {
-      expect(S.adapt_hystCurrent).toBe(1.0)
+      expect(S.adt_hystDeg).toBe(1.0)
     })
 
     it('should have stats fields', () => {
-      expect(S.stats_lifeTime).toBe(0)
-      expect(S.stats_lifeRun).toBe(0)
-      expect(S.stats_hourTime).toBe(0)
-      expect(S.stats_hourRun).toBe(0)
-      expect(S.stats_cycleCount).toBe(0)
-      expect(S.stats_hourIdx).toBe(0)
+      expect(S.sts_lifeTotalSec).toBe(0)
+      expect(S.sts_lifeRunSec).toBe(0)
+      expect(S.sts_hourTotalSec).toBe(0)
+      expect(S.sts_hourRunSec).toBe(0)
+      expect(S.sts_cycleCnt).toBe(0)
+      expect(S.sts_histIdx).toBe(0)
     })
 
     it('should have 24-element history array', () => {
-      expect(Array.isArray(S.stats_history)).toBe(true)
-      expect(S.stats_history.length).toBe(24)
+      expect(Array.isArray(S.sts_dutyHistArr)).toBe(true)
+      expect(S.sts_dutyHistArr.length).toBe(24)
     })
 
     it('should have defrost state', () => {
-      expect(S.defr_isActive).toBe(false)
+      expect(S.dfr_isActive).toBe(false)
     })
 
     it('should have fault arrays', () => {
-      expect(Array.isArray(S.fault_fatal)).toBe(true)
-      expect(Array.isArray(S.fault_critical)).toBe(true)
-      expect(Array.isArray(S.fault_error)).toBe(true)
-      expect(Array.isArray(S.fault_warning)).toBe(true)
+      expect(Array.isArray(S.flt_fatalArr)).toBe(true)
+      expect(Array.isArray(S.flt_critArr)).toBe(true)
+      expect(Array.isArray(S.flt_errorArr)).toBe(true)
+      expect(Array.isArray(S.flt_warnArr)).toBe(true)
     })
   })
 
@@ -136,61 +136,61 @@ describe('State', () => {
   describe('V (Volatile State)', () => {
     it('should have system status fields', () => {
       expect(V.sys_status).toBe('BOOT')
-      expect(V.sys_reason).toBe('NONE')
+      expect(V.sys_statusReason).toBe('NONE')
       expect(V.sys_alarm).toBe('NONE')
-      expect(V.sys_statusDetail).toBe('NONE')
+      expect(V.sys_detail).toBe('NONE')
     })
 
     it('should have sensor error tracking', () => {
-      expect(V.sens_errCount).toBe(0)
-      expect(V.sens_wasError).toBe(true)
+      expect(V.sns_errCnt).toBe(0)
+      expect(V.sns_wasErr).toBe(false)
     })
 
     it('should have 3-element sensor buffer', () => {
-      expect(Array.isArray(V.sens_bufAir)).toBe(true)
-      expect(V.sens_bufAir.length).toBe(3)
-      expect(V.sens_bufIdx).toBe(0)
+      expect(Array.isArray(V.sns_airBuf)).toBe(true)
+      expect(V.sns_airBuf.length).toBe(3)
+      expect(V.sns_bufIdx).toBe(0)
     })
 
     it('should have smoothed air temp as null initially', () => {
-      expect(V.sens_smoothAir).toBe(null)
+      expect(V.sns_airSmoothDeg).toBe(null)
     })
 
     it('should have stuck sensor tracking', () => {
-      expect(V.sens_stuckRefAir).toBe(null)
-      expect(V.sens_stuckTsAir).toBe(0)
-      expect(V.sens_stuckRefEvap).toBe(null)
-      expect(V.sens_stuckTsEvap).toBe(0)
+      expect(V.sns_airStuckRefDeg).toBe(null)
+      expect(V.sns_airStuckTs).toBe(0)
+      expect(V.sns_evpStuckRefDeg).toBe(null)
+      expect(V.sns_evpStuckTs).toBe(0)
     })
 
     it('should have door detection fields', () => {
-      expect(V.door_refTemp).toBe(0)
-      expect(V.door_refTs).toBe(0)
-      expect(V.door_timer).toBe(0)
+      expect(V.dor_refDeg).toBe(0)
+      expect(V.dor_refTs).toBe(0)
+      expect(V.dor_pauseRemSec).toBe(0)
     })
 
     it('should have turbo mode fields', () => {
-      expect(V.turbo_active).toBe(false)
-      expect(V.turbo_remSec).toBe(0)
-      expect(V.turbo_lastSw).toBe(false)
+      expect(V.trb_isActive).toBe(false)
+      expect(V.trb_remSec).toBe(0)
+      expect(V.trb_prevSw).toBe(false)
     })
 
     it('should have health tracking fields', () => {
-      expect(V.health_startTemp).toBe(0)
-      expect(V.health_lastScore).toBe(0)
+      expect(V.hlt_startDeg).toBe(0)
+      expect(V.hlt_lastScore).toBe(0)
     })
 
     it('should have power monitoring fields', () => {
       expect(V.hw_hasPM).toBe(false)
-      expect(V.pwr_ghostTimer).toBe(0)
+      expect(V.pwr_ghostSec).toBe(0)
     })
 
     it('should have fault pending as null', () => {
-      expect(V.fault_pending).toBe(null)
+      expect(V.flt_pendCode).toBe(null)
     })
 
     it('should have lastSave timestamp', () => {
-      expect(V.lastSave).toBe(0)
+      expect(V.lop_lastSaveTs).toBe(0)
     })
   })
 
@@ -208,10 +208,10 @@ describe('State', () => {
       )
     })
 
-    it('should update V.lastSave after completion', () => {
-      V.lastSave = 0
+    it('should update V.lop_lastSaveTs after completion', () => {
+      V.lop_lastSaveTs = 0
       persistState()
-      expect(V.lastSave).toBeGreaterThan(0)
+      expect(V.lop_lastSaveTs).toBeGreaterThan(0)
     })
   })
 
@@ -265,42 +265,42 @@ describe('State', () => {
       const futureTime = Date.now() / 1000 + 120 // 2 minutes in future
 
       // ? loadChunksSeq merges into S directly, so set invalid timestamps before callback
-      S.sys_tsRelayOff = futureTime
-      S.sys_tsRelayOn = futureTime
+      S.sys_relayOffTs = futureTime
+      S.sys_relayOnTs = futureTime
 
       loadState(() => { completed = true })
       loadChunksSeqCallback({ 'fridge_st_core': {} })
 
-      expect(S.sys_tsRelayOff).toBe(0)
-      expect(S.sys_tsRelayOn).toBe(0)
+      expect(S.sys_relayOffTs).toBe(0)
+      expect(S.sys_relayOnTs).toBe(0)
     })
 
     it('should reset timestamps when too old timestamp detected', () => {
       let completed = false
       const oldTime = Date.now() / 1000 - 32000000 // > 1 year ago
 
-      S.sys_tsRelayOff = oldTime
-      S.sys_tsRelayOn = oldTime
+      S.sys_relayOffTs = oldTime
+      S.sys_relayOnTs = oldTime
 
       loadState(() => { completed = true })
       loadChunksSeqCallback({ 'fridge_st_core': {} })
 
-      expect(S.sys_tsRelayOff).toBe(0)
-      expect(S.sys_tsRelayOn).toBe(0)
+      expect(S.sys_relayOffTs).toBe(0)
+      expect(S.sys_relayOnTs).toBe(0)
     })
 
     it('should keep valid timestamps', () => {
       let completed = false
       const validTime = Date.now() / 1000 - 3600 // 1 hour ago
 
-      S.sys_tsRelayOff = validTime
-      S.sys_tsRelayOn = validTime - 100
+      S.sys_relayOffTs = validTime
+      S.sys_relayOnTs = validTime - 100
 
       loadState(() => { completed = true })
       loadChunksSeqCallback({ 'fridge_st_core': {} })
 
-      expect(S.sys_tsRelayOff).toBe(validTime)
-      expect(S.sys_tsRelayOn).toBe(validTime - 100)
+      expect(S.sys_relayOffTs).toBe(validTime)
+      expect(S.sys_relayOnTs).toBe(validTime - 100)
     })
 
     it('should call syncToKvs after loading', () => {
@@ -317,66 +317,66 @@ describe('State', () => {
       )
     })
 
-    it('should update V.lastSave after sync completes', () => {
-      V.lastSave = 0
+    it('should update V.lop_lastSaveTs after sync completes', () => {
+      V.lop_lastSaveTs = 0
       let completed = false
       loadState(() => { completed = true })
       loadChunksSeqCallback({})
 
-      expect(V.lastSave).toBeGreaterThan(0)
+      expect(V.lop_lastSaveTs).toBeGreaterThan(0)
     })
 
     // ----------------------------------------------------------
     // * SANITIZE STATS EDGE CASES
     // ----------------------------------------------------------
 
-    it('should reset stats_history when not an array', () => {
-      S.stats_history = 'not an array'
+    it('should reset sts_dutyHistArr when not an array', () => {
+      S.sts_dutyHistArr = 'not an array'
       loadState(() => {})
       loadChunksSeqCallback({})
 
-      expect(S.stats_history).toBeInstanceOf(Array)
-      expect(S.stats_history.length).toBe(24)
-      expect(S.stats_hourIdx).toBe(0)
+      expect(S.sts_dutyHistArr).toBeInstanceOf(Array)
+      expect(S.sts_dutyHistArr.length).toBe(24)
+      expect(S.sts_histIdx).toBe(0)
     })
 
-    it('should reset stats_history when wrong length', () => {
-      S.stats_history = [1, 2, 3] // Wrong length
+    it('should reset sts_dutyHistArr when wrong length', () => {
+      S.sts_dutyHistArr = [1, 2, 3] // Wrong length
       loadState(() => {})
       loadChunksSeqCallback({})
 
-      expect(S.stats_history.length).toBe(24)
-      expect(S.stats_hourIdx).toBe(0)
+      expect(S.sts_dutyHistArr.length).toBe(24)
+      expect(S.sts_histIdx).toBe(0)
     })
 
-    it('should reset stats_hourIdx when negative', () => {
-      S.stats_history = new Array(24).fill(0)
-      S.stats_hourIdx = -5
+    it('should reset sts_histIdx when negative', () => {
+      S.sts_dutyHistArr = new Array(24).fill(0)
+      S.sts_histIdx = -5
       loadState(() => {})
       loadChunksSeqCallback({})
 
-      expect(S.stats_hourIdx).toBe(0)
+      expect(S.sts_histIdx).toBe(0)
     })
 
-    it('should reset stats_hourIdx when > 23', () => {
-      S.stats_history = new Array(24).fill(0)
-      S.stats_hourIdx = 99
+    it('should reset sts_histIdx when > 23', () => {
+      S.sts_dutyHistArr = new Array(24).fill(0)
+      S.sts_histIdx = 99
       loadState(() => {})
       loadChunksSeqCallback({})
 
-      expect(S.stats_hourIdx).toBe(0)
+      expect(S.sts_histIdx).toBe(0)
     })
 
     it('should reset negative stats values to zero', () => {
-      S.stats_hourTime = -100
-      S.stats_hourRun = -50
-      S.stats_cycleCount = -1
+      S.sts_hourTotalSec = -100
+      S.sts_hourRunSec = -50
+      S.sts_cycleCnt = -1
       loadState(() => {})
       loadChunksSeqCallback({})
 
-      expect(S.stats_hourTime).toBe(0)
-      expect(S.stats_hourRun).toBe(0)
-      expect(S.stats_cycleCount).toBe(0)
+      expect(S.sts_hourTotalSec).toBe(0)
+      expect(S.sts_hourRunSec).toBe(0)
+      expect(S.sts_cycleCnt).toBe(0)
     })
   })
 })

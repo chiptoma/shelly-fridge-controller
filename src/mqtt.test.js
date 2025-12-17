@@ -22,8 +22,8 @@ describe('MQTT Commands', () => {
 
     mockV = {
       sys_alarm: 'NONE',
-      turbo_active: false,
-      turbo_remSec: 0,
+      trb_isActive: false,
+      trb_remSec: 0,
     }
 
     mockC = {
@@ -73,20 +73,20 @@ describe('MQTT Commands', () => {
 
       handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
-      expect(mockV.turbo_active).toBe(true)
-      expect(mockV.turbo_remSec).toBe(3600)
+      expect(mockV.trb_isActive).toBe(true)
+      expect(mockV.trb_remSec).toBe(3600)
     })
 
     it('should handle turbo_off command', () => {
-      mockV.turbo_active = true
-      mockV.turbo_remSec = 1000
+      mockV.trb_isActive = true
+      mockV.trb_remSec = 1000
       setupMqttCommands()
       const handler = mockMqttSubscribe.mock.calls[0][1]
 
       handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_off' }))
 
-      expect(mockV.turbo_active).toBe(false)
-      expect(mockV.turbo_remSec).toBe(0)
+      expect(mockV.trb_isActive).toBe(false)
+      expect(mockV.trb_remSec).toBe(0)
     })
 
     it('should reject large messages', () => {
@@ -191,7 +191,7 @@ describe('MQTT Commands', () => {
 
       handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
-      expect(mockV.turbo_active).toBe(false)
+      expect(mockV.trb_isActive).toBe(false)
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Turbo disabled'))
     })
 
@@ -250,7 +250,7 @@ describe('MQTT Commands', () => {
       handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Rate limited'))
-      expect(mockV.turbo_active).toBe(false) // turbo should NOT have activated
+      expect(mockV.trb_isActive).toBe(false) // turbo should NOT have activated
     })
 
     it('should allow command after rate limit window', () => {
@@ -265,7 +265,7 @@ describe('MQTT Commands', () => {
       global.Shelly.getUptimeMs.mockReturnValue(12001)
       handler('fridge/cmd', JSON.stringify({ cmd: 'turbo_on' }))
 
-      expect(mockV.turbo_active).toBe(true)
+      expect(mockV.trb_isActive).toBe(true)
     })
   })
 })

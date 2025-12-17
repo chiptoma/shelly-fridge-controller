@@ -35,13 +35,13 @@ async function setupMainLoop(runtime, options = {}) {
   }
   if (options.relayState !== undefined) {
     runtime.switches[0].output = options.relayState
-    state.S.sys_relayState = options.relayState
+    state.S.sys_isRelayOn = options.relayState
   }
 
   // Initialize smoothed air for control decisions
   if (options.airTemp !== undefined) {
-    state.V.sens_smoothAir = options.airTemp
-    state.V.sens_bufAir = [options.airTemp, options.airTemp, options.airTemp]
+    state.V.sns_airSmoothDeg = options.airTemp
+    state.V.sns_airBuf = [options.airTemp, options.airTemp, options.airTemp]
   }
 
   runtime.script = {
@@ -149,13 +149,13 @@ describe('Main Loop: Sensor Processing', () => {
     })
 
     // Initialize sensor state
-    script.V.sens_wasError = false
-    script.V.sens_errCount = 0
+    script.V.sns_wasErr = false
+    script.V.sns_errCnt = 0
 
     script.mainLoopTick()
 
     // Sensor data should be processed
-    expect(script.V.sens_errCount).toBe(0)
+    expect(script.V.sns_errCnt).toBe(0)
   })
 
   it('should handle sensor failure', async () => {
@@ -165,12 +165,12 @@ describe('Main Loop: Sensor Processing', () => {
     // Air sensor disconnected
     runtime.disconnectSensor(script.C.sys_sensAirId)
 
-    script.V.sens_errCount = 0
+    script.V.sns_errCnt = 0
 
     script.mainLoopTick()
 
     // Error count should increment
-    expect(script.V.sens_errCount).toBeGreaterThan(0)
+    expect(script.V.sns_errCnt).toBeGreaterThan(0)
   })
 
   it('should trigger sensor fail alarm after threshold', async () => {
@@ -179,11 +179,11 @@ describe('Main Loop: Sensor Processing', () => {
     runtime.disconnectSensor(script.C.sys_sensAirId)
     runtime.disconnectSensor(script.C.sys_sensEvapId)
 
-    script.V.sens_errCount = script.C.sys_sensFailLimit - 1
+    script.V.sns_errCnt = script.C.sys_sensFailLimit - 1
 
     script.mainLoopTick()
 
-    expect(script.V.sens_errCount).toBe(script.C.sys_sensFailLimit)
+    expect(script.V.sns_errCnt).toBe(script.C.sys_sensFailLimit)
   })
 })
 
@@ -220,11 +220,11 @@ describe('Main Loop: Power Monitoring', () => {
       power: 0,
     })
 
-    script.V.pwr_ghostTimer = 30 // Some accumulated time
+    script.V.pwr_ghostSec = 30 // Some accumulated time
 
     script.mainLoopTick()
 
-    expect(script.V.pwr_ghostTimer).toBe(0)
+    expect(script.V.pwr_ghostSec).toBe(0)
   })
 })
 
@@ -249,11 +249,11 @@ describe('Main Loop: Mode Determination', () => {
     })
 
     script.V.sys_alarm = script.ALM.NONE
-    script.V.sens_errCount = 0 // Ensure no sensor errors
+    script.V.sns_errCnt = 0 // Ensure no sensor errors
 
     // Set timing to allow turn-on
     const now = Date.now() / 1000
-    script.S.sys_tsRelayOff = now - script.C.comp_minOffSec - 10
+    script.S.sys_relayOffTs = now - script.C.comp_minOffSec - 10
 
     script.mainLoopTick()
 
@@ -270,11 +270,11 @@ describe('Main Loop: Mode Determination', () => {
     })
 
     script.V.sys_alarm = script.ALM.NONE
-    script.V.sens_errCount = 0
+    script.V.sns_errCnt = 0
 
     // Set timing to allow turn-off
     const now = Date.now() / 1000
-    script.S.sys_tsRelayOn = now - script.C.comp_minOnSec - 10
+    script.S.sys_relayOnTs = now - script.C.comp_minOnSec - 10
 
     script.mainLoopTick()
 
@@ -290,7 +290,7 @@ describe('Main Loop: Mode Determination', () => {
 
     // Sensor failure alarm and error count at limit
     script.V.sys_alarm = script.ALM.FAIL
-    script.V.sens_errCount = script.C.sys_sensFailLimit
+    script.V.sns_errCnt = script.C.sys_sensFailLimit
 
     script.mainLoopTick()
 
@@ -359,27 +359,27 @@ describe('Main Loop: Turbo Switch Input', () => {
   })
 
   it('should check turbo switch state', () => {
-    script.V.turbo_lastSw = false
-    script.V.turbo_active = false
+    script.V.trb_prevSw = false
+    script.V.trb_isActive = false
 
     // Set input to high (turbo switch pressed)
     runtime.setInput(0, true)
 
     script.mainLoopTick()
 
-    expect(script.V.turbo_active).toBe(true)
-    expect(script.V.turbo_lastSw).toBe(true)
+    expect(script.V.trb_isActive).toBe(true)
+    expect(script.V.trb_prevSw).toBe(true)
   })
 
   it('should not re-trigger turbo on sustained switch', () => {
-    script.V.turbo_lastSw = true // Already saw high
-    script.V.turbo_active = false
+    script.V.trb_prevSw = true // Already saw high
+    script.V.trb_isActive = false
 
     runtime.setInput(0, true)
 
     script.mainLoopTick()
 
-    expect(script.V.turbo_active).toBe(false)
+    expect(script.V.trb_isActive).toBe(false)
   })
 })
 
@@ -430,7 +430,7 @@ describe('Main Loop: Alarm State Management', () => {
     runtime.disconnectSensor(script.C.sys_sensEvapId)
 
     // Set error count at limit
-    script.V.sens_errCount = script.C.sys_sensFailLimit
+    script.V.sns_errCnt = script.C.sys_sensFailLimit
 
     script.mainLoopTick()
 
@@ -459,11 +459,11 @@ describe('Main Loop: Metrics Update', () => {
       relayState: true,
     })
 
-    const initialRun = script.S.stats_hourRun
+    const initialRun = script.S.sts_hourRunSec
 
     script.mainLoopTick()
 
-    expect(script.S.stats_hourRun).toBeGreaterThan(initialRun)
+    expect(script.S.sts_hourRunSec).toBeGreaterThan(initialRun)
   })
 
   it('should update total time regardless of relay state', async () => {
@@ -473,11 +473,11 @@ describe('Main Loop: Metrics Update', () => {
       relayState: false,
     })
 
-    const initialTime = script.S.stats_hourTime
+    const initialTime = script.S.sts_hourTotalSec
 
     script.mainLoopTick()
 
-    expect(script.S.stats_hourTime).toBeGreaterThan(initialTime)
+    expect(script.S.sts_hourTotalSec).toBeGreaterThan(initialTime)
   })
 })
 
@@ -503,10 +503,10 @@ describe('Main Loop: Door Detection', () => {
     // Set reference for rate calculation - needs to be in the past
     // and the temp must be significantly lower for detection
     const now = Date.now() / 1000
-    script.V.door_refTemp = 4.0
-    script.V.door_refTs = now - 5 // 5 seconds ago
-    script.V.door_timer = 0
-    script.V.sens_smoothAir = 10.0 // Current smoothed temp is 10
+    script.V.dor_refDeg = 4.0
+    script.V.dor_refTs = now - 5 // 5 seconds ago
+    script.V.dor_pauseRemSec = 0
+    script.V.sns_airSmoothDeg = 10.0 // Current smoothed temp is 10
 
     script.mainLoopTick()
 
@@ -514,7 +514,7 @@ describe('Main Loop: Door Detection', () => {
     // Rate = (10 - 4) / 5 * 60 = 72 deg/min >> threshold
     // If door timer is still 0, it might be because reference wasn't set properly
     // The test verifies the mechanism works when conditions are right
-    expect(script.V.door_timer).toBeGreaterThanOrEqual(0)
+    expect(script.V.dor_pauseRemSec).toBeGreaterThanOrEqual(0)
   })
 })
 
@@ -537,12 +537,12 @@ describe('Main Loop: Defrost Handling', () => {
       evapTemp: -18.0, // Below defrost trigger
     })
 
-    script.S.defr_isActive = false
-    script.V.turbo_active = false
+    script.S.dfr_isActive = false
+    script.V.trb_isActive = false
 
     script.mainLoopTick()
 
-    expect(script.S.defr_isActive).toBe(true)
+    expect(script.S.dfr_isActive).toBe(true)
   })
 
   it('should NOT trigger defrost during turbo mode', async () => {
@@ -551,12 +551,12 @@ describe('Main Loop: Defrost Handling', () => {
       evapTemp: -18.0,
     })
 
-    script.S.defr_isActive = false
-    script.V.turbo_active = true // Turbo active
+    script.S.dfr_isActive = false
+    script.V.trb_isActive = true // Turbo active
 
     script.mainLoopTick()
 
-    expect(script.S.defr_isActive).toBe(false)
+    expect(script.S.dfr_isActive).toBe(false)
   })
 })
 
@@ -589,7 +589,7 @@ describe('Main Loop: High Temp Alarm', () => {
     C = config.C
     V = state.V
     V.sys_alarm = 'NONE'
-    V.turbo_active = false
+    V.trb_isActive = false
     checkHighTempAlarm = alarms.checkHighTempAlarm
   })
 

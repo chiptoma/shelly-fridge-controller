@@ -85,18 +85,18 @@ describe('Sensor Stuck: Air Sensor Frozen Value', () => {
         sys_loopSec: 5,
       },
       volatile: {
-        sens_stuckRefAir: null,   // Must be null for initialization
-        sens_stuckTsAir: 0,
+        sns_airStuckRefDeg: null,   // Must be null for initialization
+        sns_airStuckTs: 0,
       },
     })
 
     // Initialize reference (first call sets refKey)
-    script.sensors.checkSensorStuck(4.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 0)
+    script.sensors.checkSensorStuck(4.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 0)
 
     // Simulate stuck sensor - same value for 6+ minutes
     let isStuck = false
     for (let t = 5; t <= 400; t += 5) {
-      isStuck = script.sensors.checkSensorStuck(4.0, 'sens_stuckRefAir', 'sens_stuckTsAir', t)
+      isStuck = script.sensors.checkSensorStuck(4.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', t)
       if (isStuck) break
     }
 
@@ -112,13 +112,13 @@ describe('Sensor Stuck: Air Sensor Frozen Value', () => {
         sys_loopSec: 5,
       },
       volatile: {
-        sens_stuckRefAir: null,
-        sens_stuckTsAir: 0,
+        sns_airStuckRefDeg: null,
+        sns_airStuckTs: 0,
       },
     })
 
     // Initialize
-    script.sensors.checkSensorStuck(4.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 0)
+    script.sensors.checkSensorStuck(4.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 0)
 
     // Simulate small variations over time
     let isStuck = false
@@ -126,7 +126,7 @@ describe('Sensor Stuck: Air Sensor Frozen Value', () => {
     for (let t = 5; t <= 400; t += 5) {
       // Small variation that exceeds tolerance
       temp = 4.0 + (Math.sin(t / 50) * 0.15)
-      isStuck = script.sensors.checkSensorStuck(temp, 'sens_stuckRefAir', 'sens_stuckTsAir', t)
+      isStuck = script.sensors.checkSensorStuck(temp, 'sns_airStuckRefDeg', 'sns_airStuckTs', t)
     }
 
     expect(isStuck).toBe(false)
@@ -169,18 +169,18 @@ describe('Sensor Stuck: Evaporator Sensor Frozen Value', () => {
         sens_stuckEpsDeg: 0.1,
       },
       volatile: {
-        sens_stuckRefEvap: null,
-        sens_stuckTsEvap: 0,
+        sns_evpStuckRefDeg: null,
+        sns_evpStuckTs: 0,
       },
     })
 
     // Initialize
-    script.sensors.checkSensorStuck(-15.0, 'sens_stuckRefEvap', 'sens_stuckTsEvap', 0)
+    script.sensors.checkSensorStuck(-15.0, 'sns_evpStuckRefDeg', 'sns_evpStuckTs', 0)
 
     // Evap stuck at same value
     let isStuck = false
     for (let t = 5; t <= 400; t += 5) {
-      isStuck = script.sensors.checkSensorStuck(-15.0, 'sens_stuckRefEvap', 'sens_stuckTsEvap', t)
+      isStuck = script.sensors.checkSensorStuck(-15.0, 'sns_evpStuckRefDeg', 'sns_evpStuckTs', t)
       if (isStuck) break
     }
 
@@ -195,23 +195,23 @@ describe('Sensor Stuck: Evaporator Sensor Frozen Value', () => {
         sens_stuckEpsDeg: 0.1,
       },
       volatile: {
-        sens_stuckRefAir: null,
-        sens_stuckTsAir: 0,
-        sens_stuckRefEvap: null,
-        sens_stuckTsEvap: 0,
+        sns_airStuckRefDeg: null,
+        sns_airStuckTs: 0,
+        sns_evpStuckRefDeg: null,
+        sns_evpStuckTs: 0,
       },
     })
 
     // Initialize both
-    script.sensors.checkSensorStuck(4.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 0)
-    script.sensors.checkSensorStuck(-15.0, 'sens_stuckRefEvap', 'sens_stuckTsEvap', 0)
+    script.sensors.checkSensorStuck(4.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 0)
+    script.sensors.checkSensorStuck(-15.0, 'sns_evpStuckRefDeg', 'sns_evpStuckTs', 0)
 
     // Both stuck
     let airStuck = false
     let evapStuck = false
     for (let t = 5; t <= 400; t += 5) {
-      airStuck = script.sensors.checkSensorStuck(4.0, 'sens_stuckRefAir', 'sens_stuckTsAir', t)
-      evapStuck = script.sensors.checkSensorStuck(-15.0, 'sens_stuckRefEvap', 'sens_stuckTsEvap', t)
+      airStuck = script.sensors.checkSensorStuck(4.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', t)
+      evapStuck = script.sensors.checkSensorStuck(-15.0, 'sns_evpStuckRefDeg', 'sns_evpStuckTs', t)
     }
 
     expect(airStuck).toBe(true)
@@ -238,7 +238,7 @@ describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
         sys_sensFailLimit: 5,
       },
       volatile: {
-        sens_errCount: 0,
+        sns_errCnt: 0,
       },
     })
 
@@ -252,7 +252,7 @@ describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
     }
 
     // Error count should be back to 0 after recovery
-    expect(script.V.sens_errCount).toBe(0)
+    expect(script.V.sns_errCnt).toBe(0)
   })
 
   it('should trigger alarm if failures outpace recoveries', async () => {
@@ -261,7 +261,7 @@ describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
         sys_sensFailLimit: 5,
       },
       volatile: {
-        sens_errCount: 0,
+        sns_errCnt: 0,
       },
     })
 
@@ -270,7 +270,7 @@ describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
       script.sensors.handleSensorError()
     }
 
-    expect(script.V.sens_errCount).toBeGreaterThanOrEqual(5)
+    expect(script.V.sns_errCnt).toBeGreaterThanOrEqual(5)
 
     // Apply alarm
     script.alarms.applySensorAlarms(true, false)
@@ -283,8 +283,8 @@ describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
         sys_sensFailLimit: 3,
       },
       volatile: {
-        sens_errCount: 0,
-        sens_wasError: false,
+        sns_errCnt: 0,
+        sns_wasErr: false,
       },
     })
 
@@ -292,14 +292,14 @@ describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
     for (let i = 0; i < 4; i++) {
       script.sensors.handleSensorError()
     }
-    script.V.sens_wasError = true
+    script.V.sns_wasErr = true
 
     // Recover
     script.sensors.resetSensorError()
     script.sensors.handleSensorRecovery(5.0)
 
     // wasError should be cleared after recovery
-    expect(script.V.sens_wasError).toBe(false)
+    expect(script.V.sns_wasErr).toBe(false)
   })
 })
 
@@ -325,10 +325,10 @@ describe('Relay Weld: Complete Detection Sequence', () => {
         weld_dropDeg: 0.5,   // Alarm if drops 0.5C
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
-        weld_snapAir: 5.0,   // Temp when relay turned off
-        fault_fatal: [],
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
+        wld_airSnapDeg: 5.0,   // Temp when relay turned off
+        flt_fatalArr: [],
       },
       volatile: {
         sys_alarm: 'NONE',
@@ -357,8 +357,8 @@ describe('Relay Weld: Complete Detection Sequence', () => {
         temp_hystOn: 1.0,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
       },
       volatile: {
         sys_alarm: 'NONE',
@@ -384,10 +384,10 @@ describe('Relay Weld: Complete Detection Sequence', () => {
         weld_dropDeg: 0.5,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
-        weld_snapAir: 5.0,
-        fault_fatal: [],
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
+        wld_airSnapDeg: 5.0,
+        flt_fatalArr: [],
       },
       volatile: {
         sys_alarm: 'NONE',
@@ -424,18 +424,18 @@ describe('Cooling Failure: Gas Leak Detection', () => {
         gas_failDiff: 5.0,   // Evap should be 5C colder than air
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,    // Relay on at time 0
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,    // Relay on at time 0
       },
       volatile: {
         sys_alarm: 'NONE',
-        sens_smoothAir: 6.0,
-        turbo_active: false,
+        sns_airSmoothDeg: 6.0,
+        trb_isActive: false,
       },
     })
 
     // Evap temp is same as air (gas leak - no cooling)
-    // checkCoolingHealth checks: tEvap > (sens_smoothAir - gas_failDiff)
+    // checkCoolingHealth checks: tEvap > (sns_airSmoothDeg - gas_failDiff)
     // i.e., tEvap > (6.0 - 5.0) = 1.0C would trigger alarm
     const tEvap = 5.5  // Should be around -10C if working, but it's 5.5C (too warm)
     // Pass time > gas_checkSec (350 > 300)
@@ -452,13 +452,13 @@ describe('Cooling Failure: Gas Leak Detection', () => {
         gas_failDiff: 5.0,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         sys_alarm: 'NONE',
-        sens_smoothAir: 6.0,
-        turbo_active: false,
+        sns_airSmoothDeg: 6.0,
+        trb_isActive: false,
       },
     })
 
@@ -476,13 +476,13 @@ describe('Cooling Failure: Gas Leak Detection', () => {
         gas_checkSec: 300,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         sys_alarm: 'NONE',
-        sens_smoothAir: 6.0,
-        turbo_active: false,
+        sns_airSmoothDeg: 6.0,
+        trb_isActive: false,
       },
     })
 
@@ -511,7 +511,7 @@ describe('Concurrent Alarms: Priority Handling', () => {
   it('should prioritize WELD (fatal) over STUCK (non-fatal)', async () => {
     const script = await setupController(runtime, {
       state: {
-        sys_relayState: false,
+        sys_isRelayOn: false,
       },
       volatile: {
         sys_alarm: 'NONE',
@@ -532,7 +532,7 @@ describe('Concurrent Alarms: Priority Handling', () => {
   it('should prioritize LOCKED (fatal) over FAIL (non-fatal)', async () => {
     const script = await setupController(runtime, {
       state: {
-        sys_relayState: true,
+        sys_isRelayOn: true,
       },
     })
 
@@ -553,8 +553,8 @@ describe('Concurrent Alarms: Priority Handling', () => {
       },
       volatile: {
         sys_alarm: 'NONE',
-        sens_errCount: 10,
-        sens_wasError: true,
+        sns_errCnt: 10,
+        sns_wasErr: true,
         temp_highAlarmTs: Date.now() / 1000 - 120, // Alarm should be active
       },
     })
@@ -608,18 +608,18 @@ describe('Extreme Environment: Very Hot Ambient', () => {
         comp_minOffSec: 180,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
       },
       volatile: {
-        sens_smoothAir: 25.0, // Very warm fridge (just opened or malfunction)
+        sns_airSmoothDeg: 25.0, // Very warm fridge (just opened or malfunction)
         sys_alarm: 'NONE',
-        turbo_active: false,
+        trb_isActive: false,
       },
     })
 
-    // Set sys_tsRelayOff in the past to satisfy min-off timing
-    script.S.sys_tsRelayOff = -200
+    // Set sys_relayOffTs in the past to satisfy min-off timing
+    script.S.sys_relayOffTs = -200
 
     const mode = script.control.determineMode(25.0, -5, runtime.uptimeMs / 1000)
 
@@ -638,7 +638,7 @@ describe('Extreme Environment: Very Hot Ambient', () => {
       volatile: {
         sys_alarm: 'NONE',
         // ? alarm_highTimer is now module-local in alarms.js
-        turbo_active: false,
+        trb_isActive: false,
       },
     })
 
@@ -667,13 +667,13 @@ describe('Extreme Environment: Very Cold Ambient', () => {
         comp_freezeCutDeg: 0.5,  // Correct config key
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_smoothAir: -1.0, // Below freeze limit
+        sns_airSmoothDeg: -1.0, // Below freeze limit
         sys_alarm: 'NONE',
-        turbo_active: false,
+        trb_isActive: false,
       },
     })
 
@@ -691,10 +691,10 @@ describe('Extreme Environment: Very Cold Ambient', () => {
         temp_hystOn: 1.0,
       },
       state: {
-        sys_relayState: false,
+        sys_isRelayOn: false,
       },
       volatile: {
-        sens_smoothAir: 2.0, // Already cold, no cooling needed
+        sns_airSmoothDeg: 2.0, // Already cold, no cooling needed
       },
     })
 
@@ -727,12 +727,12 @@ describe('Power Anomalies: Fluctuating Power Draw', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         hw_hasPM: true,
-        pwr_ghostTimer: 0,
+        pwr_ghostSec: 0,
       },
     })
 
@@ -751,7 +751,7 @@ describe('Power Anomalies: Fluctuating Power Draw', () => {
     ghostDetected = script.protection.checkGhostRun(80, 35)
 
     expect(ghostDetected).toBe(false)
-    expect(script.V.pwr_ghostTimer).toBe(0) // Reset by good reading
+    expect(script.V.pwr_ghostSec).toBe(0) // Reset by good reading
   })
 
   it('should detect sustained low power as ghost run', async () => {
@@ -763,12 +763,12 @@ describe('Power Anomalies: Fluctuating Power Draw', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         hw_hasPM: true,
-        pwr_ghostTimer: 0,
+        pwr_ghostSec: 0,
       },
     })
 
@@ -804,8 +804,8 @@ describe('Timing Edge Cases: Boundary Conditions', () => {
         comp_minOnSec: 60,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
     })
 
@@ -824,8 +824,8 @@ describe('Timing Edge Cases: Boundary Conditions', () => {
         comp_minOffSec: 180,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
       },
     })
 
@@ -844,11 +844,11 @@ describe('Timing Edge Cases: Boundary Conditions', () => {
         comp_maxRunSec: 3600,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        turbo_active: false,
+        trb_isActive: false,
       },
     })
 
@@ -881,11 +881,11 @@ describe('Long Idle: Extended Off Period', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
-        stats_hourRun: 0,
-        stats_hourTime: 0,
-        stats_cycleCount: 0,
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
+        sts_hourRunSec: 0,
+        sts_hourTotalSec: 0,
+        sts_cycleCnt: 0,
       },
     })
 
@@ -898,8 +898,8 @@ describe('Long Idle: Extended Off Period', () => {
     }
 
     // Stats should show lots of idle time, no run time
-    expect(script.S.stats_hourRun).toBe(0)
-    expect(script.S.stats_cycleCount).toBe(0)
+    expect(script.S.sts_hourRunSec).toBe(0)
+    expect(script.S.sts_cycleCnt).toBe(0)
   })
 
   it('should resume normal operation after long idle', async () => {
@@ -910,8 +910,8 @@ describe('Long Idle: Extended Off Period', () => {
         comp_minOffSec: 180,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0, // Long ago
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0, // Long ago
       },
     })
 
@@ -949,13 +949,13 @@ describe('Rapid Cycling: Prevention Mechanisms', () => {
         ctrl_hystOffDeg: 0.5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
-        sys_tsRelayOff: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
+        sys_relayOffTs: 0,
       },
       volatile: {
         sys_alarm: 'NONE',
-        turbo_active: false,
+        trb_isActive: false,
       },
     })
 
@@ -982,8 +982,8 @@ describe('Rapid Cycling: Prevention Mechanisms', () => {
         comp_minOffSec: 180,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
     })
 

@@ -24,13 +24,13 @@ describe('Metrics', () => {
 
     // Create mock state
     mockS = {
-      stats_lifeTime: 0,
-      stats_lifeRun: 0,
-      stats_hourTime: 0,
-      stats_hourRun: 0,
-      stats_cycleCount: 0,
-      stats_hourIdx: 0,
-      stats_history: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      sts_lifeTotalSec: 0,
+      sts_lifeRunSec: 0,
+      sts_hourTotalSec: 0,
+      sts_hourRunSec: 0,
+      sts_cycleCnt: 0,
+      sts_histIdx: 0,
+      sts_dutyHistArr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     }
 
     // Create mock volatile state
@@ -75,33 +75,35 @@ describe('Metrics', () => {
     it('should increment lifetime and hourly totals when ON', () => {
       updateRuntimeStats(true, 5)
 
-      expect(mockS.stats_lifeTime).toBe(5)
-      expect(mockS.stats_lifeRun).toBe(5)
-      expect(mockS.stats_hourTime).toBe(5)
-      expect(mockS.stats_hourRun).toBe(5)
+      expect(mockS.sts_lifeTotalSec).toBe(5)
+      expect(mockS.sts_lifeRunSec).toBe(5)
+      expect(mockS.sts_hourTotalSec).toBe(5)
+      expect(mockS.sts_hourRunSec).toBe(5)
     })
 
     it('should increment time but not run when OFF', () => {
       updateRuntimeStats(false, 5)
 
-      expect(mockS.stats_lifeTime).toBe(5)
-      expect(mockS.stats_lifeRun).toBe(0)
-      expect(mockS.stats_hourTime).toBe(5)
-      expect(mockS.stats_hourRun).toBe(0)
+      expect(mockS.sts_lifeTotalSec).toBe(5)
+      expect(mockS.sts_lifeRunSec).toBe(0)
+      expect(mockS.sts_hourTotalSec).toBe(5)
+      expect(mockS.sts_hourRunSec).toBe(0)
     })
 
-    it('should skip stats during FAIL alarm', () => {
+    it('should accumulate stats during FAIL alarm', () => {
       mockV.sys_alarm = mockALM.FAIL
       updateRuntimeStats(true, 5)
 
-      expect(mockS.stats_lifeTime).toBe(0)
+      expect(mockS.sts_lifeTotalSec).toBe(5)
+      expect(mockS.sts_hourTotalSec).toBe(5)
     })
 
-    it('should skip stats during STUCK alarm', () => {
+    it('should accumulate stats during STUCK alarm', () => {
       mockV.sys_alarm = mockALM.STUCK
       updateRuntimeStats(true, 5)
 
-      expect(mockS.stats_lifeTime).toBe(0)
+      expect(mockS.sts_lifeTotalSec).toBe(5)
+      expect(mockS.sts_hourTotalSec).toBe(5)
     })
   })
 
@@ -111,9 +113,9 @@ describe('Metrics', () => {
 
   describe('incrementCycleCount', () => {
     it('should increment cycle counter', () => {
-      mockS.stats_cycleCount = 5
+      mockS.sts_cycleCnt = 5
       incrementCycleCount()
-      expect(mockS.stats_cycleCount).toBe(6)
+      expect(mockS.sts_cycleCnt).toBe(6)
     })
   })
 
@@ -123,26 +125,26 @@ describe('Metrics', () => {
 
   describe('isHourlyRolloverDue', () => {
     it('should return true at 3600 seconds', () => {
-      mockS.stats_hourTime = 3600
+      mockS.sts_hourTotalSec = 3600
       expect(isHourlyRolloverDue()).toBe(true)
     })
 
     it('should return true over 3600 seconds', () => {
-      mockS.stats_hourTime = 3700
+      mockS.sts_hourTotalSec = 3700
       expect(isHourlyRolloverDue()).toBe(true)
     })
 
     it('should return false under 3600 seconds', () => {
-      mockS.stats_hourTime = 3500
+      mockS.sts_hourTotalSec = 3500
       expect(isHourlyRolloverDue()).toBe(false)
     })
   })
 
   describe('processHourlyRollover', () => {
     it('should calculate average ON time with 2+ cycles', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourRun = 1800
-      mockS.stats_cycleCount = 3
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_hourRunSec = 1800
+      mockS.sts_cycleCnt = 3
 
       const result = processHourlyRollover()
 
@@ -151,9 +153,9 @@ describe('Metrics', () => {
     })
 
     it('should calculate average ON and OFF time with 1 cycle', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourRun = 1800
-      mockS.stats_cycleCount = 1
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_hourRunSec = 1800
+      mockS.sts_cycleCnt = 1
 
       const result = processHourlyRollover()
 
@@ -163,9 +165,9 @@ describe('Metrics', () => {
     })
 
     it('should calculate duty percentage', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourRun = 1800
-      mockS.stats_cycleCount = 3
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_hourRunSec = 1800
+      mockS.sts_cycleCnt = 3
 
       const result = processHourlyRollover()
 
@@ -173,49 +175,49 @@ describe('Metrics', () => {
     })
 
     it('should store duty in history', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourRun = 1800
-      mockS.stats_hourIdx = 5
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_hourRunSec = 1800
+      mockS.sts_histIdx = 5
 
       processHourlyRollover()
 
-      expect(mockS.stats_history[5]).toBe(50)
+      expect(mockS.sts_dutyHistArr[5]).toBe(50)
     })
 
     it('should advance history index', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourIdx = 5
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_histIdx = 5
 
       processHourlyRollover()
 
-      expect(mockS.stats_hourIdx).toBe(6)
+      expect(mockS.sts_histIdx).toBe(6)
     })
 
     it('should wrap history index at 24', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourIdx = 23
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_histIdx = 23
 
       processHourlyRollover()
 
-      expect(mockS.stats_hourIdx).toBe(0)
+      expect(mockS.sts_histIdx).toBe(0)
     })
 
     it('should reset hourly counters', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourRun = 1800
-      mockS.stats_cycleCount = 5
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_hourRunSec = 1800
+      mockS.sts_cycleCnt = 5
 
       processHourlyRollover()
 
-      expect(mockS.stats_hourTime).toBe(0)
-      expect(mockS.stats_hourRun).toBe(0)
-      expect(mockS.stats_cycleCount).toBe(0)
+      expect(mockS.sts_hourTotalSec).toBe(0)
+      expect(mockS.sts_hourRunSec).toBe(0)
+      expect(mockS.sts_cycleCnt).toBe(0)
     })
 
     it('should trigger adaptation', () => {
-      mockS.stats_hourTime = 3600
-      mockS.stats_hourRun = 1800
-      mockS.stats_cycleCount = 3
+      mockS.sts_hourTotalSec = 3600
+      mockS.sts_hourRunSec = 1800
+      mockS.sts_cycleCnt = 3
 
       processHourlyRollover()
 
@@ -231,7 +233,7 @@ describe('Metrics', () => {
     it('should calculate 24-hour average', () => {
       // Set all hours to 50%
       for (let i = 0; i < 24; i++) {
-        mockS.stats_history[i] = 50
+        mockS.sts_dutyHistArr[i] = 50
       }
 
       expect(getAvgDuty24h()).toBe(50)
@@ -239,7 +241,7 @@ describe('Metrics', () => {
 
     it('should handle varying duty values', () => {
       // Mix of values
-      mockS.stats_history = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
+      mockS.sts_dutyHistArr = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
         10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
         0, 0, 0, 0]
       // Sum = 1100, Avg = 45.83...
@@ -250,32 +252,58 @@ describe('Metrics', () => {
     it('should return 0 for empty history', () => {
       expect(getAvgDuty24h()).toBe(0)
     })
+
+    it('should include current hour in average', () => {
+      // Empty history but current hour has 48% duty (1200/2500)
+      mockS.sts_hourTotalSec = 2500
+      mockS.sts_hourRunSec = 1200
+
+      // Current duty = 48%, history all zeros
+      // Average = (0 + 48) / 24 = 2%
+      expect(getAvgDuty24h()).toBe(2)
+    })
+
+    it('should replace oldest slot with current hour', () => {
+      // Fill all slots with 50%
+      for (let i = 0; i < 24; i++) {
+        mockS.sts_dutyHistArr[i] = 50
+      }
+      // Current hour has 100% duty
+      mockS.sts_hourTotalSec = 1000
+      mockS.sts_hourRunSec = 1000
+      mockS.sts_histIdx = 5  // Next slot to be written
+
+      // Sum of history = 24 * 50 = 1200
+      // Replace slot 5 (50%) with current (100%): 1200 - 50 + 100 = 1250
+      // Average = 1250 / 24 = 52.08...
+      expect(getAvgDuty24h()).toBeCloseTo(52.1, 1)
+    })
   })
 
   describe('getCurrentHourDuty', () => {
     it('should calculate partial hour duty', () => {
-      mockS.stats_hourTime = 1800
-      mockS.stats_hourRun = 900
+      mockS.sts_hourTotalSec = 1800
+      mockS.sts_hourRunSec = 900
 
       expect(getCurrentHourDuty()).toBe(50)
     })
 
     it('should return 0 if no time elapsed', () => {
-      mockS.stats_hourTime = 0
+      mockS.sts_hourTotalSec = 0
       expect(getCurrentHourDuty()).toBe(0)
     })
   })
 
   describe('getLifetimeDuty', () => {
     it('should calculate lifetime duty', () => {
-      mockS.stats_lifeTime = 86400
-      mockS.stats_lifeRun = 43200
+      mockS.sts_lifeTotalSec = 86400
+      mockS.sts_lifeRunSec = 43200
 
       expect(getLifetimeDuty()).toBe(50)
     })
 
     it('should return 0 if no lifetime', () => {
-      mockS.stats_lifeTime = 0
+      mockS.sts_lifeTotalSec = 0
       expect(getLifetimeDuty()).toBe(0)
     })
   })
@@ -286,19 +314,19 @@ describe('Metrics', () => {
 
   describe('getLifetimeRunHours', () => {
     it('should return run time in hours', () => {
-      mockS.stats_lifeRun = 7200 // 2 hours in seconds
+      mockS.sts_lifeRunSec = 7200 // 2 hours in seconds
 
       expect(getLifetimeRunHours()).toBe(2)
     })
 
     it('should return fractional hours', () => {
-      mockS.stats_lifeRun = 5400 // 1.5 hours
+      mockS.sts_lifeRunSec = 5400 // 1.5 hours
 
       expect(getLifetimeRunHours()).toBe(1.5)
     })
 
     it('should return 0 when no run time', () => {
-      mockS.stats_lifeRun = 0
+      mockS.sts_lifeRunSec = 0
 
       expect(getLifetimeRunHours()).toBe(0)
     })
@@ -310,17 +338,17 @@ describe('Metrics', () => {
 
   describe('updateMetrics', () => {
     it('should update stats and return null if no rollover', () => {
-      mockS.stats_hourTime = 0
+      mockS.sts_hourTotalSec = 0
       const result = updateMetrics(true, 5)
 
-      expect(mockS.stats_hourTime).toBe(5)
+      expect(mockS.sts_hourTotalSec).toBe(5)
       expect(result).toBeNull()
     })
 
     it('should trigger rollover and return result', () => {
-      mockS.stats_hourTime = 3595 // Will cross 3600 with +5
-      mockS.stats_hourRun = 1800
-      mockS.stats_cycleCount = 3
+      mockS.sts_hourTotalSec = 3595 // Will cross 3600 with +5
+      mockS.sts_hourRunSec = 1800
+      mockS.sts_cycleCnt = 3
 
       // After adding 5, hourTime = 3600, triggers rollover
       const result = updateMetrics(true, 5)

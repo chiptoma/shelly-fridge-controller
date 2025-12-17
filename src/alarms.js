@@ -68,7 +68,7 @@ function formatFaultDetail(alarm, pending, durSec) {
     + ' C:' + (pending.airSmt || 0).toFixed(0)
     + ' E:' + (pending.evap || 0).toFixed(0)
   if (alarm === ALM.HIGH) return (pending.peak || 0).toFixed(0) + 'C/' + durMin + 'm'
-  if (alarm === ALM.FAIL) return 'Null:' + V.sens_errCount
+  if (alarm === ALM.FAIL) return 'Null:' + V.sns_errCnt
   if (alarm === ALM.STUCK) return 'Air:' + durMin + 'm'
   return durMin + 'm'
 }
@@ -93,9 +93,18 @@ function formatFaultDetail(alarm, pending, durSec) {
  * ! Fatal faults trigger immediate KVS.Set (bypasses batch save).
  * ! Other severities batch with hourly state persistence.
  */
+// ? Severity to array key mapping (after rename: fault_X → flt_XArr)
+let FAULT_KEYS = {
+  fatal: 'flt_fatalArr',
+  critical: 'flt_critArr',
+  error: 'flt_errorArr',
+  warning: 'flt_warnArr',
+}
+
 function recordFault(severity, alarm, detail) {
   // Validate severity maps to existing array
-  let arr = S['fault_' + severity]
+  let key = FAULT_KEYS[severity]
+  let arr = key ? S[key] : null
   if (!arr) {
     print('⚠️ ALARM Unknown severity "' + severity + '": ignoring fault')
     return
@@ -146,24 +155,24 @@ function recordFault(severity, alarm, detail) {
  */
 function processAlarmEdges(alarmBefore, alarmAfter, swWatts, tAirRaw, tEvap) {
   // HANDLE CHANGE/AWAY FROM PREVIOUS (including ALARM -> different ALARM or -> NONE)
-  if (alarmBefore !== ALM.NONE && alarmBefore !== alarmAfter && V.fault_pending) {
+  if (alarmBefore !== ALM.NONE && alarmBefore !== alarmAfter && V.flt_pendCode) {
     let now = ri(Date.now() / 1000)
-    let duration = now - V.fault_pending.t
-    let detail = formatFaultDetail(alarmBefore, V.fault_pending, duration)
+    let duration = now - V.flt_pendCode.t
+    let detail = formatFaultDetail(alarmBefore, V.flt_pendCode, duration)
     let sev = getSeverity(alarmBefore)
     if (sev !== 'fatal') recordFault(sev, alarmBefore, detail)
-    V.fault_pending = null
+    V.flt_pendCode = null
   }
 
   // RISING OR CHANGE TO NEW ALARM: start tracking new pending
   if (alarmAfter !== ALM.NONE && alarmAfter !== alarmBefore) {
-    V.fault_pending = {
+    V.flt_pendCode = {
       t: ri(Date.now() / 1000),
       alarm: alarmAfter,
-      peak: V.sens_smoothAir,
-      watts: (V.hw_hasPM && S.sys_relayState) ? swWatts : 0,
-      airRaw: (typeof tAirRaw === 'number') ? tAirRaw : V.sens_smoothAir,
-      airSmt: V.sens_smoothAir,
+      peak: V.sns_airSmoothDeg,
+      watts: (V.hw_hasPM && S.sys_isRelayOn) ? swWatts : 0,
+      airRaw: (typeof tAirRaw === 'number') ? tAirRaw : V.sns_airSmoothDeg,
+      airSmt: V.sns_airSmoothDeg,
       evap: (typeof tEvap === 'number') ? tEvap : 0,
     }
   }
@@ -229,7 +238,7 @@ function applySensorAlarms(alarmFail, alarmStuck) {
  * ?   - Disabled via C.alarm_highEnable
  */
 function checkHighTempAlarm(tCtrl, isDeepDefrost) {
-  if (C.alarm_highEnable && tCtrl > C.alarm_highDeg && !isDeepDefrost && !V.turbo_active) {
+  if (C.alarm_highEnable && tCtrl > C.alarm_highDeg && !isDeepDefrost && !V.trb_isActive) {
     alarm_highTimer += C.sys_loopSec
     if (alarm_highTimer > C.alarm_highDelaySec) {
       V.sys_alarm = ALM.HIGH

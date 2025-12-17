@@ -47,23 +47,23 @@ describe('Control', () => {
 
     // Create mock state
     mockS = {
-      sys_relayState: false,
-      sys_tsRelayOn: 0,
-      sys_tsRelayOff: 0,
-      weld_snapAir: 0,
+      sys_isRelayOn: false,
+      sys_relayOnTs: 0,
+      sys_relayOffTs: 0,
+      wld_airSnapDeg: 0,
       weld_snapEvap: 0,
     }
 
     // Create mock volatile state
     mockV = {
       sys_status: 'IDLE',
-      sys_reason: 'NONE',
+      sys_statusReason: 'NONE',
       sys_alarm: 'NONE',
-      sys_statusDetail: 'NONE',
-      turbo_active: false,
-      sens_wasError: false,
-      health_startTemp: 0,
-      health_lastScore: 0,
+      sys_detail: 'NONE',
+      trb_isActive: false,
+      sns_wasErr: false,
+      hlt_startDeg: 0,
+      hlt_lastScore: 0,
     }
 
     // Create mock config
@@ -144,15 +144,15 @@ describe('Control', () => {
 
   describe('setIdleState', () => {
     it('should set IDLE when relay off', () => {
-      mockS.sys_relayState = false
+      mockS.sys_isRelayOn = false
       setIdleState(mockRSN.PROT_AIR_FRZ)
 
       expect(mockV.sys_status).toBe('IDLE')
-      expect(mockV.sys_reason).toBe('PROT_AIR_FRZ')
+      expect(mockV.sys_statusReason).toBe('PROT_AIR_FRZ')
     })
 
     it('should set WANT_IDLE when relay on', () => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       setIdleState(mockRSN.PROT_AIR_FRZ)
 
       expect(mockV.sys_status).toBe('WANT_IDLE')
@@ -204,52 +204,52 @@ describe('Control', () => {
 
     it('should update relay state', () => {
       setRelay(true, 1000, 5.0, -10.0, false)
-      expect(mockS.sys_relayState).toBe(true)
+      expect(mockS.sys_isRelayOn).toBe(true)
     })
 
     it('should update tsRelayOn when turning on', () => {
       setRelay(true, 1000, 5.0, -10.0, false)
-      expect(mockS.sys_tsRelayOn).toBe(1000)
+      expect(mockS.sys_relayOnTs).toBe(1000)
     })
 
     it('should update tsRelayOff when turning off', () => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       setRelay(false, 2000, 5.0, -10.0, false)
-      expect(mockS.sys_tsRelayOff).toBe(2000)
+      expect(mockS.sys_relayOffTs).toBe(2000)
     })
 
     it('should capture weld snapshot when turning off', () => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       setRelay(false, 2000, 5.0, -10.0, false)
 
-      expect(mockS.weld_snapAir).toBe(5.0)
+      expect(mockS.wld_airSnapDeg).toBe(5.0)
     })
 
     // ? Design decision: weld snapshot is now captured even on emergency/skipSnap
-    // ? to avoid stale weld_snapAir values (see control.js lines 137-140)
+    // ? to avoid stale wld_airSnapDeg values (see control.js lines 137-140)
     it('should capture weld snapshot even in limp/emergency mode', () => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       setRelay(false, 2000, 5.0, -10.0, true)
 
-      expect(mockS.weld_snapAir).toBe(5.0)
+      expect(mockS.wld_airSnapDeg).toBe(5.0)
     })
 
     it('should print ON message', () => {
-      mockS.sys_tsRelayOff = 940 // 60s ago
+      mockS.sys_relayOffTs = 940 // 60s ago
       setRelay(true, 1000, 5.0, -10.0, false)
       expect(global.print).toHaveBeenCalledWith('RELAY ON (after 01m00s off)')
     })
 
     it('should print OFF message with duration', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 100
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 100
       setRelay(false, 700, 5.0, -10.0, false)
       expect(global.print).toHaveBeenCalledWith('RELAY OFF (after 10m00s on)')
     })
 
     it('should print TURBO suffix when turbo active', () => {
-      mockS.sys_tsRelayOff = 940
-      mockV.turbo_active = true
+      mockS.sys_relayOffTs = 940
+      mockV.trb_isActive = true
       setRelay(true, 1000, 5.0, -10.0, false)
       expect(global.print).toHaveBeenCalledWith('RELAY ON (TURBO) (after 01m00s off)')
     })
@@ -274,7 +274,7 @@ describe('Control', () => {
       })
 
       // Emergency shutdown: skipSnap=true and state=false
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       setRelay(false, 1000, 0, 0, true)
 
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('EMERGENCY RETRY'))
@@ -284,20 +284,20 @@ describe('Control', () => {
 
     it('should capture health start temp when turning on', () => {
       setRelay(true, 1000, 8.5, -10.0, false)
-      expect(mockV.health_startTemp).toBe(8.5)
+      expect(mockV.hlt_startDeg).toBe(8.5)
     })
 
     it('should not capture health start temp when skipSnap is true', () => {
-      mockV.health_startTemp = 0
+      mockV.hlt_startDeg = 0
       setRelay(true, 1000, 8.5, -10.0, true)
-      expect(mockV.health_startTemp).toBe(0)
+      expect(mockV.hlt_startDeg).toBe(0)
     })
 
     it('should calculate health score on turn off after long run', () => {
       // Set up for health score calculation
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 100  // Started at 100
-      mockV.health_startTemp = 10.0  // Started at 10°C
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 100  // Started at 100
+      mockV.hlt_startDeg = 10.0  // Started at 10°C
 
       // Turn off at 700 (10 mins later) with temp at 5.0°C
       setRelay(false, 700, 5.0, -10.0, false)
@@ -305,39 +305,39 @@ describe('Control', () => {
       // delta = 10.0 - 5.0 = 5.0°C
       // runMins = (700 - 100) / 60 = 10 mins
       // score = 5.0 / 10 = 0.5 deg/min
-      expect(mockV.health_lastScore).toBe(0.5)
+      expect(mockV.hlt_lastScore).toBe(0.5)
     })
 
     it('should not calculate health score for short runs', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 600  // Started at 600
-      mockV.health_startTemp = 10.0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 600  // Started at 600
+      mockV.hlt_startDeg = 10.0
 
       // Turn off at 700 (< 5 mins later)
       setRelay(false, 700, 5.0, -10.0, false)
 
-      expect(mockV.health_lastScore).toBe(0)  // Should not be updated
+      expect(mockV.hlt_lastScore).toBe(0)  // Should not be updated
     })
 
     it('should not calculate health score when no cooling occurred', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 100
-      mockV.health_startTemp = 5.0  // Started at 5°C
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 100
+      mockV.hlt_startDeg = 5.0  // Started at 5°C
 
       // Turn off with temp at 6.0°C (warmer - no cooling)
       setRelay(false, 700, 6.0, -10.0, false)
 
-      expect(mockV.health_lastScore).toBe(0)  // Should not be updated
+      expect(mockV.hlt_lastScore).toBe(0)  // Should not be updated
     })
 
-    it('should not calculate health score when health_startTemp is 0', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 100
-      mockV.health_startTemp = 0  // No start temp captured
+    it('should not calculate health score when hlt_startDeg is 0', () => {
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 100
+      mockV.hlt_startDeg = 0  // No start temp captured
 
       setRelay(false, 700, 5.0, -10.0, false)
 
-      expect(mockV.health_lastScore).toBe(0)
+      expect(mockV.hlt_lastScore).toBe(0)
     })
   })
 
@@ -376,26 +376,26 @@ describe('Control', () => {
     })
 
     it('should return cooling status when relay on', () => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       // Set recent relay-on time to avoid max run check
-      mockS.sys_tsRelayOn = 999000 // Within last 1000 seconds
+      mockS.sys_relayOnTs = 999000 // Within last 1000 seconds
       const result = determineMode(4.0, -10.0, 1000000)
 
       expect(result.status).toBe('COOLING')
     })
 
     it('should return turbo status when turbo active and relay on', () => {
-      mockV.turbo_active = true
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 999000
+      mockV.trb_isActive = true
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 999000
       const result = determineMode(4.0, -10.0, 1000000)
 
       expect(result.status).toBe('TURBO_COOL')
     })
 
     it('should return turbo idle status when turbo active and relay off', () => {
-      mockV.turbo_active = true
-      mockS.sys_relayState = false
+      mockV.trb_isActive = true
+      mockS.sys_isRelayOn = false
       const result = determineMode(3.0, -10.0, 1000000)
 
       expect(result.status).toBe('TURBO_IDLE')
@@ -473,12 +473,12 @@ describe('Control', () => {
       vi.doMock('./metrics.js', () => ({ incrementCycleCount: vi.fn() }))
 
       const module = await import('./control.js')
-      mockS.defr_isActive = true  // Should be cleared
+      mockS.dfr_isActive = true  // Should be cleared
       const result = module.determineMode(5.0, -10.0, 1000000)
 
       expect(result.wantOn).toBe(false)
       expect(result.reason).toBe('DEFR_SCHED')
-      expect(mockS.defr_isActive).toBe(false)  // Cleared during scheduled defrost
+      expect(mockS.dfr_isActive).toBe(false)  // Cleared during scheduled defrost
     })
 
     it('should return max run exceeded when compressor ran too long', async () => {
@@ -588,7 +588,7 @@ describe('Control', () => {
       vi.doMock('./metrics.js', () => ({ incrementCycleCount: vi.fn() }))
 
       const module = await import('./control.js')
-      mockV.turbo_active = true
+      mockV.trb_isActive = true
       const result = module.determineMode(5.0, -10.0, 1000000)
 
       expect(result.detail).toBe('TURBO: 30m left')
@@ -608,7 +608,7 @@ describe('Control', () => {
       const result = determineMode(5.0, -10.0, 1000000)
 
       expect(result.status).toBe('LIMP_IDLE')
-      expect(mockV.sens_wasError).toBe(true)
+      expect(mockV.sns_wasErr).toBe(true)
     })
   })
 
@@ -621,11 +621,11 @@ describe('Control', () => {
       const result = executeSwitchDecision(true, 1000, 5.0, -10.0, false)
 
       expect(result.switched).toBe(true)
-      expect(mockS.sys_relayState).toBe(true)
+      expect(mockS.sys_isRelayOn).toBe(true)
     })
 
     it('should not switch in limp mode without change', () => {
-      mockS.sys_relayState = false
+      mockS.sys_isRelayOn = false
       const result = executeSwitchDecision(false, 1000, 5.0, -10.0, true)
 
       expect(result.switched).toBe(false)
@@ -653,7 +653,7 @@ describe('Control', () => {
     })
 
     it('should return no change when wantOn matches current state', () => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       const result = executeSwitchDecision(true, 1000, 5.0, -10.0, false)
 
       expect(result.switched).toBe(false)
@@ -661,15 +661,15 @@ describe('Control', () => {
     })
 
     it('should set TURBO_COOL status when switching on in turbo mode', () => {
-      mockV.turbo_active = true
+      mockV.trb_isActive = true
       executeSwitchDecision(true, 1000, 5.0, -10.0, false)
 
       expect(mockV.sys_status).toBe('TURBO_COOL')
     })
 
     it('should set TURBO_IDLE status when switching off in turbo mode', () => {
-      mockV.turbo_active = true
-      mockS.sys_relayState = true
+      mockV.trb_isActive = true
+      mockS.sys_isRelayOn = true
       executeSwitchDecision(false, 1000, 5.0, -10.0, false)
 
       expect(mockV.sys_status).toBe('TURBO_IDLE')
@@ -718,14 +718,14 @@ describe('Control', () => {
       const module = await import('./control.js')
       const execSwitch = module.executeSwitchDecision
 
-      mockS.sys_relayState = false
+      mockS.sys_isRelayOn = false
       const result = execSwitch(true, 1000, 5.0, -10.0, false)
 
       expect(result.switched).toBe(false)
       expect(result.blocked).toBe(true)
       expect(result.reason).toBe('PROT_MIN_OFF')
       expect(mockV.sys_status).toBe('WANT_COOL')
-      expect(mockV.sys_statusDetail).toBe('45s')
+      expect(mockV.sys_detail).toBe('45s')
     })
 
     it('should block turn-off when min on time not elapsed', async () => {
@@ -765,14 +765,14 @@ describe('Control', () => {
       const module = await import('./control.js')
       const execSwitch = module.executeSwitchDecision
 
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       const result = execSwitch(false, 1000, 5.0, -10.0, false)
 
       expect(result.switched).toBe(false)
       expect(result.blocked).toBe(true)
       expect(result.reason).toBe('PROT_MIN_ON')
       expect(mockV.sys_status).toBe('WANT_IDLE')
-      expect(mockV.sys_statusDetail).toBe('30s')
+      expect(mockV.sys_detail).toBe('30s')
     })
   })
 })

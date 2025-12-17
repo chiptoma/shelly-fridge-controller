@@ -59,10 +59,10 @@ async function setupSimulation(runtime, options = {}) {
   // Set initial temperatures
   if (options.airTemp !== undefined) {
     runtime.setTemperature(config.C.sys_sensAirId, options.airTemp)
-    state.V.sens_smoothAir = options.airTemp
+    state.V.sns_airSmoothDeg = options.airTemp
   } else {
     runtime.setTemperature(config.C.sys_sensAirId, 4.0)
-    state.V.sens_smoothAir = 4.0
+    state.V.sns_airSmoothDeg = 4.0
   }
 
   if (options.evapTemp !== undefined) {
@@ -73,12 +73,12 @@ async function setupSimulation(runtime, options = {}) {
 
   // Set initial hysteresis
   if (options.hystCurrent !== undefined) {
-    state.S.adapt_hystCurrent = options.hystCurrent
+    state.S.adt_hystDeg = options.hystCurrent
   }
 
   // Initialize relay timestamps
-  state.S.sys_tsRelayOn = 0
-  state.S.sys_tsRelayOff = Date.now() / 1000 - 600
+  state.S.sys_relayOnTs = 0
+  state.S.sys_relayOffTs = Date.now() / 1000 - 600
 
   runtime.script = {
     constants,
@@ -114,7 +114,7 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
   // Tracking
   const cycles = []
   let cycleStart = null
-  let lastRelayState = script.S.sys_relayState
+  let lastRelayState = script.S.sys_isRelayOn
   let loopCount = 0
   let rolloverCount = 0
 
@@ -127,7 +127,7 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
     let evapTemp = runtime.temperatures[script.C.sys_sensEvapId]?.tC || -5.0
 
     // Apply thermal model
-    if (script.S.sys_relayState) {
+    if (script.S.sys_isRelayOn) {
       // Cooling - temperature drops
       airTemp = Math.max(airTemp - coolRate, target - 3.0)
       evapTemp = Math.max(evapTemp - 0.05, -20.0)
@@ -142,10 +142,10 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
     runtime.setTemperature(script.C.sys_sensEvapId, evapTemp)
 
     // Update smoothed temp (simplified EMA)
-    script.V.sens_smoothAir = script.V.sens_smoothAir * (1 - 0.2) + airTemp * 0.2
+    script.V.sns_airSmoothDeg = script.V.sns_airSmoothDeg * (1 - 0.2) + airTemp * 0.2
 
     // Determine mode
-    const mode = script.control.determineMode(script.V.sens_smoothAir, evapTemp)
+    const mode = script.control.determineMode(script.V.sns_airSmoothDeg, evapTemp)
 
     // Execute switch decision
     const decision = script.control.executeSwitchDecision(
@@ -157,8 +157,8 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
     )
 
     // Track cycle changes
-    if (script.S.sys_relayState !== lastRelayState) {
-      if (script.S.sys_relayState) {
+    if (script.S.sys_isRelayOn !== lastRelayState) {
+      if (script.S.sys_isRelayOn) {
         // Just turned ON
         cycleStart = elapsed
       } else {
@@ -170,12 +170,12 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
           })
         }
       }
-      lastRelayState = script.S.sys_relayState
+      lastRelayState = script.S.sys_isRelayOn
     }
 
     // Update metrics
     const rollover = script.metrics.updateMetrics(
-      script.S.sys_relayState,
+      script.S.sys_isRelayOn,
       loopSec,
     )
 
@@ -185,12 +185,12 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
   }
 
   return {
-    finalHyst: script.S.adapt_hystCurrent,
+    finalHyst: script.S.adt_hystDeg,
     cycles: cycles,
     loopCount: loopCount,
     rolloverCount: rolloverCount,
     finalAirTemp: runtime.temperatures[script.C.sys_sensAirId]?.tC,
-    statsHistory: [...script.S.stats_history],
+    statsHistory: [...script.S.sts_dutyHistArr],
     cycleCount: cycles.length,
   }
 }
@@ -407,7 +407,7 @@ describe('Adaptive Hysteresis: Multi-Day Simulation', () => {
         PATTERNS.POOR_INSULATION, // Force short cycles
         HOUR_SEC,
       )
-      hourlyHyst.push(script.S.adapt_hystCurrent)
+      hourlyHyst.push(script.S.adt_hystDeg)
     }
 
     // Hysteresis should generally increase (widen) with short cycles
@@ -542,8 +542,8 @@ describe('Adaptive Hysteresis: Turbo Mode Interaction', () => {
     })
 
     // Activate turbo
-    script.V.turbo_active = true
-    script.V.turbo_remSec = 3600
+    script.V.trb_isActive = true
+    script.V.trb_remSec = 3600
 
     // Call adaptHysteresis directly with short cycle data
     const result = script.features.adaptHysteresis(300, 200, 5) // Short cycles
@@ -552,7 +552,7 @@ describe('Adaptive Hysteresis: Turbo Mode Interaction', () => {
     expect(result).toBeNull()
 
     // Hysteresis should not change
-    expect(script.S.adapt_hystCurrent).toBe(1.5)
+    expect(script.S.adt_hystDeg).toBe(1.5)
   })
 
   it('should resume adaptation after turbo ends', async () => {
@@ -563,8 +563,8 @@ describe('Adaptive Hysteresis: Turbo Mode Interaction', () => {
     })
 
     // Start with turbo
-    script.V.turbo_active = true
-    script.V.turbo_remSec = 1800 // 30 min
+    script.V.trb_isActive = true
+    script.V.trb_remSec = 1800 // 30 min
 
     // Simulate 1 hour (turbo ends mid-way)
     const loopSec = script.C.sys_loopSec
@@ -574,16 +574,16 @@ describe('Adaptive Hysteresis: Turbo Mode Interaction', () => {
       elapsed += loopSec
 
       // Decrement turbo timer
-      if (script.V.turbo_active && script.V.turbo_remSec > 0) {
-        script.V.turbo_remSec -= loopSec
-        if (script.V.turbo_remSec <= 0) {
-          script.V.turbo_active = false
+      if (script.V.trb_isActive && script.V.trb_remSec > 0) {
+        script.V.trb_remSec -= loopSec
+        if (script.V.trb_remSec <= 0) {
+          script.V.trb_isActive = false
         }
       }
     }
 
     // Now turbo is off - adaptation should work
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
     const result = script.features.adaptHysteresis(300, 200, 5) // Short cycles
 
     // Should adapt now
@@ -619,7 +619,7 @@ describe('Adaptive Hysteresis: Disabled Mode', () => {
 
     // Should return null
     expect(result).toBeNull()
-    expect(script.S.adapt_hystCurrent).toBe(1.0)
+    expect(script.S.adt_hystDeg).toBe(1.0)
   })
 
   it('should use base hysteresis from config when disabled', async () => {

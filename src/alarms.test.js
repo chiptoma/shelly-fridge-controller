@@ -27,22 +27,22 @@ describe('Alarms', () => {
 
     // Create mock state
     mockS = {
-      sys_relayState: false,
-      fault_fatal: [],
-      fault_critical: [],
-      fault_error: [],
-      fault_warning: [],
+      sys_isRelayOn: false,
+      flt_fatalArr: [],
+      flt_critArr: [],
+      flt_errorArr: [],
+      flt_warnArr: [],
     }
 
     // Create mock volatile state
     // ? alarm_highTimer is now module-local in alarms.js
     mockV = {
       sys_alarm: 'NONE',
-      sens_smoothAir: 5.0,
-      sens_errCount: 0,
-      fault_pending: null,
+      sns_airSmoothDeg: 5.0,
+      sns_errCnt: 0,
+      flt_pendCode: null,
       hw_hasPM: true,
-      turbo_active: false,
+      trb_isActive: false,
     }
 
     // Create mock config
@@ -70,7 +70,7 @@ describe('Alarms', () => {
     vi.doMock('./state.js', () => ({
       S: mockS,
       V: mockV,
-      ST_KEYS: { 'fridge_st_faults': ['fault_fatal', 'fault_critical', 'fault_error', 'fault_warning'] },
+      ST_KEYS: { 'fridge_st_faults': ['flt_fatalArr', 'flt_critArr', 'flt_errorArr', 'flt_warnArr'] },
     }))
     vi.doMock('./utils/math.js', () => ({
       ri: vi.fn((v) => Math.floor(v)),
@@ -142,7 +142,7 @@ describe('Alarms', () => {
     })
 
     it('should format COOL alarm detail', () => {
-      mockV.sens_smoothAir = 8.5
+      mockV.sns_airSmoothDeg = 8.5
       const result = formatFaultDetail(
         mockALM.COOL,
         { peak: 12, airRaw: 9.1, airSmt: 8.5, evap: 4.2 },
@@ -159,7 +159,7 @@ describe('Alarms', () => {
     })
 
     it('should format FAIL alarm detail', () => {
-      mockV.sens_errCount = 5
+      mockV.sns_errCnt = 5
       const result = formatFaultDetail(mockALM.FAIL, {}, 300)
       expect(result).toBe('Null:5')
     })
@@ -187,7 +187,7 @@ describe('Alarms', () => {
   describe('recordFault', () => {
     it('should add fault to correct array', () => {
       recordFault('warning', mockALM.GHOST, '50W/10s')
-      expect(mockS.fault_warning[0]).toEqual({
+      expect(mockS.flt_warnArr[0]).toEqual({
         a: mockALM.GHOST,
         t: 1000000,
         d: '50W/10s',
@@ -195,15 +195,15 @@ describe('Alarms', () => {
     })
 
     it('should shift existing entries', () => {
-      mockS.fault_warning = [{ a: 'OLD1', t: 1, d: 'd1' }]
+      mockS.flt_warnArr = [{ a: 'OLD1', t: 1, d: 'd1' }]
       recordFault('warning', mockALM.GHOST, 'new')
 
-      expect(mockS.fault_warning[0].a).toBe(mockALM.GHOST)
-      expect(mockS.fault_warning[1].a).toBe('OLD1')
+      expect(mockS.flt_warnArr[0].a).toBe(mockALM.GHOST)
+      expect(mockS.flt_warnArr[1].a).toBe('OLD1')
     })
 
     it('should maintain max 3 entries', () => {
-      mockS.fault_warning = [
+      mockS.flt_warnArr = [
         { a: 'A1', t: 1, d: 'd1' },
         { a: 'A2', t: 2, d: 'd2' },
         { a: 'A3', t: 3, d: 'd3' },
@@ -211,8 +211,8 @@ describe('Alarms', () => {
 
       recordFault('warning', mockALM.GHOST, 'new')
 
-      expect(mockS.fault_warning.length).toBeLessThanOrEqual(3)
-      expect(mockS.fault_warning[0].a).toBe(mockALM.GHOST)
+      expect(mockS.flt_warnArr.length).toBeLessThanOrEqual(3)
+      expect(mockS.flt_warnArr[0].a).toBe(mockALM.GHOST)
     })
 
     it('should handle invalid severity gracefully', () => {
@@ -243,37 +243,37 @@ describe('Alarms', () => {
   // ----------------------------------------------------------
 
   describe('processAlarmEdges', () => {
-    it('should create fault_pending on rising edge', () => {
-      mockV.sens_smoothAir = 18.5
-      mockS.sys_relayState = true
+    it('should create flt_pendCode on rising edge', () => {
+      mockV.sns_airSmoothDeg = 18.5
+      mockS.sys_isRelayOn = true
 
       processAlarmEdges(mockALM.NONE, mockALM.HIGH, 45)
 
-      expect(mockV.fault_pending).not.toBeNull()
-      expect(mockV.fault_pending.alarm).toBe(mockALM.HIGH)
-      expect(mockV.fault_pending.peak).toBe(18.5)
+      expect(mockV.flt_pendCode).not.toBeNull()
+      expect(mockV.flt_pendCode.alarm).toBe(mockALM.HIGH)
+      expect(mockV.flt_pendCode.peak).toBe(18.5)
     })
 
     it('should capture watts on rising edge when PM available', () => {
       mockV.hw_hasPM = true
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
 
       processAlarmEdges(mockALM.NONE, mockALM.GHOST, 150)
 
-      expect(mockV.fault_pending.watts).toBe(150)
+      expect(mockV.flt_pendCode.watts).toBe(150)
     })
 
     it('should not capture watts when PM not available', () => {
       mockV.hw_hasPM = false
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
 
       processAlarmEdges(mockALM.NONE, mockALM.GHOST, 150)
 
-      expect(mockV.fault_pending.watts).toBe(0)
+      expect(mockV.flt_pendCode.watts).toBe(0)
     })
 
     it('should log fault on falling edge', () => {
-      mockV.fault_pending = {
+      mockV.flt_pendCode = {
         t: 999900,
         alarm: mockALM.GHOST,
         peak: 5.0,
@@ -282,28 +282,28 @@ describe('Alarms', () => {
 
       processAlarmEdges(mockALM.GHOST, mockALM.NONE, 0)
 
-      expect(mockV.fault_pending).toBeNull()
-      expect(mockS.fault_warning.length).toBeGreaterThan(0)
+      expect(mockV.flt_pendCode).toBeNull()
+      expect(mockS.flt_warnArr.length).toBeGreaterThan(0)
     })
 
     it('should not log fault if no pending', () => {
-      mockV.fault_pending = null
+      mockV.flt_pendCode = null
 
       processAlarmEdges(mockALM.GHOST, mockALM.NONE, 0)
 
-      expect(mockS.fault_warning.length).toBe(0)
+      expect(mockS.flt_warnArr.length).toBe(0)
     })
 
     it('should not trigger on stable alarm state', () => {
       processAlarmEdges(mockALM.HIGH, mockALM.HIGH, 0)
 
-      expect(mockV.fault_pending).toBeNull()
+      expect(mockV.flt_pendCode).toBeNull()
     })
 
     it('should not trigger on stable NONE state', () => {
       processAlarmEdges(mockALM.NONE, mockALM.NONE, 0)
 
-      expect(mockV.fault_pending).toBeNull()
+      expect(mockV.flt_pendCode).toBeNull()
     })
   })
 
@@ -431,7 +431,7 @@ describe('Alarms', () => {
     })
 
     it('should not trigger during turbo mode', () => {
-      mockV.turbo_active = true
+      mockV.trb_isActive = true
       for (let i = 0; i < 61; i++) {
         checkHighTempAlarm(16.0, false)
       }

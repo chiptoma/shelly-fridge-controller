@@ -13,20 +13,20 @@ describe('Main', () => {
     vi.resetModules()
 
     mockS = {
-      sys_relayState: false,
-      sys_tsRelayOn: 0,
-      sys_tsRelayOff: 0,
-      stats_hourRun: 0,
-      stats_hourTime: 0,
-      stats_cycleCount: 0,
-      weld_snapAir: 0,
-      fault_fatal: [],
+      sys_isRelayOn: false,
+      sys_relayOnTs: 0,
+      sys_relayOffTs: 0,
+      sts_hourRunSec: 0,
+      sts_hourTotalSec: 0,
+      sts_cycleCnt: 0,
+      wld_airSnapDeg: 0,
+      flt_fatalArr: [],
     }
 
     mockV = {
-      sys_scrUptimeMs: 0,
+      sys_startMs: 0,
       hw_hasPM: false,
-      lastSave: 0,
+      lop_lastSaveTs: 0,
     }
 
     mockC = {
@@ -78,14 +78,14 @@ describe('Main', () => {
   describe('recoverBootState', () => {
     it('should handle clean state (both OFF)', () => {
       global.Shelly.getComponentStatus.mockReturnValue({ output: false })
-      mockS.sys_relayState = false
+      mockS.sys_isRelayOn = false
       // ? Must have elapsed time for "Clean idle" message to print
-      mockS.sys_tsLastSave = Date.now() / 1000 - 300
+      mockS.sys_lastSaveTs = Date.now() / 1000 - 300
 
       recoverBootState()
 
-      // ? Actual format: "BOOT ℹ️ Clean idle: Xm elapsed"
-      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Clean idle'))
+      // Format: "Was idle for Xm → stats updated"
+      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Was idle for'))
     })
 
     it('should detect power monitor availability', () => {
@@ -97,111 +97,111 @@ describe('Main', () => {
     })
 
     it('should report last fatal fault', () => {
-      mockS.fault_fatal = [{ a: 'WELD', d: 'test', t: Date.now() / 1000 - 3600 }]
+      mockS.flt_fatalArr = [{ a: 'WELD', d: 'test', t: Date.now() / 1000 - 3600 }]
 
       recoverBootState()
 
-      // ? Actual format: "BOOT ⚠️ Last fatal: ALARM (detail), Xh ago"
-      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Last fatal'))
+      // Format: "Had fatal error Xh ago: ALARM (detail)"
+      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Had fatal error'))
     })
 
     it('should recover stats when both agree ON with valid timestamp', () => {
       let now = Date.now() / 1000
       global.Shelly.getComponentStatus.mockReturnValue({ output: true })
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = now - 1000
-      mockS.sys_tsLastSave = now - 500 // Last save was 500s ago
-      mockS.stats_hourRun = 500
-      mockS.stats_hourTime = 0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = now - 1000
+      mockS.sys_lastSaveTs = now - 500 // Last save was 500s ago
+      mockS.sts_hourRunSec = 500
+      mockS.sts_hourTotalSec = 0
 
       recoverBootState()
 
-      // ? Elapsed since last save = 500s, all was run time, so stats_hourRun += 500
-      expect(mockS.stats_hourRun).toBeCloseTo(1000, 0)
-      expect(mockS.stats_hourTime).toBeCloseTo(500, 0)
+      // ? Elapsed since last save = 500s, all was run time, so sts_hourRunSec += 500
+      expect(mockS.sts_hourRunSec).toBeCloseTo(1000, 0)
+      expect(mockS.sts_hourTotalSec).toBeCloseTo(500, 0)
       expect(mockPersistState).toHaveBeenCalled()
     })
 
     it('should continue without recovery when saved stats are current', () => {
       let now = Date.now() / 1000
       global.Shelly.getComponentStatus.mockReturnValue({ output: true })
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = now - 1000
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = now - 1000
       // ? Must have elapsed time for recovery message to print
-      mockS.sys_tsLastSave = now - 500
-      mockS.stats_hourRun = 1000
+      mockS.sys_lastSaveTs = now - 500
+      mockS.sts_hourRunSec = 1000
 
       recoverBootState()
 
-      // ? Actual format: "BOOT ℹ️ Compressor running: recovered Xm (run Ym total)"
-      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Compressor running'))
+      // Format: "Script restarted while cooling → added Xm to runtime stats"
+      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Script restarted while cooling'))
     })
 
     it('should force OFF when compressor ran too long', () => {
       let now = Date.now() / 1000
       global.Shelly.getComponentStatus.mockReturnValue({ output: true })
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = now - 10000
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = now - 10000
       mockC.comp_maxRunSec = 3600
 
       recoverBootState()
 
       expect(global.Shelly.call).toHaveBeenCalledWith('Switch.Set', { id: 0, on: false })
-      expect(mockS.sys_relayState).toBe(false)
-      expect(mockS.weld_snapAir).toBe(0)
+      expect(mockS.sys_isRelayOn).toBe(false)
+      expect(mockS.wld_airSnapDeg).toBe(0)
       expect(mockPersistState).toHaveBeenCalled()
     })
 
     it('should handle HW=ON but KVS=OFF (untracked start)', () => {
       let now = Date.now() / 1000
       global.Shelly.getComponentStatus.mockReturnValue({ output: true })
-      mockS.sys_relayState = false
+      mockS.sys_isRelayOn = false
 
       recoverBootState()
 
-      // ? Actual format: "⚠️ BOOT  : State mismatch, Relay is ON but State is OFF, updating State to ON"
-      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('State mismatch'))
-      expect(mockS.sys_relayState).toBe(true)
-      expect(mockS.sys_tsRelayOn).toBe(Math.floor(now))
+      // Format: "Relay was ON but state said OFF (unexpected) → state updated to match"
+      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('state updated to match'))
+      expect(mockS.sys_isRelayOn).toBe(true)
+      expect(mockS.sys_relayOnTs).toBe(Math.floor(now))
       expect(mockPersistState).toHaveBeenCalled()
     })
 
     it('should handle HW=OFF but KVS=ON (unclean shutdown)', () => {
       let now = Date.now() / 1000
       global.Shelly.getComponentStatus.mockReturnValue({ output: false })
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = now - 1000
-      mockS.sys_tsLastSave = now - 500 // Last save was 500s ago
-      mockS.stats_hourRun = 500
-      mockS.stats_hourTime = 0
-      mockS.stats_cycleCount = 5
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = now - 1000
+      mockS.sys_lastSaveTs = now - 500 // Last save was 500s ago
+      mockS.sts_hourRunSec = 500
+      mockS.sts_hourTotalSec = 0
+      mockS.sts_cycleCnt = 5
 
       recoverBootState()
 
-      // ? Actual format: "BOOT ⚠️ Crash while cooling: recovered ~Xm run"
-      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Crash while cooling'))
-      expect(mockS.sys_relayState).toBe(false)
+      // Format: "Script stopped while cooling → added ~Xm to runtime stats"
+      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Script stopped while cooling'))
+      expect(mockS.sys_isRelayOn).toBe(false)
       // ? Estimated run = 1000s, elapsed = 500s, so missed run = min(1000, 500) = 500s
-      expect(mockS.stats_hourRun).toBeCloseTo(1000, 0)
-      expect(mockS.stats_hourTime).toBeCloseTo(500, 0)
-      expect(mockS.stats_cycleCount).toBe(6)
-      expect(mockS.weld_snapAir).toBe(0)
+      expect(mockS.sts_hourRunSec).toBeCloseTo(1000, 0)
+      expect(mockS.sts_hourTotalSec).toBeCloseTo(500, 0)
+      expect(mockS.sts_cycleCnt).toBe(6)
+      expect(mockS.wld_airSnapDeg).toBe(0)
       expect(mockPersistState).toHaveBeenCalled()
     })
 
     it('should not recover stats on unclean shutdown if timestamp invalid', () => {
       let now = Date.now() / 1000
       global.Shelly.getComponentStatus.mockReturnValue({ output: false })
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = now - 100000
-      mockS.stats_hourRun = 500
-      mockS.stats_cycleCount = 5
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = now - 100000
+      mockS.sts_hourRunSec = 500
+      mockS.sts_cycleCnt = 5
 
       recoverBootState()
 
-      expect(mockS.sys_relayState).toBe(false)
-      expect(mockS.stats_hourRun).toBe(500)
-      expect(mockS.stats_cycleCount).toBe(5)
+      expect(mockS.sys_isRelayOn).toBe(false)
+      expect(mockS.sts_hourRunSec).toBe(500)
+      expect(mockS.sts_cycleCnt).toBe(5)
     })
   })
 })
