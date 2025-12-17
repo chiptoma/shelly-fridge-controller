@@ -146,14 +146,16 @@ function validateNumber(f, min, max, bad) {
 }
 
 /**
- *
+ * * validateSystem - Validate system config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateSystem(bad) {
   validateNumber('sys_loopSec', 1, 60, bad)
 }
 
 /**
- *
+ * * validateCtrl - Validate control config fields (target, hysteresis)
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateCtrl(bad) {
   validateNumber('ctrl_targetDeg', -5, 15, bad)
@@ -161,7 +163,8 @@ function validateCtrl(bad) {
 }
 
 /**
- *
+ * * validateComp - Validate compressor protection config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateComp(bad) {
   validateNumber('comp_minOnSec', 60, 600, bad)
@@ -171,14 +174,16 @@ function validateComp(bad) {
 }
 
 /**
- *
+ * * validateTurbo - Validate turbo mode config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateTurbo(bad) {
   validateNumber('turbo_maxTimeSec', 1800, 21600, bad)
 }
 
 /**
- *
+ * * validateAdapt - Validate adaptive hysteresis config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateAdapt(bad) {
   validateNumber('adapt_hystMinDeg', 0.1, 5, bad)
@@ -188,7 +193,8 @@ function validateAdapt(bad) {
 }
 
 /**
- *
+ * * validateDoor - Validate door detection config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateDoor(bad) {
   validateNumber('door_rateDegMin', 0.5, 20, bad)
@@ -196,7 +202,8 @@ function validateDoor(bad) {
 }
 
 /**
- *
+ * * validateDefrost - Validate defrost config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateDefrost(bad) {
   validateNumber('defr_dynTrigDeg', -40, 0, bad)
@@ -207,7 +214,8 @@ function validateDefrost(bad) {
 }
 
 /**
- *
+ * * validateWeld - Validate weld detection config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateWeld(bad) {
   validateNumber('weld_waitSec', 60, 7200, bad)
@@ -216,7 +224,8 @@ function validateWeld(bad) {
 }
 
 /**
- *
+ * * validateSensors - Validate sensor config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateSensors(bad) {
   validateNumber('sens_stuckTimeSec', 300, 86400, bad)
@@ -224,7 +233,8 @@ function validateSensors(bad) {
 }
 
 /**
- *
+ * * validateAlarm - Validate alarm config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateAlarm(bad) {
   validateNumber('alarm_highDeg', 0, 40, bad)
@@ -232,7 +242,8 @@ function validateAlarm(bad) {
 }
 
 /**
- *
+ * * validatePower - Validate power monitoring config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validatePower(bad) {
   validateNumber('pwr_startMaskSec', 1, 120, bad)
@@ -243,7 +254,8 @@ function validatePower(bad) {
 }
 
 /**
- *
+ * * validateGas - Validate gas leak detection config fields
+ * @param {string[]} bad - Array to collect invalid field names
  */
 function validateGas(bad) {
   validateNumber('gas_checkSec', 60, 7200, bad)

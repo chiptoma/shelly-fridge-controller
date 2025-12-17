@@ -48,7 +48,10 @@ function formatConsoleMessage(tSmooth, tEvap, tRaw) {
 
   // Format temperature strings with fixed width (e.g. +04.90, -09.40)
   /**
-   *
+   * * fmtT - Format temperature for fixed-width display
+   * @param {number|null} v - Temperature value
+   * @returns {string} Formatted string (e.g., +04.90, -09.40, ------)
+   * @internal
    */
   function fmtT(v) {
     if (typeof v !== 'number') return '------'

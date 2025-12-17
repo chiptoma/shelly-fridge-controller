@@ -510,9 +510,12 @@ const jsdocRules: Rules = {
   // Allow @return (JSDoc standard) - don't force @returns
   'jsdoc/require-returns': 'off',
 
-  // Description requirements (warn only - not all functions need verbose docs)
-  'jsdoc/require-description': 'off',
-  'jsdoc/require-param-description': 'off',
+  // Description requirements - every function must have a description
+  'jsdoc/require-description': ['error', {
+    checkConstructors: false,
+    contexts: ['FunctionDeclaration'],
+  }],
+  'jsdoc/require-param-description': 'warn',
   'jsdoc/require-returns-description': 'off',
 
   // Type requirements (useful for plain JS)
