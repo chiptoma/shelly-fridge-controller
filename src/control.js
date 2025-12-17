@@ -18,17 +18,16 @@ import { incrementCycleCount } from './metrics.js'
 // ----------------------------------------------------------
 
 /**
- * * SET IDLE STATE
- * ? Sets status to IDLE (or WANT_IDLE if relay on) with given reason.
+ * * setIdleState - Set status to IDLE with given reason
+ * ? Uses WANT_IDLE if relay is currently on.
  *
- * @param  {string} reason - Reason code from RSN
- *
+ * @param {string} reason - Reason code from RSN
  * @mutates V.sys_status - Set to ST.IDLE or ST.WANT_IDLE
- * @mutates V.sys_reason - Set to provided reason
+ * @mutates V.sys_statusReason - Set to provided reason
  */
 function setIdleState(reason) {
-  V.sys_status = S.sys_relayState ? ST.WANT_IDLE : ST.IDLE
-  V.sys_reason = reason
+  V.sys_status = S.sys_isRelayOn ? ST.WANT_IDLE : ST.IDLE
+  V.sys_statusReason = reason
 }
 
 // ----------------------------------------------------------
@@ -37,13 +36,13 @@ function setIdleState(reason) {
 // ----------------------------------------------------------
 
 /**
- * * EVALUATE THERMOSTAT
- * ? Determines if compressor should run based on temp and hysteresis band.
+ * * evaluateThermostat - Check if compressor should run
+ * ? Uses hysteresis band to determine on/off.
  *
- * @param  {number}  tCtrl  - Control temperature
- * @param  {number}  target - Target temperature
- * @param  {number}  hyst   - Hysteresis value (+/-)
- * @returns {boolean|null}   - true=cool, false=idle, null=no change
+ * @param {number} tCtrl - Control temperature
+ * @param {number} target - Target temperature
+ * @param {number} hyst - Hysteresis value (+/-)
+ * @returns {boolean|null} true=cool, false=idle, null=no change
  */
 function evaluateThermostat(tCtrl, target, hyst) {
   if (tCtrl > (target + hyst)) return true
@@ -57,51 +56,42 @@ function evaluateThermostat(tCtrl, target, hyst) {
 // ----------------------------------------------------------
 
 /**
- * * SET RELAY
- * ? Switches relay and updates timestamps/snapshots.
- * ? Calculates health score on turn-off.
- * ? Verifies command success and retries for emergency shutdowns.
+ * * setRelay - Switch relay and update timestamps
+ * ? Captures snapshots for weld detection and health scoring.
  *
- * @param  {boolean} state    - Desired relay state
- * @param  {number}  now      - Current timestamp (seconds)
- * @param  {number}  tAir     - Current air temperature (for snapshot)
- * @param  {number}  tEvap    - Current evap temperature (for snapshot)
- * @param  {boolean} skipSnap - Skip snapshot capture (for limp/emergency mode)
- *
- * @mutates S.sys_relayState   - Updated to match `state`
- * @mutates S.sys_tsRelayOn    - Set to `now` when turning ON
- * @mutates S.sys_tsRelayOff   - Set to `now` when turning OFF
- * @mutates S.weld_snapAir     - Captured for weld detection on OFF
- * @mutates V.health_startTemp - Captured for health scoring on ON
- * @mutates V.health_lastScore - Calculated on OFF (°C/min cooling rate)
- *
- * @sideeffect Calls Shelly.call('Switch.Set') - hardware relay control
- * @sideeffect Calls incrementCycleCount() on OFF transition
- * @sideeffect Calls persistState() - writes to KVS
+ * @param {boolean} state - Desired relay state
+ * @param {number} now - Current timestamp (seconds)
+ * @param {number} tAir - Current air temperature
+ * @param {number} tEvap - Current evap temperature
+ * @param {boolean} skipSnap - Skip snapshot capture
+ * @mutates S.sys_isRelayOn, S.sys_relayOnTs, S.sys_relayOffTs
+ * @mutates S.wld_airSnapDeg, V.hlt_startDeg, V.hlt_lastScore
+ * @sideeffect Calls Shelly.call('Switch.Set')
+ * @sideeffect Calls persistState() on state change
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Inherent control logic complexity
 function setRelay(state, now, tAir, tEvap, skipSnap) {
   // Log state change
-  if (state && !S.sys_relayState) {
+  if (state && !S.sys_isRelayOn) {
     let offSec = 0
-    if (S.sys_tsRelayOff > 0 && now > S.sys_tsRelayOff) {
-      offSec = now - S.sys_tsRelayOff
+    if (S.sys_relayOffTs > 0 && now > S.sys_relayOffTs) {
+      offSec = now - S.sys_relayOffTs
     }
-    let msg = 'RELAY ON' + (V.turbo_active ? ' (TURBO)' : '')
+    let msg = 'RELAY ON' + (V.trb_isActive ? ' (TURBO)' : '')
     if (offSec > 0) {
       msg += ' (after ' + formatXmYs(offSec) + ' off)'
     }
     print(msg)
-  } else if (!state && S.sys_relayState) {
+  } else if (!state && S.sys_isRelayOn) {
     let onSec = 0
-    if (S.sys_tsRelayOn > 0 && now > S.sys_tsRelayOn) {
-      onSec = now - S.sys_tsRelayOn
+    if (S.sys_relayOnTs > 0 && now > S.sys_relayOnTs) {
+      onSec = now - S.sys_relayOnTs
     }
     print('RELAY OFF (after ' + formatXmYs(onSec) + ' on)')
   }
 
   // Update logical relay state to match commanded state
-  S.sys_relayState = state
+  S.sys_isRelayOn = state
 
   // ? Pre-compute timestamp BEFORE Shelly.call to avoid mJS scoping bug
   // ? where callback parameters shadow outer scope functions (ri minified to same name)
@@ -126,27 +116,27 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
 
   if (state) {
     // Turning ON - use pre-computed timestamp
-    S.sys_tsRelayOn = tsNow
+    S.sys_relayOnTs = tsNow
     if (!skipSnap && tAir !== null) {
-      V.health_startTemp = tAir
+      V.hlt_startDeg = tAir
     }
   } else {
     // Turning OFF - use pre-computed timestamp
-    S.sys_tsRelayOff = tsNow
+    S.sys_relayOffTs = tsNow
     incrementCycleCount()
 
     // Capture weld snapshot even on emergency/skipSnap to avoid stale value
     if (tAir !== null) {
-      S.weld_snapAir = tAir
+      S.wld_airSnapDeg = tAir
     }
 
     // Calculate health score (deg/min) when snapshots are taken in normal path
-    if (!skipSnap && tAir !== null && V.health_startTemp > 0) {
-      let runMins = (now - S.sys_tsRelayOn) / 60
+    if (!skipSnap && tAir !== null && V.hlt_startDeg > 0) {
+      let runMins = (now - S.sys_relayOnTs) / 60
       if (runMins > 5) {
-        let delta = V.health_startTemp - tAir
+        let delta = V.hlt_startDeg - tAir
         if (delta > 0) {
-          V.health_lastScore = r3(delta / runMins)
+          V.hlt_lastScore = r3(delta / runMins)
         }
       }
     }
@@ -162,20 +152,15 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
 // ----------------------------------------------------------
 
 /**
- * * DETERMINE MODE
- * ? Main decision engine - evaluates priorities and returns desired state.
+ * * determineMode - Main decision engine for relay state
  * ? Priority order: Fatal > Limp > Defrost > Door > Freeze > MaxRun > Normal
  *
- * @param  {number} tCtrl - Control temperature (smoothed air)
- * @param  {number} tEvap - Evaporator temperature
- * @param  {number} now   - Current timestamp (seconds) - passed from caller
- * @returns {object}       - { wantOn, status, reason, detail }
- *
- * @mutates V.sens_wasError  - Set true when entering limp mode
- * @mutates S.defr_isActive  - Cleared during scheduled defrost
- *
- * @reads V.sys_alarm, V.turbo_active, S.sys_relayState
- * @reads C.ctrl_targetDeg and temperature bounds
+ * @param {number} tCtrl - Control temperature (smoothed air)
+ * @param {number} tEvap - Evaporator temperature
+ * @param {number} now - Current timestamp (seconds)
+ * @returns {object} { wantOn, status, reason, detail }
+ * @mutates V.sns_wasErr - Set true when entering limp mode
+ * @mutates S.dfr_isActive - Cleared during scheduled defrost
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- State machine with many transitions
 function determineMode(tCtrl, tEvap, now) {
@@ -190,7 +175,7 @@ function determineMode(tCtrl, tEvap, now) {
 
   // Priority 2: LIMP MODE (Sensor failure)
   if (V.sys_alarm === ALM.FAIL || V.sys_alarm === ALM.STUCK) {
-    V.sens_wasError = true
+    V.sns_wasErr = true
     let limp = handleLimpMode()
     return { wantOn: limp.wantOn, status: limp.status, reason: RSN.NONE, detail: limp.detail }
   }
@@ -206,18 +191,18 @@ function determineMode(tCtrl, tEvap, now) {
 
   // Priority 4: DOOR PAUSE
   if (isDoorPauseActive()) {
-    return { wantOn: false, status: S.sys_relayState ? ST.WANT_IDLE : ST.IDLE, reason: RSN.PROT_DOOR, detail: 'Door pause' }
+    return { wantOn: false, status: S.sys_isRelayOn ? ST.WANT_IDLE : ST.IDLE, reason: RSN.PROT_DOOR, detail: 'Door pause' }
   }
 
   // Priority 5: SCHEDULED DEFROST
   if (isScheduledDefrost()) {
-    S.defr_isActive = false  // Clear dynamic defrost flag during scheduled defrost
-    return { wantOn: false, status: S.sys_relayState ? ST.WANT_IDLE : ST.IDLE, reason: RSN.DEFR_SCHED, detail: 'Scheduled defrost' }
+    S.dfr_isActive = false  // Clear dynamic defrost flag during scheduled defrost
+    return { wantOn: false, status: S.sys_isRelayOn ? ST.WANT_IDLE : ST.IDLE, reason: RSN.DEFR_SCHED, detail: 'Scheduled defrost' }
   }
 
   // Priority 6: FREEZE PROTECTION
   if (isFreezeProtectionActive(tCtrl)) {
-    return { wantOn: false, status: S.sys_relayState ? ST.WANT_IDLE : ST.IDLE, reason: RSN.PROT_AIR_FRZ, detail: 'Freeze cut' }
+    return { wantOn: false, status: S.sys_isRelayOn ? ST.WANT_IDLE : ST.IDLE, reason: RSN.PROT_AIR_FRZ, detail: 'Freeze cut' }
   }
 
   // Priority 7: MAX RUN PROTECTION
@@ -227,19 +212,19 @@ function determineMode(tCtrl, tEvap, now) {
 
   // Priority 8: DYNAMIC DEFROST
   if (handleDynamicDefrost(tEvap)) {
-    return { wantOn: false, status: S.sys_relayState ? ST.WANT_IDLE : ST.IDLE, reason: RSN.DEFR_DYN, detail: 'Dynamic defrost' }
+    return { wantOn: false, status: S.sys_isRelayOn ? ST.WANT_IDLE : ST.IDLE, reason: RSN.DEFR_DYN, detail: 'Dynamic defrost' }
   }
 
   // Priority 9: NORMAL THERMOSTAT
   let thermostat = evaluateThermostat(tCtrl, target, hyst)
-  let wantOn = (thermostat !== null) ? thermostat : S.sys_relayState
+  let wantOn = (thermostat !== null) ? thermostat : S.sys_isRelayOn
 
   // Determine status based on turbo and relay state
   let status
-  if (V.turbo_active) {
-    status = S.sys_relayState ? ST.TURBO_COOL : ST.TURBO_IDLE
+  if (V.trb_isActive) {
+    status = S.sys_isRelayOn ? ST.TURBO_COOL : ST.TURBO_IDLE
   } else {
-    status = S.sys_relayState ? ST.COOLING : ST.IDLE
+    status = S.sys_isRelayOn ? ST.COOLING : ST.IDLE
   }
 
   return { wantOn: wantOn, status: status, reason: RSN.NONE, detail: detail }
@@ -252,27 +237,23 @@ function determineMode(tCtrl, tEvap, now) {
 // ----------------------------------------------------------
 
 /**
- * * EXECUTE SWITCH DECISION
- * ? Applies min ON/OFF timing guards and switches relay if allowed.
+ * * executeSwitchDecision - Apply timing guards and switch relay
+ * ? Enforces min ON/OFF times unless in limp mode.
  *
- * @param  {boolean} wantOn  - Desired relay state
- * @param  {number}  now     - Current timestamp (seconds)
- * @param  {number}  tAir    - Air temperature (for snapshot)
- * @param  {number}  tEvap   - Evap temperature (for snapshot)
- * @param  {boolean} isLimp  - True if in limp mode (skip guards)
- * @returns {object}          - { switched, blocked, reason, detail }
- *
- * @mutates V.sys_status       - Updated based on relay action/blocking
- * @mutates V.sys_reason       - Set when blocked by timing guards
- * @mutates V.sys_statusDetail - Set to remaining wait time when blocked
- *
- * @sideeffect Calls setRelay() which triggers hardware and state changes
+ * @param {boolean} wantOn - Desired relay state
+ * @param {number} now - Current timestamp (seconds)
+ * @param {number} tAir - Air temperature
+ * @param {number} tEvap - Evap temperature
+ * @param {boolean} isLimp - True if in limp mode
+ * @returns {object} { switched, blocked, reason, detail }
+ * @mutates V.sys_status, V.sys_statusReason, V.sys_detail
+ * @sideeffect Calls setRelay() on state change
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Control orchestration with timing guards
 function executeSwitchDecision(wantOn, now, tAir, tEvap, isLimp) {
   // In limp mode, switch immediately (no timing guards)
   if (isLimp) {
-    if (wantOn !== S.sys_relayState) {
+    if (wantOn !== S.sys_isRelayOn) {
       setRelay(wantOn, now, 0, 0, true)
       V.sys_status = wantOn ? ST.LIMP_COOL : ST.LIMP_IDLE
       return { switched: true, blocked: false, reason: RSN.NONE, detail: null }
@@ -286,30 +267,30 @@ function executeSwitchDecision(wantOn, now, tAir, tEvap, isLimp) {
   }
 
   // Want to turn ON but currently OFF
-  if (wantOn && !S.sys_relayState) {
+  if (wantOn && !S.sys_isRelayOn) {
     if (canTurnOn(now)) {
       setRelay(true, now, tAir, tEvap, false)
-      V.sys_status = V.turbo_active ? ST.TURBO_COOL : ST.COOLING
+      V.sys_status = V.trb_isActive ? ST.TURBO_COOL : ST.COOLING
       return { switched: true, blocked: false, reason: RSN.NONE, detail: null }
     } else {
       V.sys_status = ST.WANT_COOL
-      V.sys_reason = RSN.PROT_MIN_OFF
-      V.sys_statusDetail = ri(getTimeUntilOnAllowed(now)) + 's'
-      return { switched: false, blocked: true, reason: RSN.PROT_MIN_OFF, detail: V.sys_statusDetail }
+      V.sys_statusReason = RSN.PROT_MIN_OFF
+      V.sys_detail = ri(getTimeUntilOnAllowed(now)) + 's'
+      return { switched: false, blocked: true, reason: RSN.PROT_MIN_OFF, detail: V.sys_detail }
     }
   }
 
   // Want to turn OFF but currently ON
-  if (!wantOn && S.sys_relayState) {
+  if (!wantOn && S.sys_isRelayOn) {
     if (canTurnOff(now)) {
       setRelay(false, now, tAir, tEvap, false)
-      V.sys_status = V.turbo_active ? ST.TURBO_IDLE : ST.IDLE
+      V.sys_status = V.trb_isActive ? ST.TURBO_IDLE : ST.IDLE
       return { switched: true, blocked: false, reason: RSN.NONE, detail: null }
     } else {
       V.sys_status = ST.WANT_IDLE
-      V.sys_reason = RSN.PROT_MIN_ON
-      V.sys_statusDetail = ri(getTimeUntilOffAllowed(now)) + 's'
-      return { switched: false, blocked: true, reason: RSN.PROT_MIN_ON, detail: V.sys_statusDetail }
+      V.sys_statusReason = RSN.PROT_MIN_ON
+      V.sys_detail = ri(getTimeUntilOffAllowed(now)) + 's'
+      return { switched: false, blocked: true, reason: RSN.PROT_MIN_ON, detail: V.sys_detail }
     }
   }
 

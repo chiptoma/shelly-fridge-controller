@@ -74,7 +74,7 @@ class SimulationRunner {
       runtime.setTemperature(101, temps.air)
     } else if (temps.air === undefined) {
       // Use existing smooth value or default
-      const airTemp = script.V.sens_smoothAir || 4.0
+      const airTemp = script.V.sns_airSmoothDeg || 4.0
       runtime.setTemperature(101, airTemp)
     }
     // If temps.air === null, leave sensor as-is (disconnected)
@@ -83,7 +83,7 @@ class SimulationRunner {
     runtime.setTemperature(100, evapTemp)
 
     // Store loop timestamp
-    script.V.loopNow = now
+    script.V.lop_nowTs = now
 
     // Get sensor readings
     const rAir = runtime.temperatures[101]
@@ -92,47 +92,47 @@ class SimulationRunner {
     // Process sensors
     if (script.sensors.validateSensorReadings(rAir, rEvap)) {
       script.sensors.resetSensorError()
-      if (script.V.sens_wasError) {
+      if (script.V.sns_wasErr) {
         script.sensors.handleSensorRecovery(rAir.tC)
       }
       script.sensors.processSensorData(rAir.tC)
 
       // Check sensor stuck
-      script.sensors.checkSensorStuck(rAir.tC, 'sens_stuckRefAir', 'sens_stuckTsAir', now)
+      script.sensors.checkSensorStuck(rAir.tC, 'sns_airStuckRefDeg', 'sns_airStuckTs', now)
     } else {
       script.sensors.handleSensorError()
     }
 
     // Clear and apply alarms
     script.alarms.clearNonFatalAlarms()
-    const alarmFail = script.V.sens_errCount >= script.C.sys_sensFailLimit
+    const alarmFail = script.V.sns_errCnt >= script.C.sys_sensFailLimit
     const isStuck = script.sensors.checkSensorStuck(
-      script.V.sens_smoothAir,
-      'sens_stuckRefAir',
-      'sens_stuckTsAir',
+      script.V.sns_airSmoothDeg,
+      'sns_airStuckRefDeg',
+      'sns_airStuckTs',
       now,
     )
     script.alarms.applySensorAlarms(alarmFail, isStuck)
 
     // Door detection
     if (script.C.door_enable) {
-      script.features.detectDoorOpen(script.V.sens_smoothAir, now)
+      script.features.detectDoorOpen(script.V.sns_airSmoothDeg, now)
     }
 
     // Determine mode and execute
-    const mode = script.control.determineMode(script.V.sens_smoothAir, rEvap?.tC, now)
+    const mode = script.control.determineMode(script.V.sns_airSmoothDeg, rEvap?.tC, now)
     const isLimp = script.V.sys_alarm === script.ALM.FAIL || script.V.sys_alarm === script.ALM.STUCK
-    const result = script.control.executeSwitchDecision(mode.wantOn, now, script.V.sens_smoothAir, rEvap?.tC, isLimp)
+    const result = script.control.executeSwitchDecision(mode.wantOn, now, script.V.sns_airSmoothDeg, rEvap?.tC, isLimp)
 
     // Update status
     if (!result.blocked && !result.switched) {
       script.V.sys_status = mode.status
-      if (mode.reason !== script.RSN.NONE) script.V.sys_reason = mode.reason
+      if (mode.reason !== script.RSN.NONE) script.V.sys_statusReason = mode.reason
     }
 
     // Protection checks
-    if (script.S.sys_relayState) {
-      const runDur = now - script.S.sys_tsRelayOn
+    if (script.S.sys_isRelayOn) {
+      const runDur = now - script.S.sys_relayOnTs
       if (script.V.hw_hasPM) {
         const power = runtime.switches[0]?.apower || 0
         script.protection.checkGhostRun(power, runDur)
@@ -140,11 +140,11 @@ class SimulationRunner {
       }
       script.protection.checkCoolingHealth(rEvap?.tC, now)
     } else {
-      script.protection.checkWeldDetection(script.V.sens_smoothAir, now)
+      script.protection.checkWeldDetection(script.V.sns_airSmoothDeg, now)
     }
 
     // Update metrics
-    script.metrics.updateMetrics(script.S.sys_relayState, script.C.sys_loopSec)
+    script.metrics.updateMetrics(script.S.sys_isRelayOn, script.C.sys_loopSec)
 
     // Record state
     this.stateHistory.push({
@@ -152,8 +152,8 @@ class SimulationRunner {
       time: now,
       status: script.V.sys_status,
       alarm: script.V.sys_alarm,
-      relayOn: script.S.sys_relayState,
-      temp: script.V.sens_smoothAir,
+      relayOn: script.S.sys_isRelayOn,
+      temp: script.V.sns_airSmoothDeg,
       mode: mode.status,
       reason: mode.reason,
     })
@@ -223,10 +223,10 @@ async function setupController(runtime, options = {}) {
   }
 
   // Initialize volatile
-  state.V.sens_stuckRefAir = null
-  state.V.sens_stuckTsAir = 0
-  state.V.sens_stuckRefEvap = null
-  state.V.sens_stuckTsEvap = 0
+  state.V.sns_airStuckRefDeg = null
+  state.V.sns_airStuckTs = 0
+  state.V.sns_evpStuckRefDeg = null
+  state.V.sns_evpStuckTs = 0
   if (options.volatile) {
     Object.assign(state.V, options.volatile)
   }
@@ -272,28 +272,28 @@ describe('Event Injection: Door Open During Cooling', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_smoothAir: 6.0,
+        sns_airSmoothDeg: 6.0,
         sys_alarm: 'NONE',
-        turbo_active: false,
+        trb_isActive: false,
       },
     })
 
     // Schedule door open at loop 10 (simulated by rapid temp rise)
     sim.scheduleEvent(10, (s) => {
       // Simulate door open: rapid temp rise
-      s.script.V.door_refTemp = s.script.V.sens_smoothAir
-      s.script.V.door_refTs = s.runtime.uptimeMs / 1000 - 10
+      s.script.V.dor_refDeg = s.script.V.sns_airSmoothDeg
+      s.script.V.dor_refTs = s.runtime.uptimeMs / 1000 - 10
     }, 'Door opened - reference set')
 
     // Run normal cooling for 8 loops
     sim.runLoops(8, () => ({ air: 5.5, evap: -10 }))
 
     // Verify cooling was active
-    expect(sim.script.S.sys_relayState).toBe(true)
+    expect(sim.script.S.sys_isRelayOn).toBe(true)
 
     // Run loops 8-12 with rapid temp rise (door open simulation)
     sim.runLoops(5, (i) => ({
@@ -302,7 +302,7 @@ describe('Event Injection: Door Open During Cooling', () => {
     }))
 
     // Door timer should have been triggered
-    expect(sim.script.V.door_timer).toBeGreaterThan(0)
+    expect(sim.script.V.dor_pauseRemSec).toBeGreaterThan(0)
 
     // Mode should indicate door pause
     const lastState = sim.stateHistory[sim.stateHistory.length - 1]
@@ -310,7 +310,7 @@ describe('Event Injection: Door Open During Cooling', () => {
   })
 
   it('should resume cooling after door pause expires', async () => {
-    // ? Start runtime with time > 0 so door_refTs passes the > 0 check
+    // ? Start runtime with time > 0 so dor_refTs passes the > 0 check
     runtime.advanceTime(1000)
 
     const sim = await setupController(runtime, {
@@ -326,17 +326,17 @@ describe('Event Injection: Door Open During Cooling', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_smoothAir: 5.0,
-        sens_bufAir: [5.0, 5.0, 5.0], // Initialize buffer for proper median
-        sens_bufIdx: 0,
+        sns_airSmoothDeg: 5.0,
+        sns_airBuf: [5.0, 5.0, 5.0], // Initialize buffer for proper median
+        sns_bufIdx: 0,
         sys_alarm: 'NONE',
-        door_timer: 0,
-        door_refTemp: 0,
-        door_refTs: 0,
+        dor_pauseRemSec: 0,
+        dor_refDeg: 0,
+        dor_refTs: 0,
       },
     })
 
@@ -350,18 +350,18 @@ describe('Event Injection: Door Open During Cooling', () => {
     sim.runLoop({ air: 7.0, evap: -10 })
 
     // Door should be detected (rate > 0.5 deg/min)
-    expect(sim.script.V.door_timer).toBeGreaterThan(0)
+    expect(sim.script.V.dor_pauseRemSec).toBeGreaterThan(0)
 
     // Run enough loops to expire door pause
     // The timer decrements each loop, so run until it hits 0
     let loops = 0
-    while (sim.script.V.door_timer > 0 && loops < 20) {
+    while (sim.script.V.dor_pauseRemSec > 0 && loops < 20) {
       sim.runLoop({ air: 6.0, evap: -10 }) // Stable temp (door closed)
       loops++
     }
 
     // Verify door timer expired
-    expect(sim.script.V.door_timer).toBeLessThanOrEqual(0)
+    expect(sim.script.V.dor_pauseRemSec).toBeLessThanOrEqual(0)
 
     // Run one more loop - should want to cool (temp above setpoint)
     const result = sim.runLoop({ air: 6.0, evap: -10 })
@@ -393,14 +393,14 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_smoothAir: 5.0,
-        sens_bufAir: [5.0, 5.0, 5.0],
-        sens_bufIdx: 0,
-        sens_errCount: 0,
+        sns_airSmoothDeg: 5.0,
+        sns_airBuf: [5.0, 5.0, 5.0],
+        sns_bufIdx: 0,
+        sns_errCnt: 0,
         sys_alarm: 'NONE',
       },
     })
@@ -409,7 +409,7 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
     sim.runLoops(5, () => ({ air: 5.0, evap: -10 }))
 
     // Verify cooling was active
-    expect(sim.script.S.sys_relayState).toBe(true)
+    expect(sim.script.S.sys_isRelayOn).toBe(true)
     expect(sim.script.V.sys_alarm).toBe('NONE')
 
     // Disconnect sensor by setting null
@@ -422,7 +422,7 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
     }
 
     // Should have hit error limit and entered LIMP
-    expect(sim.script.V.sens_errCount).toBeGreaterThanOrEqual(sim.script.C.sys_sensFailLimit)
+    expect(sim.script.V.sns_errCnt).toBeGreaterThanOrEqual(sim.script.C.sys_sensFailLimit)
     expect(sim.script.V.sys_alarm).toBe(sim.script.ALM.FAIL)
 
     // Status should indicate LIMP mode
@@ -441,15 +441,15 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: -100,
+        sys_isRelayOn: false,
+        sys_relayOffTs: -100,
       },
       volatile: {
-        sens_smoothAir: 5.0,
-        sens_errCount: 0,
-        sens_wasError: false,
-        sens_bufAir: [5.0, 5.0, 5.0],
-        sens_bufIdx: 0,
+        sns_airSmoothDeg: 5.0,
+        sns_errCnt: 0,
+        sns_wasErr: false,
+        sns_airBuf: [5.0, 5.0, 5.0],
+        sns_bufIdx: 0,
         sys_alarm: 'NONE',
       },
     })
@@ -468,10 +468,10 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
 
     // Should be in FAIL state
     expect(sim.script.V.sys_alarm).toBe(sim.script.ALM.FAIL)
-    expect(sim.script.V.sens_errCount).toBeGreaterThanOrEqual(3)
+    expect(sim.script.V.sns_errCnt).toBeGreaterThanOrEqual(3)
 
     // Mark that we had an error (for recovery detection)
-    sim.script.V.sens_wasError = true
+    sim.script.V.sns_wasErr = true
 
     // Reconnect sensor
     runtime.setTemperature(101, 5.0)
@@ -480,8 +480,8 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
     sim.runLoops(3, () => ({ air: 5.0, evap: -10 }))
 
     // Should have recovered
-    expect(sim.script.V.sens_errCount).toBe(0)
-    expect(sim.script.V.sens_wasError).toBe(false)
+    expect(sim.script.V.sns_errCnt).toBe(0)
+    expect(sim.script.V.sns_wasErr).toBe(false)
   })
 })
 
@@ -507,13 +507,15 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: -100,
+        sys_isRelayOn: false,
+        sys_relayOffTs: -100,
       },
       volatile: {
-        sens_smoothAir: 4.0,
-        sens_stuckRefAir: null, // Will be initialized on first call
-        sens_stuckTsAir: 0,
+        sns_airSmoothDeg: 4.0,
+        sns_airBuf: [4.0, 4.0, 4.0], // ? Properly seed buffer for stable smoothing
+        sns_bufIdx: 0,
+        sns_airStuckRefDeg: null, // Will be initialized on first call
+        sns_airStuckTs: 0,
         sys_alarm: 'NONE',
       },
     })
@@ -537,11 +539,11 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: -100,
+        sys_isRelayOn: false,
+        sys_relayOffTs: -100,
       },
       volatile: {
-        sens_smoothAir: 4.0,
+        sns_airSmoothDeg: 4.0,
         sys_alarm: 'NONE',
       },
     })
@@ -566,13 +568,15 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_smoothAir: 5.0,
-        sens_stuckRefAir: null, // ? Explicitly initialize (matches passing test)
-        sens_stuckTsAir: 0,
+        sns_airSmoothDeg: 5.0,
+        sns_airBuf: [5.0, 5.0, 5.0], // ? Properly seed buffer for stable smoothing
+        sns_bufIdx: 0,
+        sns_airStuckRefDeg: null, // ? Explicitly initialize (matches passing test)
+        sns_airStuckTs: 0,
         sys_alarm: 'NONE',
       },
     })
@@ -620,15 +624,15 @@ describe('Event Injection: Weld Detection During Operation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false, // Relay is OFF
-        sys_tsRelayOff: 0,     // Turned off at time 0 (15s ago now)
-        weld_snapAir: 5.0,     // Snapshot temp when turned off
-        fault_fatal: [],
+        sys_isRelayOn: false, // Relay is OFF
+        sys_relayOffTs: 0,     // Turned off at time 0 (15s ago now)
+        wld_airSnapDeg: 5.0,     // Snapshot temp when turned off
+        flt_fatalArr: [],
       },
       volatile: {
-        sens_smoothAir: 5.0,
-        sens_bufAir: [5.0, 5.0, 5.0], // Initialize smoothing buffer
-        sens_bufIdx: 0,
+        sns_airSmoothDeg: 5.0,
+        sns_airBuf: [5.0, 5.0, 5.0], // Initialize smoothing buffer
+        sns_bufIdx: 0,
         sys_alarm: 'NONE',
       },
     })
@@ -660,13 +664,13 @@ describe('Event Injection: Weld Detection During Operation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
-        weld_snapAir: 3.5,
-        fault_fatal: [],
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
+        wld_airSnapDeg: 3.5,
+        flt_fatalArr: [],
       },
       volatile: {
-        sens_smoothAir: 3.5,
+        sns_airSmoothDeg: 3.5,
         sys_alarm: 'NONE',
       },
     })
@@ -705,13 +709,13 @@ describe('Event Injection: Power Anomalies During Cooling', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         hw_hasPM: true,
-        pwr_ghostTimer: 0,
-        pwr_ghostCount: 0, // ? Start with fresh count
+        pwr_ghostSec: 0,
+        pwr_ghostCnt: 0, // ? Start with fresh count
         sys_alarm: 'NONE',
       },
     })
@@ -741,8 +745,8 @@ describe('Event Injection: Power Anomalies During Cooling', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         hw_hasPM: true,
@@ -797,18 +801,18 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_smoothAir: 5.0,
-        sens_bufAir: [5.0, 5.0, 5.0],
-        sens_bufIdx: 0,
-        sens_errCount: 0,
+        sns_airSmoothDeg: 5.0,
+        sns_airBuf: [5.0, 5.0, 5.0],
+        sns_bufIdx: 0,
+        sns_errCnt: 0,
         sys_alarm: 'NONE',
-        door_timer: 0,
-        door_refTemp: 0,
-        door_refTs: 0,
+        dor_pauseRemSec: 0,
+        dor_refDeg: 0,
+        dor_refTs: 0,
       },
     })
 
@@ -820,7 +824,7 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
     sim.runLoop({ air: 6.5, evap: -10 })
     sim.runLoop({ air: 7.0, evap: -10 })
 
-    expect(sim.script.V.door_timer).toBeGreaterThan(0)
+    expect(sim.script.V.dor_pauseRemSec).toBeGreaterThan(0)
 
     // Then sensor fails
     runtime.setTemperature(101, null)
@@ -841,13 +845,13 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_smoothAir: 8.0,
+        sns_airSmoothDeg: 8.0,
         sys_alarm: 'NONE',
-        turbo_active: false,
+        trb_isActive: false,
       },
     })
 
@@ -879,11 +883,11 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: -100,
+        sys_isRelayOn: false,
+        sys_relayOffTs: -100,
       },
       volatile: {
-        sens_smoothAir: 6.0,
+        sns_airSmoothDeg: 6.0,
         sys_alarm: 'NONE',
       },
     })
@@ -892,8 +896,8 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
     const events = []
     events.push(sim.scheduleRandomEvent(5, 15, (s) => {
       // Simulate door open via temp rise
-      s.script.V.door_refTemp = s.script.V.sens_smoothAir
-      s.script.V.door_refTs = s.runtime.uptimeMs / 1000 - 10
+      s.script.V.dor_refDeg = s.script.V.sns_airSmoothDeg
+      s.script.V.dor_refTs = s.runtime.uptimeMs / 1000 - 10
     }, 'Random door open'))
 
     // Run 100 loops with temperature cycling
@@ -903,7 +907,7 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
 
     for (let i = 0; i < 100; i++) {
       // Natural temperature behavior
-      if (sim.script.S.sys_relayState) {
+      if (sim.script.S.sys_isRelayOn) {
         cooling = true
         temp -= 0.05 // Cooling
       } else {
@@ -922,7 +926,7 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
       const result = sim.runLoop({ air: temp, evap: cooling ? -12 : -5 })
 
       // Check for safety violations
-      if (temp < sim.script.C.comp_freezeCutDeg && sim.script.S.sys_relayState) {
+      if (temp < sim.script.C.comp_freezeCutDeg && sim.script.S.sys_isRelayOn) {
         // Should have freeze protection
         if (result.mode.wantOn === true) {
           violations.push({ loop: i, issue: 'Cooling below freeze point' })
@@ -969,11 +973,11 @@ describe('Event Injection: Long Duration Stability', () => {
         defr_dynEnable: false,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: -200,
+        sys_isRelayOn: false,
+        sys_relayOffTs: -200,
       },
       volatile: {
-        sens_smoothAir: 5.0,
+        sns_airSmoothDeg: 5.0,
         sys_alarm: 'NONE',
       },
     })
@@ -981,8 +985,8 @@ describe('Event Injection: Long Duration Stability', () => {
     // Schedule multiple random door events
     for (let i = 0; i < 5; i++) {
       sim.scheduleRandomEvent(50 + i * 100, 100 + i * 100, (s) => {
-        s.script.V.door_refTemp = s.script.V.sens_smoothAir
-        s.script.V.door_refTs = s.runtime.uptimeMs / 1000 - 10
+        s.script.V.dor_refDeg = s.script.V.sns_airSmoothDeg
+        s.script.V.dor_refTs = s.runtime.uptimeMs / 1000 - 10
       }, `Door event ${i + 1}`)
     }
 
@@ -993,10 +997,10 @@ describe('Event Injection: Long Duration Stability', () => {
 
     for (let i = 0; i < 500; i++) {
       // Track cycling
-      const wasOn = sim.script.S.sys_relayState
+      const wasOn = sim.script.S.sys_isRelayOn
 
       // Temperature behavior
-      if (sim.script.S.sys_relayState) {
+      if (sim.script.S.sys_isRelayOn) {
         temp -= 0.03 + Math.random() * 0.02 // Cooling with noise
       } else {
         temp += 0.015 + Math.random() * 0.01 // Warming with noise
@@ -1010,11 +1014,11 @@ describe('Event Injection: Long Duration Stability', () => {
       // Bound temperature
       temp = Math.max(1.0, Math.min(12.0, temp))
 
-      sim.runLoop({ air: temp, evap: sim.script.S.sys_relayState ? -12 : -3 })
+      sim.runLoop({ air: temp, evap: sim.script.S.sys_isRelayOn ? -12 : -3 })
 
       // Count state changes
-      if (sim.script.S.sys_relayState && !wasOn) onCount++
-      if (!sim.script.S.sys_relayState && wasOn) offCount++
+      if (sim.script.S.sys_isRelayOn && !wasOn) onCount++
+      if (!sim.script.S.sys_isRelayOn && wasOn) offCount++
     }
 
     // Should have completed multiple cycles
@@ -1029,7 +1033,7 @@ describe('Event Injection: Long Duration Stability', () => {
     expect(sim.script.V.sys_alarm).not.toBe(sim.script.ALM.LOCKED)
 
     // Temperature should be controlled
-    const finalTemp = sim.script.V.sens_smoothAir
+    const finalTemp = sim.script.V.sns_airSmoothDeg
     expect(finalTemp).toBeLessThan(10) // Not runaway
   })
 })

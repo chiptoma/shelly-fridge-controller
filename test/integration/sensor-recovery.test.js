@@ -29,8 +29,8 @@ async function setupSensorTest(runtime, options = {}) {
   // Apply initial state
   if (options.airTemp !== undefined) {
     runtime.setTemperature(config.C.sys_sensAirId, options.airTemp)
-    state.V.sens_smoothAir = options.airTemp
-    state.V.sens_bufAir = [options.airTemp, options.airTemp, options.airTemp]
+    state.V.sns_airSmoothDeg = options.airTemp
+    state.V.sns_airBuf = [options.airTemp, options.airTemp, options.airTemp]
   }
   if (options.evapTemp !== undefined) {
     runtime.setTemperature(config.C.sys_sensEvapId, options.evapTemp)
@@ -70,29 +70,29 @@ describe('Sensor Recovery: Failure Detection', () => {
   it('should increment error count on sensor failure', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_errCount = 0
+    script.V.sns_errCnt = 0
 
     script.sensors.handleSensorError()
 
-    expect(script.V.sens_errCount).toBe(1)
+    expect(script.V.sns_errCnt).toBe(1)
   })
 
   it('should increment past limit (no cap)', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_errCount = script.C.sys_sensFailLimit
+    script.V.sns_errCnt = script.C.sys_sensFailLimit
 
     script.sensors.handleSensorError()
 
     // handleSensorError increments without capping
     // The alarm triggers when limit is reached, but count continues
-    expect(script.V.sens_errCount).toBe(script.C.sys_sensFailLimit + 1)
+    expect(script.V.sns_errCnt).toBe(script.C.sys_sensFailLimit + 1)
   })
 
   it('should return true when limit reached', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_errCount = script.C.sys_sensFailLimit - 1
+    script.V.sns_errCnt = script.C.sys_sensFailLimit - 1
 
     const isFatal = script.sensors.handleSensorError()
 
@@ -102,7 +102,7 @@ describe('Sensor Recovery: Failure Detection', () => {
   it('should return false before limit', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_errCount = 0
+    script.V.sns_errCnt = 0
 
     const isFatal = script.sensors.handleSensorError()
 
@@ -143,26 +143,26 @@ describe('Sensor Recovery: Stuck Detection', () => {
   it('should initialize stuck reference on first call', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_stuckRefAir = null
-    script.V.sens_stuckTsAir = 0
+    script.V.sns_airStuckRefDeg = null
+    script.V.sns_airStuckTs = 0
 
-    const stuck = script.sensors.checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', 1000)
+    const stuck = script.sensors.checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', 1000)
 
     expect(stuck).toBe(false)
-    expect(script.V.sens_stuckRefAir).toBe(5.0)
-    expect(script.V.sens_stuckTsAir).toBe(1000)
+    expect(script.V.sns_airStuckRefDeg).toBe(5.0)
+    expect(script.V.sns_airStuckTs).toBe(1000)
   })
 
   it('should detect stuck sensor after threshold time', async () => {
     script = await setupSensorTest(runtime, {})
 
     // Initialize
-    script.V.sens_stuckRefAir = 5.0
-    script.V.sens_stuckTsAir = 1000
+    script.V.sns_airStuckRefDeg = 5.0
+    script.V.sns_airStuckTs = 1000
 
     // Check after threshold exceeded
     const stuckTime = 1000 + script.C.sens_stuckTimeSec + 1
-    const stuck = script.sensors.checkSensorStuck(5.0, 'sens_stuckRefAir', 'sens_stuckTsAir', stuckTime)
+    const stuck = script.sensors.checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', stuckTime)
 
     expect(stuck).toBe(true)
   })
@@ -170,29 +170,29 @@ describe('Sensor Recovery: Stuck Detection', () => {
   it('should reset when value changes beyond epsilon', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_stuckRefAir = 5.0
-    script.V.sens_stuckTsAir = 1000
+    script.V.sns_airStuckRefDeg = 5.0
+    script.V.sns_airStuckTs = 1000
 
     // Value changes significantly (> stuckEpsDeg default 0.1)
-    const stuck = script.sensors.checkSensorStuck(5.5, 'sens_stuckRefAir', 'sens_stuckTsAir', 2000)
+    const stuck = script.sensors.checkSensorStuck(5.5, 'sns_airStuckRefDeg', 'sns_airStuckTs', 2000)
 
     expect(stuck).toBe(false)
-    expect(script.V.sens_stuckRefAir).toBe(5.5) // Updated reference
-    expect(script.V.sens_stuckTsAir).toBe(2000) // Reset timestamp
+    expect(script.V.sns_airStuckRefDeg).toBe(5.5) // Updated reference
+    expect(script.V.sns_airStuckTs).toBe(2000) // Reset timestamp
   })
 
   it('should NOT reset for small fluctuations within epsilon', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_stuckRefAir = 5.0
-    script.V.sens_stuckTsAir = 1000
+    script.V.sns_airStuckRefDeg = 5.0
+    script.V.sns_airStuckTs = 1000
 
     // Value changes by less than epsilon
-    const stuck = script.sensors.checkSensorStuck(5.05, 'sens_stuckRefAir', 'sens_stuckTsAir', 2000)
+    const stuck = script.sensors.checkSensorStuck(5.05, 'sns_airStuckRefDeg', 'sns_airStuckTs', 2000)
 
     expect(stuck).toBe(false)
-    expect(script.V.sens_stuckRefAir).toBe(5.0) // NOT updated
-    expect(script.V.sens_stuckTsAir).toBe(1000) // NOT reset
+    expect(script.V.sns_airStuckRefDeg).toBe(5.0) // NOT updated
+    expect(script.V.sns_airStuckTs).toBe(1000) // NOT reset
   })
 })
 
@@ -286,8 +286,8 @@ describe('Sensor Recovery: LIMP Mode Operation', () => {
   it('should skip timing guards in LIMP mode', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.S.sys_relayState = false
-    script.S.sys_tsRelayOff = Date.now() / 1000 // Just turned off
+    script.S.sys_isRelayOn = false
+    script.S.sys_relayOffTs = Date.now() / 1000 // Just turned off
 
     // Normal mode would block turn-on
     const resultNormal = script.control.executeSwitchDecision(true, Date.now() / 1000, 5, -10, false)
@@ -326,45 +326,45 @@ describe('Sensor Recovery: Recovery Process', () => {
   it('should re-initialize buffer on recovery', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_bufAir = [0, 0, 0]
-    script.V.sens_smoothAir = 0
-    script.V.sens_wasError = true
+    script.V.sns_airBuf = [0, 0, 0]
+    script.V.sns_airSmoothDeg = 0
+    script.V.sns_wasErr = true
 
     script.sensors.handleSensorRecovery(5.0)
 
-    expect(script.V.sens_bufAir).toEqual([5.0, 5.0, 5.0])
-    expect(script.V.sens_smoothAir).toBe(5.0)
+    expect(script.V.sns_airBuf).toEqual([5.0, 5.0, 5.0])
+    expect(script.V.sns_airSmoothDeg).toBe(5.0)
   })
 
   it('should clear wasError flag on recovery', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_wasError = true
+    script.V.sns_wasErr = true
 
     script.sensors.handleSensorRecovery(5.0)
 
-    expect(script.V.sens_wasError).toBe(false)
+    expect(script.V.sns_wasErr).toBe(false)
   })
 
   it('should reset door reference on recovery', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.door_refTs = 1000
-    script.V.sens_wasError = true
+    script.V.dor_refTs = 1000
+    script.V.sns_wasErr = true
 
     script.sensors.handleSensorRecovery(5.0)
 
-    expect(script.V.door_refTs).toBe(0)
+    expect(script.V.dor_refTs).toBe(0)
   })
 
   it('should reset error count on valid reading', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_errCount = 5
+    script.V.sns_errCnt = 5
 
     script.sensors.resetSensorError()
 
-    expect(script.V.sens_errCount).toBe(0)
+    expect(script.V.sns_errCnt).toBe(0)
   })
 
   it('should process sensor data normally after recovery', async () => {
@@ -378,8 +378,8 @@ describe('Sensor Recovery: Recovery Process', () => {
     script.sensors.processSensorData(5.5)
 
     // Buffer and smoothed should update
-    expect(script.V.sens_bufAir).toContain(5.5)
-    expect(script.V.sens_smoothAir).toBeCloseTo(5.0, 0) // EMA smooths gradually
+    expect(script.V.sns_airBuf).toContain(5.5)
+    expect(script.V.sns_airSmoothDeg).toBeCloseTo(5.0, 0) // EMA smooths gradually
   })
 })
 
@@ -403,8 +403,8 @@ describe('Sensor Recovery: Full Lifecycle', () => {
     })
 
     // PHASE 1: Normal operation
-    script.V.sens_errCount = 0
-    script.V.sens_wasError = false
+    script.V.sns_errCnt = 0
+    script.V.sns_wasErr = false
     script.V.sys_alarm = script.ALM.NONE
 
     let mode = script.control.determineMode(5.0, -8.0)
@@ -417,7 +417,7 @@ describe('Sensor Recovery: Full Lifecycle', () => {
       script.sensors.handleSensorError()
     }
 
-    expect(script.V.sens_errCount).toBe(script.C.sys_sensFailLimit)
+    expect(script.V.sns_errCnt).toBe(script.C.sys_sensFailLimit)
 
     // PHASE 3: Alarm triggers LIMP mode
     script.alarms.applySensorAlarms(true, false)
@@ -430,12 +430,12 @@ describe('Sensor Recovery: Full Lifecycle', () => {
     runtime.setTemperature(script.C.sys_sensAirId, 5.0)
 
     // Simulate detection of valid reading
-    script.V.sens_wasError = true
+    script.V.sns_wasErr = true
     script.sensors.handleSensorRecovery(5.0)
     script.sensors.resetSensorError()
 
-    expect(script.V.sens_errCount).toBe(0)
-    expect(script.V.sens_wasError).toBe(false)
+    expect(script.V.sns_errCnt).toBe(0)
+    expect(script.V.sns_wasErr).toBe(false)
 
     // PHASE 5: Alarm cleared, back to normal
     script.alarms.clearNonFatalAlarms()
@@ -464,7 +464,7 @@ describe('Sensor Recovery: Full Lifecycle', () => {
       script.sensors.resetSensorError()
       script.alarms.clearNonFatalAlarms()
 
-      expect(script.V.sens_errCount).toBe(0)
+      expect(script.V.sns_errCnt).toBe(0)
       expect(script.V.sys_alarm).toBe(script.ALM.NONE)
     }
   })
@@ -487,59 +487,59 @@ describe('Sensor Recovery: Edge Cases', () => {
     script = await setupSensorTest(runtime, {})
 
     // Alternating good/bad readings
-    script.V.sens_errCount = 0
+    script.V.sns_errCnt = 0
 
     script.sensors.handleSensorError() // Bad
-    expect(script.V.sens_errCount).toBe(1)
+    expect(script.V.sns_errCnt).toBe(1)
 
     script.sensors.resetSensorError() // Good
-    expect(script.V.sens_errCount).toBe(0)
+    expect(script.V.sns_errCnt).toBe(0)
 
     script.sensors.handleSensorError() // Bad
-    expect(script.V.sens_errCount).toBe(1)
+    expect(script.V.sns_errCnt).toBe(1)
   })
 
   it('should handle extreme temperature values in recovery', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_wasError = true
+    script.V.sns_wasErr = true
 
     // Extreme cold
     script.sensors.handleSensorRecovery(-40.0)
-    expect(script.V.sens_smoothAir).toBe(-40.0)
+    expect(script.V.sns_airSmoothDeg).toBe(-40.0)
 
     // Extreme hot
     script.sensors.handleSensorRecovery(85.0)
-    expect(script.V.sens_smoothAir).toBe(85.0)
+    expect(script.V.sns_airSmoothDeg).toBe(85.0)
   })
 
   it('should handle zero temperature correctly', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_wasError = true
+    script.V.sns_wasErr = true
 
     script.sensors.handleSensorRecovery(0)
 
-    expect(script.V.sens_bufAir).toEqual([0, 0, 0])
-    expect(script.V.sens_smoothAir).toBe(0)
+    expect(script.V.sns_airBuf).toEqual([0, 0, 0])
+    expect(script.V.sns_airSmoothDeg).toBe(0)
   })
 
   it('should handle stuck detection at boundary of epsilon', async () => {
     script = await setupSensorTest(runtime, {})
 
-    script.V.sens_stuckRefAir = 5.0
-    script.V.sens_stuckTsAir = 1000
+    script.V.sns_airStuckRefDeg = 5.0
+    script.V.sns_airStuckTs = 1000
 
     // Value below epsilon - should NOT reset (condition is > epsilon)
     const halfEpsilon = script.C.sens_stuckEpsDeg / 2
     const belowEpsilon = script.sensors.checkSensorStuck(
       5.0 + halfEpsilon,
-      'sens_stuckRefAir',
-      'sens_stuckTsAir',
+      'sns_airStuckRefDeg',
+      'sns_airStuckTs',
       2000,
     )
 
     // Below epsilon should NOT reset reference
-    expect(script.V.sens_stuckRefAir).toBe(5.0)
+    expect(script.V.sns_airStuckRefDeg).toBe(5.0)
   })
 })

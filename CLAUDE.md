@@ -121,10 +121,10 @@ CONSTANTS (constants.js)          CONFIG (config.js)           STATE (state.js)
 ━━━━━━━━━━━━━━━━━━━━━━━           ━━━━━━━━━━━━━━━━━━━          ━━━━━━━━━━━━━━━━━
 Compile-time, never change         User-configurable            Runtime values
 
-ALM = { NONE, TEMP, SENSOR }      C.ctrl_targetDeg = 4         S.sys_relayState = false
-RSN = { NONE, TEMP, TIMER }       C.ctrl_hystBase = 1.0        S.stats_lifeRun = 0
+ALM = { NONE, TEMP, SENSOR }      C.ctrl_targetDeg = 4         S.sys_isRelayOn = false
+RSN = { NONE, TEMP, TIMER }       C.ctrl_hystBase = 1.0        S.sts_lifeRunSec = 0
 ICO = { IDLE: '', RUN: '' }       C.turbo_enable = true        V.sys_status = 'IDLE'
-                                  ...                           V.turbo_active = false
+                                  ...                           V.trb_isActive = false
 
 Never modified                    Loaded from KVS at boot       S = persisted to KVS
                                   User can change via MQTT      V = volatile (lost on restart)
@@ -135,10 +135,10 @@ Never modified                    Loaded from KVS at boot       S = persisted to
 ```javascript
 // state.js - Persisted state survives restarts
 let S = {
-  sys_tsRelayOn: 0,        // Timestamp when relay turned on
-  sys_relayState: false,   // Current relay state
-  stats_lifeRun: 0,        // Lifetime run seconds
-  stats_history: [...],    // 24-hour duty history
+  sys_relayOnTs: 0,        // Timestamp when relay turned on
+  sys_isRelayOn: false,   // Current relay state
+  sts_lifeRunSec: 0,        // Lifetime run seconds
+  sts_dutyHistArr: [...],    // 24-hour duty history
   // ... critical state
 }
 
@@ -146,8 +146,8 @@ let S = {
 let V = {
   sys_status: 'BOOT',      // Current status (BOOT, IDLE, RUN, etc.)
   sys_alarm: 'NONE',       // Active alarm
-  sens_smoothAir: null,    // Smoothed temperature
-  turbo_active: false,     // Turbo mode state
+  sns_airSmoothDeg: null,    // Smoothed temperature
+  trb_isActive: false,     // Turbo mode state
   loopNow: 0,              // Current timestamp (set each tick)
   // ... transient state
 }
@@ -167,8 +167,8 @@ let CFG_KEYS = {
 
 // state.js - State chunks
 let ST_KEYS = {
-  'fridge_st_core': ['sys_tsRelayOn', 'sys_relayState', ...],
-  'fridge_st_stats': ['stats_lifeTime', 'stats_lifeRun', ...],
+  'fridge_st_core': ['sys_relayOnTs', 'sys_isRelayOn', ...],
+  'fridge_st_stats': ['sts_lifeTotalSec', 'sts_lifeRunSec', ...],
   // ...
 }
 ```
@@ -191,14 +191,14 @@ let ST_KEYS = {
 ```javascript
 // Pre-allocated buffer (reused every tick)
 let V = {
-  sens_bufAir: [0, 0, 0],  // Fixed-size, reused
-  sens_bufIdx: 0,
+  sns_airBuf: [0, 0, 0],  // Fixed-size, reused
+  sns_bufIdx: 0,
 }
 
 // Direct mutation (no copies)
 function updateBuffer(value) {
-  V.sens_bufAir[V.sens_bufIdx] = value
-  V.sens_bufIdx = (V.sens_bufIdx + 1) % 3
+  V.sns_airBuf[V.sns_bufIdx] = value
+  V.sns_bufIdx = (V.sns_bufIdx + 1) % 3
 }
 
 // Simple for-loops (no forEach, no map)
@@ -444,14 +444,14 @@ Use semantic comment prefixes for visual scanning:
 // ----------------------------------------------------------
 
 /**
- * * FUNCTION NAME
- * ? Description of what this function does.
+ * * functionName - Brief description (imperative verb)
+ * ? Extended explanation if behavior is non-obvious.
  *
  * @param {number} value - Parameter description
- * @returns {boolean} - Return description
+ * @returns {boolean} Return description
  *
- * @mutates V.someField - Documents state mutations
- * @sideeffect Calls Shelly.call() - Documents side effects
+ * @mutates V.someField - When and why
+ * @sideeffect Calls Shelly.call() to control relay
  */
 function doSomething(value) { }
 ```
@@ -464,6 +464,67 @@ function doSomething(value) { }
 | `?` | Blue | Context (descriptions, explanations) |
 | `!` | Red | Critical (warnings, deprecations) |
 | `TODO` | Orange | Action items |
+
+### JSDoc Title Format
+
+Function titles use camelCase matching the function name:
+
+```javascript
+// Good - camelCase title with description
+* functionName - Brief description
+
+// Avoid - UPPERCASE titles
+* FUNCTION NAME
+```
+
+### JSDoc Description Lines
+
+Limit `?` prefix to 1-2 lines maximum. For complex logic, use inline comments instead:
+
+```javascript
+// Good: Concise description
+/**
+ * * adaptHysteresis - Adjust hysteresis based on cycle times
+ * ? Uses trend confirmation to prevent oscillation.
+ */
+
+// Avoid: Multi-line ? prose
+/**
+ * * adaptHysteresis - Adjust hysteresis
+ * ? Uses trend confirmation.
+ * ? Uses cycle count as secondary signal.
+ * ? Design philosophy: ...
+ * ? Zone 1: ...
+ * ? Zone 2: ...
+ */
+```
+
+### Custom JSDoc Tags
+
+| Tag | When to Use | Format |
+|-----|-------------|--------|
+| `@mutates` | Function modifies S, V, or C | `@mutates S.field - description` |
+| `@sideeffect` | External calls (Shelly, MQTT, KVS) | `@sideeffect Calls X` |
+| `@internal` | Nested helper functions | `@internal` |
+
+**@mutates is required when:**
+- Modifying any field in S (persisted state)
+- Modifying any field in V (volatile state)
+- Modifying any field in C (config)
+- Modifying function parameters passed by reference
+
+```javascript
+// Example with multiple mutations
+/**
+ * * setRelay - Switch relay and update timestamps
+ *
+ * @mutates S.sys_isRelayOn - Set to requested state
+ * @mutates S.sys_relayOnTs - Updated when turning on
+ * @mutates S.sys_relayOffTs - Updated when turning off
+ * @sideeffect Calls Shelly.call('Switch.Set')
+ * @sideeffect Calls persistState() on state change
+ */
+```
 
 ### Variable Naming
 
@@ -483,7 +544,7 @@ for (let i = 0; i < n; i++) { }
 
 // Descriptive names for clarity
 let targetTemp = C.ctrl_targetDeg
-let currentTemp = V.sens_smoothAir
+let currentTemp = V.sns_airSmoothDeg
 ```
 
 ---

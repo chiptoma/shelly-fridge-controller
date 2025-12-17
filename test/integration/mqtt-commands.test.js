@@ -56,8 +56,8 @@ describe('MQTT: Turbo Command', () => {
   })
 
   it('should activate turbo mode with valid command', () => {
-    script.V.turbo_active = false
-    script.V.turbo_remSec = 0
+    script.V.trb_isActive = false
+    script.V.trb_remSec = 0
     script.C.turbo_enable = true
 
     runtime.mqttReceive(
@@ -65,15 +65,15 @@ describe('MQTT: Turbo Command', () => {
       JSON.stringify({ cmd: 'turbo_on' }),
     )
 
-    expect(script.V.turbo_active).toBe(true)
-    expect(script.V.turbo_remSec).toBe(script.C.turbo_maxTimeSec)
+    expect(script.V.trb_isActive).toBe(true)
+    expect(script.V.trb_remSec).toBe(script.C.turbo_maxTimeSec)
 
     const prints = runtime.getPrintHistory()
     expect(prints.some((p) => p.message.includes('Turbo ON'))).toBe(true)
   })
 
   it('should NOT activate turbo when turbo_enable is false', () => {
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
     script.C.turbo_enable = false // Disabled in config
 
     runtime.mqttReceive(
@@ -81,7 +81,7 @@ describe('MQTT: Turbo Command', () => {
       JSON.stringify({ cmd: 'turbo_on' }),
     )
 
-    expect(script.V.turbo_active).toBe(false)
+    expect(script.V.trb_isActive).toBe(false)
   })
 })
 
@@ -101,23 +101,23 @@ describe('MQTT: Turbo Off Command', () => {
 
   it('should deactivate turbo mode', () => {
     // Pre-activate turbo
-    script.V.turbo_active = true
-    script.V.turbo_remSec = 1000
+    script.V.trb_isActive = true
+    script.V.trb_remSec = 1000
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
       JSON.stringify({ cmd: 'turbo_off' }),
     )
 
-    expect(script.V.turbo_active).toBe(false)
-    expect(script.V.turbo_remSec).toBe(0)
+    expect(script.V.trb_isActive).toBe(false)
+    expect(script.V.trb_remSec).toBe(0)
 
     const prints = runtime.getPrintHistory()
     expect(prints.some((p) => p.message.includes('Turbo OFF'))).toBe(true)
   })
 
   it('should handle turbo_off when turbo already inactive', () => {
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
@@ -125,8 +125,8 @@ describe('MQTT: Turbo Off Command', () => {
     )
 
     // Should still work gracefully
-    expect(script.V.turbo_active).toBe(false)
-    expect(script.V.turbo_remSec).toBe(0)
+    expect(script.V.trb_isActive).toBe(false)
+    expect(script.V.trb_remSec).toBe(0)
   })
 })
 
@@ -271,23 +271,23 @@ describe('MQTT: Message Validation', () => {
   })
 
   it('should reject empty message', () => {
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
 
     runtime.mqttReceive(script.DEFAULT.sys_mqttCmd, '')
 
     // Should not activate turbo (message rejected)
-    expect(script.V.turbo_active).toBe(false)
+    expect(script.V.trb_isActive).toBe(false)
 
     const prints = runtime.getPrintHistory()
     expect(prints.some((p) => p.message.includes('Rejected size'))).toBe(true)
   })
 
   it('should reject null message', () => {
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
 
     runtime.mqttReceive(script.DEFAULT.sys_mqttCmd, null)
 
-    expect(script.V.turbo_active).toBe(false)
+    expect(script.V.trb_isActive).toBe(false)
   })
 
   it('should reject oversized message (> 256 bytes)', () => {
@@ -360,7 +360,7 @@ describe('MQTT: Command Edge Cases', () => {
 
   it('should handle command with extra fields gracefully', () => {
     script.C.turbo_enable = true
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
@@ -371,12 +371,12 @@ describe('MQTT: Command Edge Cases', () => {
       }),
     )
 
-    expect(script.V.turbo_active).toBe(true)
+    expect(script.V.trb_isActive).toBe(true)
   })
 
   it('should be case-sensitive for commands', () => {
     script.C.turbo_enable = true
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
@@ -384,7 +384,7 @@ describe('MQTT: Command Edge Cases', () => {
     )
 
     // Should reject as unknown command
-    expect(script.V.turbo_active).toBe(false)
+    expect(script.V.trb_isActive).toBe(false)
 
     const prints = runtime.getPrintHistory()
     expect(prints.some((p) => p.message.includes('Unknown cmd'))).toBe(true)
@@ -392,7 +392,7 @@ describe('MQTT: Command Edge Cases', () => {
 
   it('should rate limit rapid commands (second command ignored)', () => {
     script.C.turbo_enable = true
-    script.V.turbo_active = false
+    script.V.trb_isActive = false
 
     // Send turbo, then turbo_off rapidly - second should be rate limited
     runtime.mqttReceive(
@@ -405,8 +405,8 @@ describe('MQTT: Command Edge Cases', () => {
     )
 
     // First command (turbo) executes, second (turbo_off) is rate limited
-    expect(script.V.turbo_active).toBe(true)
-    expect(script.V.turbo_remSec).toBe(script.C.turbo_maxTimeSec)
+    expect(script.V.trb_isActive).toBe(true)
+    expect(script.V.trb_remSec).toBe(script.C.turbo_maxTimeSec)
 
     const prints = runtime.getPrintHistory()
     expect(prints.some((p) => p.message.includes('Rate limited'))).toBe(true)

@@ -132,10 +132,13 @@ let CFG_KEYS = {
 
 /**
  * * validateNumber - Validate a single numeric config field
+ * ? Resets to default if value is out of range.
+ *
  * @param {string} f - Field name
  * @param {number} min - Minimum allowed value
  * @param {number} max - Maximum allowed value
  * @param {string[]} bad - Array to collect invalid field names
+ * @mutates C[f] - Reset to DEFAULT[f] if invalid
  */
 function validateNumber(f, min, max, bad) {
   let v = C[f]
@@ -305,6 +308,7 @@ function validateConfig() {
  * * loadConfig - Load configuration from KVS
  *
  * Fetches config chunks from KVS, merges with defaults, validates.
+ * ? Smart sync: only writes if schema changed, never overwrites on load failure.
  *
  * @param {Function} onComplete - Called when config loading complete
  */
@@ -322,6 +326,7 @@ function loadConfig(onComplete) {
   loadChunksSeq(CFG_KEYS, C, function (cfgChunks) {
     validateConfig()
 
+    // ? Smart sync: preserves KVS on load failure, only syncs schema changes
     syncToKvs(CFG_KEYS, DEFAULT, cfgChunks, function () {
       print('✅ CONFIG: Loaded')
       onComplete()

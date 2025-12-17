@@ -26,20 +26,20 @@ describe('Protection', () => {
 
     // Create mock state
     mockS = {
-      sys_relayState: false,
-      sys_tsRelayOn: 0,
-      sys_tsRelayOff: 0,
-      weld_snapAir: 5.0,
+      sys_isRelayOn: false,
+      sys_relayOnTs: 0,
+      sys_relayOffTs: 0,
+      wld_airSnapDeg: 5.0,
     }
 
     // Create mock volatile state
     mockV = {
       sys_alarm: 'NONE',
-      sens_smoothAir: 5.0,
-      turbo_active: false,
+      sns_airSmoothDeg: 5.0,
+      trb_isActive: false,
       hw_hasPM: true,
-      pwr_ghostTimer: 0,
-      pwr_ghostCount: 0,
+      pwr_ghostSec: 0,
+      pwr_ghostCnt: 0,
     }
 
     // Create mock config
@@ -94,17 +94,17 @@ describe('Protection', () => {
 
   describe('canTurnOn', () => {
     it('should return true when min off time elapsed', () => {
-      mockS.sys_tsRelayOff = 0
+      mockS.sys_relayOffTs = 0
       expect(canTurnOn(200)).toBe(true)
     })
 
     it('should return false when min off time not elapsed', () => {
-      mockS.sys_tsRelayOff = 100
+      mockS.sys_relayOffTs = 100
       expect(canTurnOn(200)).toBe(false)
     })
 
     it('should return true at exact min off time', () => {
-      mockS.sys_tsRelayOff = 0
+      mockS.sys_relayOffTs = 0
       expect(canTurnOn(180)).toBe(true)
     })
   })
@@ -115,17 +115,17 @@ describe('Protection', () => {
 
   describe('canTurnOff', () => {
     it('should return true when min on time elapsed', () => {
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_relayOnTs = 0
       expect(canTurnOff(100)).toBe(true)
     })
 
     it('should return false when min on time not elapsed', () => {
-      mockS.sys_tsRelayOn = 100
+      mockS.sys_relayOnTs = 100
       expect(canTurnOff(120)).toBe(false)
     })
 
     it('should return true at exact min on time', () => {
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_relayOnTs = 0
       expect(canTurnOff(60)).toBe(true)
     })
   })
@@ -136,17 +136,17 @@ describe('Protection', () => {
 
   describe('getTimeUntilOnAllowed', () => {
     it('should return remaining seconds when not yet allowed', () => {
-      mockS.sys_tsRelayOff = 100
+      mockS.sys_relayOffTs = 100
       expect(getTimeUntilOnAllowed(200)).toBe(80)
     })
 
     it('should return 0 when already allowed', () => {
-      mockS.sys_tsRelayOff = 0
+      mockS.sys_relayOffTs = 0
       expect(getTimeUntilOnAllowed(200)).toBe(0)
     })
 
     it('should return 0 at exact min off time', () => {
-      mockS.sys_tsRelayOff = 0
+      mockS.sys_relayOffTs = 0
       expect(getTimeUntilOnAllowed(180)).toBe(0)
     })
   })
@@ -157,17 +157,17 @@ describe('Protection', () => {
 
   describe('getTimeUntilOffAllowed', () => {
     it('should return remaining seconds when not yet allowed', () => {
-      mockS.sys_tsRelayOn = 100
+      mockS.sys_relayOnTs = 100
       expect(getTimeUntilOffAllowed(120)).toBe(40)
     })
 
     it('should return 0 when already allowed', () => {
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_relayOnTs = 0
       expect(getTimeUntilOffAllowed(100)).toBe(0)
     })
 
     it('should return 0 at exact min on time', () => {
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_relayOnTs = 0
       expect(getTimeUntilOffAllowed(60)).toBe(0)
     })
   })
@@ -178,33 +178,33 @@ describe('Protection', () => {
 
   describe('isMaxRunExceeded', () => {
     it('should return true when max run exceeded', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
       expect(isMaxRunExceeded(3700)).toBe(true)
     })
 
     it('should return false when under max run', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
       expect(isMaxRunExceeded(3000)).toBe(false)
     })
 
     it('should return false when relay is off', () => {
-      mockS.sys_relayState = false
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_isRelayOn = false
+      mockS.sys_relayOnTs = 0
       expect(isMaxRunExceeded(5000)).toBe(false)
     })
 
     it('should return false during turbo mode', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
-      mockV.turbo_active = true
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
+      mockV.trb_isActive = true
       expect(isMaxRunExceeded(5000)).toBe(false)
     })
 
     it('should return false at exact max run time', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
       expect(isMaxRunExceeded(3600)).toBe(false)
     })
   })
@@ -234,33 +234,33 @@ describe('Protection', () => {
   describe('checkWeldDetection', () => {
     it('should return false when disabled', () => {
       mockC.weld_enable = false
-      mockS.weld_snapAir = 10.0
+      mockS.wld_airSnapDeg = 10.0
       expect(checkWeldDetection(5.0, 100)).toBe(false)
     })
 
     it('should return false when relay is on', () => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
       expect(checkWeldDetection(5.0, 100)).toBe(false)
     })
 
     it('should return false before detection window', () => {
-      mockS.sys_relayState = false
-      mockS.sys_tsRelayOff = 0
-      mockS.weld_snapAir = 10.0
+      mockS.sys_isRelayOn = false
+      mockS.sys_relayOffTs = 0
+      mockS.wld_airSnapDeg = 10.0
       expect(checkWeldDetection(5.0, 50)).toBe(false)
     })
 
     it('should return false after detection window', () => {
-      mockS.sys_relayState = false
-      mockS.sys_tsRelayOff = 0
-      mockS.weld_snapAir = 10.0
+      mockS.sys_isRelayOn = false
+      mockS.sys_relayOffTs = 0
+      mockS.wld_airSnapDeg = 10.0
       expect(checkWeldDetection(5.0, 400)).toBe(false)
     })
 
     it('should return true when weld detected (temp dropped)', () => {
-      mockS.sys_relayState = false
-      mockS.sys_tsRelayOff = 0
-      mockS.weld_snapAir = 10.0
+      mockS.sys_isRelayOn = false
+      mockS.sys_relayOffTs = 0
+      mockS.wld_airSnapDeg = 10.0
       // Temp dropped from 10 to 5 (drop of 5 > threshold of 1)
       const result = checkWeldDetection(5.0, 100)
 
@@ -270,17 +270,17 @@ describe('Protection', () => {
     })
 
     it('should return false when temp stable', () => {
-      mockS.sys_relayState = false
-      mockS.sys_tsRelayOff = 0
-      mockS.weld_snapAir = 10.0
+      mockS.sys_isRelayOn = false
+      mockS.sys_relayOffTs = 0
+      mockS.wld_airSnapDeg = 10.0
       // Temp dropped only 0.5 (< threshold of 1)
       expect(checkWeldDetection(9.5, 100)).toBe(false)
     })
 
     it('should return false when temp rises', () => {
-      mockS.sys_relayState = false
-      mockS.sys_tsRelayOff = 0
-      mockS.weld_snapAir = 10.0
+      mockS.sys_isRelayOn = false
+      mockS.sys_relayOffTs = 0
+      mockS.wld_airSnapDeg = 10.0
       expect(checkWeldDetection(11.0, 100)).toBe(false)
     })
   })
@@ -291,28 +291,28 @@ describe('Protection', () => {
 
   describe('checkCoolingHealth', () => {
     it('should return false when relay is off', () => {
-      mockS.sys_relayState = false
+      mockS.sys_isRelayOn = false
       expect(checkCoolingHealth(-5.0, 1000)).toBe(false)
     })
 
     it('should return false before check time elapsed', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 500
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 500
       expect(checkCoolingHealth(-5.0, 1000)).toBe(false)
     })
 
     it('should return false during turbo mode', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
-      mockV.turbo_active = true
-      mockV.sens_smoothAir = 5.0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
+      mockV.trb_isActive = true
+      mockV.sns_airSmoothDeg = 5.0
       expect(checkCoolingHealth(3.0, 1000)).toBe(false)
     })
 
     it('should return true when evap too warm (gas leak)', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
-      mockV.sens_smoothAir = 5.0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
+      mockV.sns_airSmoothDeg = 5.0
       // Evap at 3.0, air at 5.0, diff only 2 (< 5 threshold)
       const result = checkCoolingHealth(3.0, 1000)
 
@@ -322,17 +322,17 @@ describe('Protection', () => {
     })
 
     it('should return false when evap properly cold', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
-      mockV.sens_smoothAir = 5.0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
+      mockV.sns_airSmoothDeg = 5.0
       // Evap at -5.0, air at 5.0, diff of 10 (> 5 threshold)
       expect(checkCoolingHealth(-5.0, 1000)).toBe(false)
     })
 
     it('should return false at exact threshold', () => {
-      mockS.sys_relayState = true
-      mockS.sys_tsRelayOn = 0
-      mockV.sens_smoothAir = 5.0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0
+      mockV.sns_airSmoothDeg = 5.0
       // Evap at 0.0, air at 5.0, diff exactly 5 (= threshold)
       expect(checkCoolingHealth(0.0, 1000)).toBe(false)
     })
@@ -344,7 +344,7 @@ describe('Protection', () => {
 
   describe('checkLockedRotor', () => {
     beforeEach(() => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
     })
 
     it('should detect locked rotor', () => {
@@ -365,7 +365,7 @@ describe('Protection', () => {
     })
 
     it('should not trigger when relay off', () => {
-      mockS.sys_relayState = false
+      mockS.sys_isRelayOn = false
       const result = checkLockedRotor(250, 60)
       expect(result).toBe(false)
     })
@@ -389,17 +389,17 @@ describe('Protection', () => {
 
   describe('checkGhostRun', () => {
     beforeEach(() => {
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
     })
 
     it('should accumulate timer on low power', () => {
-      mockV.pwr_ghostTimer = 0
+      mockV.pwr_ghostSec = 0
       checkGhostRun(10, 60)
-      expect(mockV.pwr_ghostTimer).toBe(5)
+      expect(mockV.pwr_ghostSec).toBe(5)
     })
 
     it('should trigger after timer threshold', () => {
-      mockV.pwr_ghostTimer = 60
+      mockV.pwr_ghostSec = 60
       const result = checkGhostRun(10, 60)
 
       expect(result).toBe(true)
@@ -407,45 +407,45 @@ describe('Protection', () => {
     })
 
     it('should reset timer on normal power', () => {
-      mockV.pwr_ghostTimer = 50
+      mockV.pwr_ghostSec = 50
       checkGhostRun(80, 60)
-      expect(mockV.pwr_ghostTimer).toBe(0)
+      expect(mockV.pwr_ghostSec).toBe(0)
     })
 
     it('should reset timer when relay off', () => {
-      mockS.sys_relayState = false
-      mockV.pwr_ghostTimer = 50
+      mockS.sys_isRelayOn = false
+      mockV.pwr_ghostSec = 50
       checkGhostRun(10, 60)
-      expect(mockV.pwr_ghostTimer).toBe(0)
+      expect(mockV.pwr_ghostSec).toBe(0)
     })
 
     it('should not trigger during startup mask', () => {
-      mockV.pwr_ghostTimer = 60
+      mockV.pwr_ghostSec = 60
       const result = checkGhostRun(10, 20)
       expect(result).toBe(false)
     })
 
     it('should not trigger without power monitor', () => {
       mockV.hw_hasPM = false
-      mockV.pwr_ghostTimer = 60
+      mockV.pwr_ghostSec = 60
       const result = checkGhostRun(10, 60)
       expect(result).toBe(false)
     })
 
     it('should increment ghost count on trigger', () => {
-      mockV.pwr_ghostTimer = 60
-      mockV.pwr_ghostCount = 0
+      mockV.pwr_ghostSec = 60
+      mockV.pwr_ghostCnt = 0
       checkGhostRun(10, 60)
-      expect(mockV.pwr_ghostCount).toBe(1)
+      expect(mockV.pwr_ghostCnt).toBe(1)
     })
 
     it('should escalate to LOCKED after max ghost count', () => {
-      mockV.pwr_ghostTimer = 60
-      mockV.pwr_ghostCount = 2  // One below max (3)
+      mockV.pwr_ghostSec = 60
+      mockV.pwr_ghostCnt = 2  // One below max (3)
       const result = checkGhostRun(10, 60)
 
       expect(result).toBe(true)
-      expect(mockV.pwr_ghostCount).toBe(3)  // Now at max
+      expect(mockV.pwr_ghostCnt).toBe(3)  // Now at max
       expect(mockV.sys_alarm).toBe(mockALM.LOCKED)  // Escalated
     })
   })
@@ -456,15 +456,15 @@ describe('Protection', () => {
 
   describe('resetGhostCount', () => {
     it('should reset ghost count to zero', () => {
-      mockV.pwr_ghostCount = 5
+      mockV.pwr_ghostCnt = 5
       resetGhostCount()
-      expect(mockV.pwr_ghostCount).toBe(0)
+      expect(mockV.pwr_ghostCnt).toBe(0)
     })
 
     it('should work when already zero', () => {
-      mockV.pwr_ghostCount = 0
+      mockV.pwr_ghostCnt = 0
       resetGhostCount()
-      expect(mockV.pwr_ghostCount).toBe(0)
+      expect(mockV.pwr_ghostCnt).toBe(0)
     })
   })
 })

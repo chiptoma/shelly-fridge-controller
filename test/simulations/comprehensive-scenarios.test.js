@@ -76,12 +76,12 @@ function simulateLoopTick(script, runtime, temps) {
   const rEvap = runtime.temperatures[100]
 
   // Store loop timestamp in global state (fix for Shelly closure bug)
-  script.V.loopNow = now
+  script.V.lop_nowTs = now
 
   // Process sensors
   if (script.sensors.validateSensorReadings(rAir, rEvap)) {
     script.sensors.resetSensorError()
-    if (script.V.sens_wasError) {
+    if (script.V.sns_wasErr) {
       script.sensors.handleSensorRecovery(rAir.tC)
     }
     script.sensors.processSensorData(rAir.tC)
@@ -91,20 +91,20 @@ function simulateLoopTick(script, runtime, temps) {
 
   // Clear and apply alarms
   script.alarms.clearNonFatalAlarms()
-  const alarmFail = script.V.sens_errCount >= script.C.sys_sensFailLimit
+  const alarmFail = script.V.sns_errCnt >= script.C.sys_sensFailLimit
   script.alarms.applySensorAlarms(alarmFail, false)
 
   // Update metrics
-  script.metrics.updateMetrics(script.S.sys_relayState, script.C.sys_loopSec)
+  script.metrics.updateMetrics(script.S.sys_isRelayOn, script.C.sys_loopSec)
 
   // Determine mode and execute
-  const mode = script.control.determineMode(script.V.sens_smoothAir, rEvap?.tC, now)
+  const mode = script.control.determineMode(script.V.sns_airSmoothDeg, rEvap?.tC, now)
   const isLimp = script.V.sys_alarm === script.ALM.FAIL || script.V.sys_alarm === script.ALM.STUCK
-  const result = script.control.executeSwitchDecision(mode.wantOn, now, script.V.sens_smoothAir, rEvap?.tC, isLimp)
+  const result = script.control.executeSwitchDecision(mode.wantOn, now, script.V.sns_airSmoothDeg, rEvap?.tC, isLimp)
 
   if (!result.blocked && !result.switched) {
     script.V.sys_status = mode.status
-    if (mode.reason !== script.RSN.NONE) script.V.sys_reason = mode.reason
+    if (mode.reason !== script.RSN.NONE) script.V.sys_statusReason = mode.reason
   }
 
   return { mode, result, now }
@@ -133,19 +133,19 @@ describe('High Temperature Alarm: Sustained High Temp', () => {
         alarm_highDelaySec: 300, // 5 minutes
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
     })
 
     // Start cooling with high temp
-    script.V.sens_smoothAir = 12.0
-    script.V.sens_wasError = false
+    script.V.sns_airSmoothDeg = 12.0
+    script.V.sns_wasErr = false
 
     // Run for 6 minutes at high temp (exceeds 5 min delay)
     for (let i = 0; i < 72; i++) {
       simulateLoopTick(script, runtime, { air: 12.0, evap: -10 })
-      script.alarms.checkHighTempAlarm(script.V.sens_smoothAir, false)
+      script.alarms.checkHighTempAlarm(script.V.sns_airSmoothDeg, false)
       advanceTime(runtime, 5)
     }
 
@@ -160,13 +160,13 @@ describe('High Temperature Alarm: Sustained High Temp', () => {
       },
     })
 
-    script.V.sens_smoothAir = 15.0
-    script.V.sens_wasError = false
+    script.V.sns_airSmoothDeg = 15.0
+    script.V.sns_wasErr = false
 
     // Run during defrost (isDeepDefrost = true)
     for (let i = 0; i < 72; i++) {
       simulateLoopTick(script, runtime, { air: 15.0, evap: 5.0 })
-      script.alarms.checkHighTempAlarm(script.V.sens_smoothAir, true) // defrost active
+      script.alarms.checkHighTempAlarm(script.V.sns_airSmoothDeg, true) // defrost active
       advanceTime(runtime, 5)
     }
 
@@ -181,22 +181,22 @@ describe('High Temperature Alarm: Sustained High Temp', () => {
       },
     })
 
-    script.V.sens_smoothAir = 12.0
+    script.V.sns_airSmoothDeg = 12.0
 
     // ? Timer is now module-local - accumulate naturally
     // ? alarm_highDelaySec = 60, sys_loopSec = 5, need 60/5 = 12 calls to trigger
     for (let i = 0; i < 15; i++) {
       simulateLoopTick(script, runtime, { air: 12.0, evap: -10 })
-      script.alarms.checkHighTempAlarm(script.V.sens_smoothAir, false)
+      script.alarms.checkHighTempAlarm(script.V.sns_airSmoothDeg, false)
       advanceTime(runtime, 5)
     }
 
     expect(script.V.sys_alarm).toBe(script.ALM.HIGH)
 
     // Now cool down below threshold
-    script.V.sens_smoothAir = 5.0
+    script.V.sns_airSmoothDeg = 5.0
     script.alarms.clearNonFatalAlarms()
-    script.alarms.checkHighTempAlarm(script.V.sens_smoothAir, false)
+    script.alarms.checkHighTempAlarm(script.V.sns_airSmoothDeg, false)
 
     expect(script.V.sys_alarm).toBe(script.ALM.NONE)
   })
@@ -223,12 +223,12 @@ describe('Power Monitoring: Ghost Run Detection', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         hw_hasPM: true,
-        pwr_ghostTimer: 0,
+        pwr_ghostSec: 0,
       },
     })
 
@@ -241,7 +241,7 @@ describe('Power Monitoring: Ghost Run Detection', () => {
 
     // Run for enough time to accumulate ghost timer (30s / 5s = 6+ iterations)
     for (let i = 0; i < 10; i++) {
-      const runDur = (runtime.uptimeMs / 1000) - script.S.sys_tsRelayOn
+      const runDur = (runtime.uptimeMs / 1000) - script.S.sys_relayOnTs
       const detected = script.protection.checkGhostRun(2, runDur)
 
       if (detected) {
@@ -252,7 +252,7 @@ describe('Power Monitoring: Ghost Run Detection', () => {
     }
 
     expect(script.V.sys_alarm).toBe(script.ALM.GHOST)
-    expect(script.S.sys_relayState).toBe(false)
+    expect(script.S.sys_isRelayOn).toBe(false)
   })
 
   it('should NOT trigger ghost run with normal power draw', async () => {
@@ -262,8 +262,8 @@ describe('Power Monitoring: Ghost Run Detection', () => {
         pwr_ghostTripSec: 30,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         hw_hasPM: true,
@@ -275,13 +275,13 @@ describe('Power Monitoring: Ghost Run Detection', () => {
 
     // Run for a while
     for (let i = 0; i < 10; i++) {
-      const runDur = (runtime.uptimeMs / 1000) - script.S.sys_tsRelayOn
+      const runDur = (runtime.uptimeMs / 1000) - script.S.sys_relayOnTs
       script.protection.checkGhostRun(85, runDur)
       advanceTime(runtime, 5)
     }
 
     expect(script.V.sys_alarm).not.toBe(script.ALM.GHOST)
-    expect(script.S.sys_relayState).toBe(true)
+    expect(script.S.sys_isRelayOn).toBe(true)
   })
 })
 
@@ -301,8 +301,8 @@ describe('Power Monitoring: Locked Rotor Detection', () => {
         pwr_startMaskSec: 10,    // Ignore first 10s
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
       },
       volatile: {
         hw_hasPM: true,
@@ -316,7 +316,7 @@ describe('Power Monitoring: Locked Rotor Detection', () => {
     advanceTime(runtime, 15)
 
     // Check for locked rotor
-    const runDur = (runtime.uptimeMs / 1000) - script.S.sys_tsRelayOn
+    const runDur = (runtime.uptimeMs / 1000) - script.S.sys_relayOnTs
     const detected = script.protection.checkLockedRotor(200, runDur)
 
     if (detected) {
@@ -324,7 +324,7 @@ describe('Power Monitoring: Locked Rotor Detection', () => {
     }
 
     expect(script.V.sys_alarm).toBe(script.ALM.LOCKED)
-    expect(script.S.sys_relayState).toBe(false)
+    expect(script.S.sys_isRelayOn).toBe(false)
   })
 
   it('should ignore high power during startup period', async () => {
@@ -334,8 +334,8 @@ describe('Power Monitoring: Locked Rotor Detection', () => {
         pwr_startMaskSec: 5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: runtime.uptimeMs / 1000,
+        sys_isRelayOn: true,
+        sys_relayOnTs: runtime.uptimeMs / 1000,
       },
       volatile: {
         hw_hasPM: true,
@@ -374,15 +374,15 @@ describe('Multi-Day Stability: 24-Hour Duty Cycle', () => {
         comp_minOffSec: 60,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
-        stats_hourRun: 0,
-        stats_hourTime: 0,
-        stats_cycleCount: 0,
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
+        sts_hourRunSec: 0,
+        sts_hourTotalSec: 0,
+        sts_cycleCnt: 0,
       },
     })
 
-    script.V.sens_wasError = false
+    script.V.sns_wasErr = false
     script.V.sys_alarm = script.ALM.NONE
 
     // Simulate 1 hour (720 ticks at 5 sec each = 3600 sec)
@@ -392,7 +392,7 @@ describe('Multi-Day Stability: 24-Hour Duty Cycle', () => {
 
     for (let tick = 0; tick < 720; tick++) {
       // Simulate temperature behavior
-      if (script.S.sys_relayState) {
+      if (script.S.sys_isRelayOn) {
         temp -= 0.02 // Cooling rate
         runTime += 5
       } else {
@@ -404,7 +404,7 @@ describe('Multi-Day Stability: 24-Hour Duty Cycle', () => {
       temp = Math.max(0, Math.min(10, temp))
 
       // Update sensor smoothing
-      script.V.sens_smoothAir = temp
+      script.V.sns_airSmoothDeg = temp
 
       // Determine mode and execute switch
       const now = runtime.uptimeMs / 1000
@@ -423,7 +423,7 @@ describe('Multi-Day Stability: 24-Hour Duty Cycle', () => {
     expect(dutyCycle).toBeLessThan(70)
 
     // Verify we had some cycles
-    expect(script.S.stats_cycleCount).toBeGreaterThan(0)
+    expect(script.S.sts_cycleCnt).toBeGreaterThan(0)
   })
 })
 
@@ -442,16 +442,16 @@ describe('Stats Recovery: Duty Cycle Accuracy', () => {
   it('should maintain accurate duty cycle across simulated reboot', async () => {
     const script = await setupController(runtime, {
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: 0,
-        sys_tsLastSave: 0,
-        stats_hourRun: 1800, // 30 min recorded
-        stats_hourTime: 3600, // 60 min total (50% duty)
+        sys_isRelayOn: true,
+        sys_relayOnTs: 0,
+        sys_lastSaveTs: 0,
+        sts_hourRunSec: 1800, // 30 min recorded
+        sts_hourTotalSec: 3600, // 60 min total (50% duty)
       },
     })
 
     // Record initial duty cycle
-    const initialDuty = (script.S.stats_hourRun / script.S.stats_hourTime) * 100
+    const initialDuty = (script.S.sts_hourRunSec / script.S.sts_hourTotalSec) * 100
 
     // Simulate running for 10 more minutes
     advanceTime(runtime, 600)
@@ -459,15 +459,15 @@ describe('Stats Recovery: Duty Cycle Accuracy', () => {
 
     // Simulate reboot recovery scenario
     // Last save was 5 minutes ago, compressor was running
-    script.S.sys_tsLastSave = now - 300
-    const elapsedTotal = now - script.S.sys_tsLastSave
+    script.S.sys_lastSaveTs = now - 300
+    const elapsedTotal = now - script.S.sys_lastSaveTs
 
     // Recovery: add elapsed time (all was run time since compressor was ON)
-    script.S.stats_hourRun += elapsedTotal
-    script.S.stats_hourTime += elapsedTotal
+    script.S.sts_hourRunSec += elapsedTotal
+    script.S.sts_hourTotalSec += elapsedTotal
 
     // Verify duty cycle is still accurate
-    const recoveredDuty = (script.S.stats_hourRun / script.S.stats_hourTime) * 100
+    const recoveredDuty = (script.S.sts_hourRunSec / script.S.sts_hourTotalSec) * 100
 
     // Duty should have increased slightly (was running during recovery period)
     expect(recoveredDuty).toBeGreaterThanOrEqual(initialDuty)
@@ -477,11 +477,11 @@ describe('Stats Recovery: Duty Cycle Accuracy', () => {
   it('should recover idle time correctly', async () => {
     const script = await setupController(runtime, {
       state: {
-        sys_relayState: false, // Compressor was OFF
-        sys_tsRelayOff: 0,
-        sys_tsLastSave: 0,
-        stats_hourRun: 1800, // 30 min run
-        stats_hourTime: 3600, // 60 min total (50% duty)
+        sys_isRelayOn: false, // Compressor was OFF
+        sys_relayOffTs: 0,
+        sys_lastSaveTs: 0,
+        sts_hourRunSec: 1800, // 30 min run
+        sts_hourTotalSec: 3600, // 60 min total (50% duty)
       },
     })
 
@@ -489,14 +489,14 @@ describe('Stats Recovery: Duty Cycle Accuracy', () => {
     const now = runtime.uptimeMs / 1000
 
     // Last save was 5 minutes ago, compressor was OFF
-    script.S.sys_tsLastSave = now - 300
-    const elapsedTotal = now - script.S.sys_tsLastSave
+    script.S.sys_lastSaveTs = now - 300
+    const elapsedTotal = now - script.S.sys_lastSaveTs
 
     // Recovery: add elapsed time to total only (idle time)
-    script.S.stats_hourTime += elapsedTotal
-    // stats_hourRun stays the same (no run time during idle)
+    script.S.sts_hourTotalSec += elapsedTotal
+    // sts_hourRunSec stays the same (no run time during idle)
 
-    const recoveredDuty = (script.S.stats_hourRun / script.S.stats_hourTime) * 100
+    const recoveredDuty = (script.S.sts_hourRunSec / script.S.sts_hourTotalSec) * 100
 
     // Duty should have DECREASED (was idle during recovery period)
     expect(recoveredDuty).toBeLessThan(50) // Was 50%, now lower
@@ -524,12 +524,12 @@ describe('Combined Failures: Sensor Failure During Cooling', () => {
         limp_offSec: 600,
       },
       state: {
-        sys_relayState: true, // Cooling in progress
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true, // Cooling in progress
+        sys_relayOnTs: 0,
       },
       volatile: {
-        sens_errCount: 0,
-        sens_wasError: false,
+        sns_errCnt: 0,
+        sns_wasErr: false,
       },
     })
 
@@ -540,12 +540,12 @@ describe('Combined Failures: Sensor Failure During Cooling', () => {
 
     // Now sensors fail - increment error count manually to reach limit
     for (let i = 0; i < 5; i++) {
-      script.sensors.handleSensorError() // This increments sens_errCount
+      script.sensors.handleSensorError() // This increments sns_errCnt
       advanceTime(runtime, 5)
     }
 
     // Apply sensor alarms - this sets the FAIL alarm when limit reached
-    const alarmFail = script.V.sens_errCount >= script.C.sys_sensFailLimit
+    const alarmFail = script.V.sns_errCnt >= script.C.sys_sensFailLimit
     script.alarms.applySensorAlarms(alarmFail, false)
 
     // Should be in LIMP mode
@@ -563,11 +563,11 @@ describe('Combined Failures: Sensor Failure During Cooling', () => {
         sys_sensRecovery: 3,
       },
       state: {
-        sys_relayState: true,
+        sys_isRelayOn: true,
       },
       volatile: {
-        sens_errCount: 5,
-        sens_wasError: true,
+        sns_errCnt: 5,
+        sns_wasErr: true,
         sys_alarm: 'FAIL',
       },
     })
@@ -581,7 +581,7 @@ describe('Combined Failures: Sensor Failure During Cooling', () => {
     }
 
     // Should exit LIMP mode
-    expect(script.V.sens_errCount).toBe(0)
+    expect(script.V.sns_errCnt).toBe(0)
     expect(script.V.sys_alarm).toBe(script.ALM.NONE)
   })
 })
@@ -603,12 +603,12 @@ describe('Combined Failures: Door Open + High Temp', () => {
         alarm_highDelaySec: 120,
       },
       state: {
-        sys_relayState: false,
+        sys_isRelayOn: false,
       },
       volatile: {
-        sens_smoothAir: 4.0,
-        door_refTemp: 4.0,
-        door_refTs: 0,
+        sns_airSmoothDeg: 4.0,
+        dor_refDeg: 4.0,
+        dor_refTs: 0,
       },
     })
 
@@ -618,7 +618,7 @@ describe('Combined Failures: Door Open + High Temp', () => {
       temp += 0.3 // Rapid temp rise (door open)
       temp = Math.min(temp, 20) // Cap at realistic value
 
-      script.V.sens_smoothAir = temp
+      script.V.sns_airSmoothDeg = temp
       script.features.detectDoorOpen(temp, runtime.uptimeMs / 1000)
       script.alarms.checkHighTempAlarm(temp, false)
 
@@ -654,13 +654,13 @@ describe('Door Open: Extended Duration', () => {
         sys_loopSec: 5,
       },
       state: {
-        sys_relayState: false,
+        sys_isRelayOn: false,
       },
       volatile: {
-        sens_smoothAir: 4.0,
-        door_refTemp: 0,
-        door_refTs: 0,
-        door_timer: 0,
+        sns_airSmoothDeg: 4.0,
+        dor_refDeg: 0,
+        dor_refTs: 0,
+        dor_pauseRemSec: 0,
       },
     })
 
@@ -676,7 +676,7 @@ describe('Door Open: Extended Duration', () => {
     script.features.detectDoorOpen(6.0, runtime.uptimeMs / 1000)
 
     // Should be in door pause period
-    expect(script.V.door_timer).toBeGreaterThan(0)
+    expect(script.V.dor_pauseRemSec).toBeGreaterThan(0)
 
     // During pause, mode should indicate door (reason contains DOOR, not status)
     const mode = script.control.determineMode(6.0, -10, runtime.uptimeMs / 1000)
@@ -697,12 +697,12 @@ describe('Door Open: Extended Duration', () => {
         defr_dynEnable: false,    // Disable dynamic defrost
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,   // Allow immediate turn-on
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,   // Allow immediate turn-on
       },
       volatile: {
-        sens_smoothAir: 6.0,
-        door_timer: 30, // Pause was active
+        sns_airSmoothDeg: 6.0,
+        dor_pauseRemSec: 30, // Pause was active
       },
     })
 
@@ -710,8 +710,8 @@ describe('Door Open: Extended Duration', () => {
     advanceTime(runtime, 35)
 
     // Temp stable (door closed), still above setpoint
-    script.V.sens_smoothAir = 5.5
-    script.V.door_timer = 0 // Pause expired
+    script.V.sns_airSmoothDeg = 5.5
+    script.V.dor_pauseRemSec = 0 // Pause expired
 
     const mode = script.control.determineMode(5.5, -10, runtime.uptimeMs / 1000)
 
@@ -740,12 +740,12 @@ describe('Freeze Protection: Edge Cases', () => {
         comp_freezeCutDeg: 0.0,
       },
       state: {
-        sys_relayState: true, // Cooling
-        sys_tsRelayOn: 0,
+        sys_isRelayOn: true, // Cooling
+        sys_relayOnTs: 0,
       },
     })
 
-    script.V.sens_smoothAir = 0.5 // Just above freeze limit
+    script.V.sns_airSmoothDeg = 0.5 // Just above freeze limit
 
     const mode = script.control.determineMode(0.5, -15, runtime.uptimeMs / 1000)
 
@@ -767,8 +767,8 @@ describe('Freeze Protection: Edge Cases', () => {
         defr_dynEnable: false,    // Disable dynamic defrost
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: initialNow, // Just turned off at current time
+        sys_isRelayOn: false,
+        sys_relayOffTs: initialNow, // Just turned off at current time
       },
     })
 
@@ -814,9 +814,9 @@ describe('Weld Detection: Temperature Drift Scenarios', () => {
         weld_dropDeg: 0.5,     // Alarm if temp drops 0.5C while OFF
       },
       state: {
-        sys_relayState: false, // Software says OFF
-        sys_tsRelayOff: 0,     // Relay off at time 0
-        weld_snapAir: 5.0,     // Temp at relay off
+        sys_isRelayOn: false, // Software says OFF
+        sys_relayOffTs: 0,     // Relay off at time 0
+        wld_airSnapDeg: 5.0,     // Temp at relay off
       },
     })
 
@@ -840,16 +840,16 @@ describe('Weld Detection: Temperature Drift Scenarios', () => {
         weld_winSec: 300,
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,
-        weld_snapAir: 5.0,
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,
+        wld_airSnapDeg: 5.0,
       },
     })
 
     advanceTime(runtime, 180)
 
     // Temp stable or rising slightly (normal behavior)
-    script.V.sens_smoothAir = 5.2
+    script.V.sns_airSmoothDeg = 5.2
 
     script.protection.checkWeldDetection(5.2, runtime.uptimeMs / 1000)
 
@@ -877,15 +877,15 @@ describe('Defrost: Manual and Automatic Triggers', () => {
         defr_dynDwellSec: 300,
       },
       state: {
-        sys_relayState: true,
-        defr_isActive: false,
+        sys_isRelayOn: true,
+        dfr_isActive: false,
       },
     })
 
     // Evap temp drops below threshold
     script.features.checkDefrostTrigger(-22)
 
-    expect(script.S.defr_isActive).toBe(true)
+    expect(script.S.dfr_isActive).toBe(true)
   })
 
   it('should exit defrost when evap temp rises', async () => {
@@ -897,7 +897,7 @@ describe('Defrost: Manual and Automatic Triggers', () => {
         sys_loopSec: 5,
       },
       state: {
-        defr_isActive: true,
+        dfr_isActive: true,
       },
     })
 
@@ -910,7 +910,7 @@ describe('Defrost: Manual and Automatic Triggers', () => {
       script.features.handleDynamicDefrost(tEvap)
     }
 
-    expect(script.S.defr_isActive).toBe(false)
+    expect(script.S.dfr_isActive).toBe(false)
   })
 })
 
@@ -942,14 +942,14 @@ describe('Turbo Mode: Override Behavior', () => {
         defr_dynEnable: false,    // Disable dynamic defrost
       },
       state: {
-        sys_relayState: false,
-        sys_tsRelayOff: 0,   // Allow immediate turn-on
+        sys_isRelayOn: false,
+        sys_relayOffTs: 0,   // Allow immediate turn-on
       },
       volatile: {
-        turbo_active: true,
-        turbo_remSec: 1000,
-        sens_smoothAir: 3.0, // Below normal setpoint but above turbo target+hyst
-        door_timer: 0,       // Ensure no door pause
+        trb_isActive: true,
+        trb_remSec: 1000,
+        sns_airSmoothDeg: 3.0, // Below normal setpoint but above turbo target+hyst
+        dor_pauseRemSec: 0,       // Ensure no door pause
       },
     })
 
@@ -970,12 +970,12 @@ describe('Turbo Mode: Override Behavior', () => {
         turbo_hystDeg: 0.5,
       },
       state: {
-        sys_relayState: true,
-        sys_tsRelayOn: runtime.uptimeMs / 1000, // Just started
+        sys_isRelayOn: true,
+        sys_relayOnTs: runtime.uptimeMs / 1000, // Just started
       },
       volatile: {
-        turbo_active: true,
-        sens_smoothAir: 1.0, // Below turbo setpoint
+        trb_isActive: true,
+        sns_airSmoothDeg: 1.0, // Below turbo setpoint
       },
     })
 

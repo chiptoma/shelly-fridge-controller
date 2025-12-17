@@ -12,11 +12,11 @@ import { ri } from './utils/math.js'
 // ----------------------------------------------------------
 
 let ST_KEYS = {
-  'fridge_st_core': ['sys_tsRelayOn', 'sys_tsRelayOff', 'sys_relayState', 'sys_tsLastSave',
-    'weld_snapAir', 'adapt_hystCurrent', 'defr_isActive'],
-  'fridge_st_stats': ['stats_lifeTime', 'stats_lifeRun', 'stats_hourTime', 'stats_hourRun',
-    'stats_history', 'stats_hourIdx', 'stats_cycleCount'],
-  'fridge_st_faults': ['fault_fatal', 'fault_critical', 'fault_error', 'fault_warning'],
+  'fridge_st_core': ['sys_relayOnTs', 'sys_relayOffTs', 'sys_isRelayOn', 'sys_lastSaveTs',
+    'wld_airSnapDeg', 'adt_hystDeg', 'dfr_isActive'],
+  'fridge_st_stats': ['sts_lifeTotalSec', 'sts_lifeRunSec', 'sts_hourTotalSec', 'sts_hourRunSec',
+    'sts_dutyHistArr', 'sts_histIdx', 'sts_cycleCnt'],
+  'fridge_st_faults': ['flt_fatalArr', 'flt_critArr', 'flt_errorArr', 'flt_warnArr'],
 }
 
 // ----------------------------------------------------------
@@ -24,26 +24,26 @@ let ST_KEYS = {
 // ----------------------------------------------------------
 
 let S = {
-  sys_tsRelayOn: 0,
-  sys_tsRelayOff: 0,
-  sys_relayState: false,
-  sys_tsLastSave: 0,
-  weld_snapAir: 0,
-  adapt_hystCurrent: 1.0,
+  sys_relayOnTs: 0,
+  sys_relayOffTs: 0,
+  sys_isRelayOn: false,
+  sys_lastSaveTs: 0,
+  wld_airSnapDeg: 0,
+  adt_hystDeg: 1.0,
 
-  stats_lifeTime: 0,
-  stats_lifeRun: 0,
-  stats_hourTime: 0,
-  stats_hourRun: 0,
-  stats_cycleCount: 0,
-  stats_history: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  stats_hourIdx: 0,
-  defr_isActive: false,
+  sts_lifeTotalSec: 0,
+  sts_lifeRunSec: 0,
+  sts_hourTotalSec: 0,
+  sts_hourRunSec: 0,
+  sts_cycleCnt: 0,
+  sts_dutyHistArr: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  sts_histIdx: 0,
+  dfr_isActive: false,
 
-  fault_fatal: [],
-  fault_critical: [],
-  fault_error: [],
-  fault_warning: [],
+  flt_fatalArr: [],
+  flt_critArr: [],
+  flt_errorArr: [],
+  flt_warnArr: [],
 }
 
 // ----------------------------------------------------------
@@ -52,47 +52,47 @@ let S = {
 
 let V = {
   sys_status: 'BOOT',
-  sys_reason: 'NONE',
+  sys_statusReason: 'NONE',
   sys_alarm: 'NONE',
-  sys_statusDetail: 'NONE',
-  sys_scrUptimeMs: 0,
+  sys_detail: 'NONE',
+  sys_startMs: 0,
 
-  sens_errCount: 0,
-  sens_wasError: true,
-  sens_bufAir: [0, 0, 0],
-  sens_bufIdx: 0,
-  sens_smoothAir: null,
+  sns_errCnt: 0,
+  sns_wasErr: false,
+  sns_airBuf: [0, 0, 0],
+  sns_bufIdx: 0,
+  sns_airSmoothDeg: null,
 
-  sens_stuckRefAir: null,
-  sens_stuckTsAir: 0,
-  sens_stuckRefEvap: null,
-  sens_stuckTsEvap: 0,
+  sns_airStuckRefDeg: null,
+  sns_airStuckTs: 0,
+  sns_evpStuckRefDeg: null,
+  sns_evpStuckTs: 0,
 
-  door_refTemp: 0,
-  door_refTs: 0,
-  door_timer: 0,
+  dor_refDeg: 0,
+  dor_refTs: 0,
+  dor_pauseRemSec: 0,
 
-  turbo_active: false,
-  turbo_remSec: 0,
-  turbo_lastSw: false,
+  trb_isActive: false,
+  trb_remSec: 0,
+  trb_prevSw: false,
 
-  adapt_lastDir: null,
-  adapt_consecCount: 0,
+  adt_lastDir: null,
+  adt_consecCnt: 0,
 
-  health_startTemp: 0,
-  health_lastScore: 0,
+  hlt_startDeg: 0,
+  hlt_lastScore: 0,
 
   hw_hasPM: false,
-  pwr_ghostTimer: 0,
-  pwr_ghostCount: 0,     // ? Tracks repeated ghost runs for escalation
+  pwr_ghostSec: 0,
+  pwr_ghostCnt: 0,     // ? Tracks repeated ghost runs for escalation
 
-  fault_pending: null,
+  flt_pendCode: null,
 
-  lastSave: 0,
+  lop_lastSaveTs: 0,
 
   // ! CRITICAL: Timestamp captured at start of each loop tick.
   // ! Shelly mJS closures don't work correctly with Date.now() - must use global.
-  loopNow: 0,
+  lop_nowTs: 0,
 }
 
 // ----------------------------------------------------------
@@ -104,9 +104,9 @@ let V = {
  */
 function persistState() {
   // Record when state was saved (used for boot recovery)
-  S.sys_tsLastSave = Math.floor(Date.now() / 1000)
+  S.sys_lastSaveTs = Math.floor(Date.now() / 1000)
   saveAllToKvs(ST_KEYS, S, function () {
-    V.lastSave = S.sys_tsLastSave
+    V.lop_lastSaveTs = S.sys_lastSaveTs
   })
 }
 
@@ -144,15 +144,15 @@ function sanitizeLoadedState(now) {
  * ? Detects future timestamps or timestamps older than 1 year.
  *
  * @param {number} now - Current time in seconds
- * @mutates S.sys_tsRelayOff, S.sys_tsRelayOn, S.sys_relayState, S.sys_tsLastSave
+ * @mutates S.sys_relayOffTs, S.sys_relayOnTs, S.sys_isRelayOn, S.sys_lastSaveTs
  */
 function sanitizeTimestamps(now) {
-  if (isTimestampInvalid(S.sys_tsRelayOff, now) || isTimestampInvalid(S.sys_tsRelayOn, now)) {
+  if (isTimestampInvalid(S.sys_relayOffTs, now) || isTimestampInvalid(S.sys_relayOnTs, now)) {
     print('⚠️ STATE : Invalid relay timestamps, resetting state to OFF')
-    S.sys_tsRelayOff = 0
-    S.sys_tsRelayOn = 0
-    S.sys_relayState = false
-    S.sys_tsLastSave = 0
+    S.sys_relayOffTs = 0
+    S.sys_relayOnTs = 0
+    S.sys_isRelayOn = false
+    S.sys_lastSaveTs = 0
   }
 }
 
@@ -160,31 +160,31 @@ function sanitizeTimestamps(now) {
  * * sanitizeStats - Reset statistics if corrupted
  * ? Validates history array length (24h) and ensures counters are non-negative.
  *
- * @mutates S.stats_history, S.stats_hourIdx, S.stats_hourTime, S.stats_hourRun, S.stats_cycleCount
+ * @mutates S.sts_dutyHistArr, S.sts_histIdx, S.sts_hourTotalSec, S.sts_hourRunSec, S.sts_cycleCnt
  */
 function sanitizeStats() {
-  if (!S.stats_history || S.stats_history.constructor !== Array || S.stats_history.length !== 24) {
-    S.stats_history = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    S.stats_hourIdx = 0
-  } else if (S.stats_hourIdx < 0 || S.stats_hourIdx > 23) {
-    S.stats_hourIdx = 0
+  if (!S.sts_dutyHistArr || S.sts_dutyHistArr.constructor !== Array || S.sts_dutyHistArr.length !== 24) {
+    S.sts_dutyHistArr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    S.sts_histIdx = 0
+  } else if (S.sts_histIdx < 0 || S.sts_histIdx > 23) {
+    S.sts_histIdx = 0
   }
-  if (S.stats_hourTime < 0) S.stats_hourTime = 0
-  if (S.stats_hourRun < 0) S.stats_hourRun = 0
-  if (S.stats_cycleCount < 0) S.stats_cycleCount = 0
+  if (S.sts_hourTotalSec < 0) S.sts_hourTotalSec = 0
+  if (S.sts_hourRunSec < 0) S.sts_hourRunSec = 0
+  if (S.sts_cycleCnt < 0) S.sts_cycleCnt = 0
 }
 
 /**
  * * sanitizeFaults - Reset fault arrays if corrupted
  * ? Ensures each fault severity level is a valid array.
  *
- * @mutates S.fault_fatal, S.fault_critical, S.fault_error, S.fault_warning
+ * @mutates S.flt_fatalArr, S.flt_critArr, S.flt_errorArr, S.flt_warnArr
  */
 function sanitizeFaults() {
-  if (!S.fault_fatal || S.fault_fatal.constructor !== Array) S.fault_fatal = []
-  if (!S.fault_critical || S.fault_critical.constructor !== Array) S.fault_critical = []
-  if (!S.fault_error || S.fault_error.constructor !== Array) S.fault_error = []
-  if (!S.fault_warning || S.fault_warning.constructor !== Array) S.fault_warning = []
+  if (!S.flt_fatalArr || S.flt_fatalArr.constructor !== Array) S.flt_fatalArr = []
+  if (!S.flt_critArr || S.flt_critArr.constructor !== Array) S.flt_critArr = []
+  if (!S.flt_errorArr || S.flt_errorArr.constructor !== Array) S.flt_errorArr = []
+  if (!S.flt_warnArr || S.flt_warnArr.constructor !== Array) S.flt_warnArr = []
 }
 
 /**
@@ -192,20 +192,22 @@ function sanitizeFaults() {
  *
  * Fetches state chunks from KVS and merges with defaults.
  * Validates timestamps and calls onComplete when done.
+ * ? Smart sync: only writes if schema changed, never overwrites on load failure.
  *
  * @param {Function} onComplete - Called when state loading complete
  */
 function loadState(onComplete) {
-  print('➡️ STATE : Loading state from KVS...')
+  print('➡️ STATE : Loading from KVS...')
 
   // ? Load chunks sequentially (reduces peak memory)
   loadChunksSeq(ST_KEYS, S, function (stChunks) {
     let now = Date.now() / 1000
     sanitizeLoadedState(now)
 
+    // ? Smart sync: preserves KVS on load failure, only syncs schema changes
     syncToKvs(ST_KEYS, S, stChunks, function () {
       print('✅ STATE : Loaded')
-      V.lastSave = ri(Date.now() / 1000)
+      V.lop_lastSaveTs = ri(Date.now() / 1000)
       if (onComplete) onComplete()
     }, 'State')
   })

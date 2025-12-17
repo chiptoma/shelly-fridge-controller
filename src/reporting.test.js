@@ -17,29 +17,29 @@ describe('Reporting', () => {
     mockICO = { IDLE: '⚪', COOLING: '❄️', WANT_COOL: '⏳' }
 
     mockS = {
-      sys_relayState: false,
-      stats_hourTime: 1800,
-      stats_hourRun: 900,
-      stats_lifeTime: 86400,
-      stats_lifeRun: 43200,
-      stats_cycleCount: 3,
-      defr_isActive: false,
-      fault_fatal: [],
-      fault_critical: [],
-      fault_error: [],
-      fault_warning: [],
+      sys_isRelayOn: false,
+      sts_hourTotalSec: 1800,
+      sts_hourRunSec: 900,
+      sts_lifeTotalSec: 86400,
+      sts_lifeRunSec: 43200,
+      sts_cycleCnt: 3,
+      dfr_isActive: false,
+      flt_fatalArr: [],
+      flt_critArr: [],
+      flt_errorArr: [],
+      flt_warnArr: [],
     }
 
     mockV = {
       sys_status: 'IDLE',
-      sys_reason: 'NONE',
+      sys_statusReason: 'NONE',
       sys_alarm: 'NONE',
-      sys_statusDetail: 'NONE',
-      sys_scrUptimeMs: 0,
-      door_timer: 0,
-      turbo_active: false,
+      sys_detail: 'NONE',
+      sys_startMs: 0,
+      dor_pauseRemSec: 0,
+      trb_isActive: false,
       hw_hasPM: true,
-      health_lastScore: 100,
+      hlt_lastScore: 100,
     }
 
     mockC = {
@@ -98,21 +98,21 @@ describe('Reporting', () => {
   describe('getScriptUptime', () => {
     it('should format hours and minutes with padding', () => {
       global.Shelly.getUptimeMs.mockReturnValue(7200000)
-      mockV.sys_scrUptimeMs = 0
+      mockV.sys_startMs = 0
 
       expect(getScriptUptime()).toBe('02:00')
     })
 
     it('should handle minutes correctly', () => {
       global.Shelly.getUptimeMs.mockReturnValue(5400000)
-      mockV.sys_scrUptimeMs = 0
+      mockV.sys_startMs = 0
 
       expect(getScriptUptime()).toBe('01:30')
     })
 
     it('should account for script start offset', () => {
       global.Shelly.getUptimeMs.mockReturnValue(7200000)
-      mockV.sys_scrUptimeMs = 3600000
+      mockV.sys_startMs = 3600000
 
       expect(getScriptUptime()).toBe('01:00')
     })
@@ -141,7 +141,7 @@ describe('Reporting', () => {
     })
 
     it('should include reason when not NONE', () => {
-      mockV.sys_reason = 'PROT_MIN_OFF'
+      mockV.sys_statusReason = 'PROT_MIN_OFF'
       const msg = formatConsoleMessage(4.5, -10.0, 4.52)
       expect(msg).toContain(':PROT_MIN_OFF')
     })
@@ -179,9 +179,9 @@ describe('Reporting', () => {
 
     it('should include state section', () => {
       mockV.sys_status = 'COOLING'
-      mockV.sys_reason = 'NONE'
+      mockV.sys_statusReason = 'NONE'
       mockV.sys_alarm = 'NONE'
-      mockS.sys_relayState = true
+      mockS.sys_isRelayOn = true
 
       const payload = buildMqttPayload(4.5, -10.0, 4.52, 50, 35)
 
@@ -212,9 +212,9 @@ describe('Reporting', () => {
     })
 
     it('should include flags section', () => {
-      mockS.defr_isActive = true
-      mockV.door_timer = 60
-      mockV.turbo_active = true
+      mockS.dfr_isActive = true
+      mockV.dor_pauseRemSec = 60
+      mockV.trb_isActive = true
 
       const payload = buildMqttPayload(4.5, -10.0, 4.52, 50, 35)
 

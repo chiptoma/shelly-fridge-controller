@@ -21,20 +21,20 @@ import { getAvgDuty24h, getCurrentHourDuty, getLifetimeDuty, getLifetimeRunHours
  * @returns {string} - Formatted uptime string (HH:MM)
  */
 function getScriptUptime() {
-  let upMs = Shelly.getUptimeMs() - V.sys_scrUptimeMs
+  let upMs = Shelly.getUptimeMs() - V.sys_startMs
   let upH = ri(upMs / 3600000)
   let upM = ri((upMs % 3600000) / 60000)
   return (upH < 10 ? '0' : '') + upH + ':' + (upM < 10 ? '0' : '') + upM
 }
 
 /**
- * * FORMAT CONSOLE MESSAGE
- * ? Builds console output string with status, temps, and metrics.
+ * * formatConsoleMessage - Build console output string
+ * ? Includes status, temps, duty cycles, and cycle times.
  *
- * @param  {number|null} tSmooth   - Smoothed air temperature
- * @param  {number|null} tEvap     - Evaporator temperature
- * @param  {number|null} tRaw      - Raw air temperature
- * @returns {string}                - Formatted console message
+ * @param {number|null} tSmooth - Smoothed air temperature
+ * @param {number|null} tEvap - Evaporator temperature
+ * @param {number|null} tRaw - Raw air temperature
+ * @returns {string} Formatted console message
  */
 function formatConsoleMessage(tSmooth, tEvap, tRaw) {
   // Calculate duty cycles
@@ -68,12 +68,12 @@ function formatConsoleMessage(tSmooth, tEvap, tRaw) {
   // Build message
   let ico = ICO[V.sys_status] || '?'
   let msg = ico + ' ' + V.sys_status
-  if (V.sys_reason !== RSN.NONE) msg += ':' + V.sys_reason
+  if (V.sys_statusReason !== RSN.NONE) msg += ':' + V.sys_statusReason
 
   // Calculate time since last state save (minutes)
   let saveAgoMin = null
-  if (V.lastSave > 0 && V.loopNow >= V.lastSave) {
-    saveAgoMin = ri((V.loopNow - V.lastSave) / 60)
+  if (V.lop_lastSaveTs > 0 && V.lop_nowTs >= V.lop_lastSaveTs) {
+    saveAgoMin = ri((V.lop_nowTs - V.lop_lastSaveTs) / 60)
   }
 
   let effHyst = getEffectiveHysteresis()
@@ -99,22 +99,22 @@ function formatConsoleMessage(tSmooth, tEvap, tRaw) {
 // ----------------------------------------------------------
 
 /**
- * * BUILD MQTT PAYLOAD
- * ? Creates MQTT status payload object on-demand.
+ * * buildMqttPayload - Create MQTT status payload object
+ * ? Flat structure minimizes object allocation overhead.
  *
- * @param  {number|null} tSmooth     - Smoothed air temperature
- * @param  {number|null} tEvap       - Evaporator temperature
- * @param  {number|null} tRaw        - Raw air temperature
- * @param  {number}      powerW      - Current power draw (watts)
- * @param  {number|null} deviceTemp  - Device internal temperature
- * @returns {object}                  - MQTT payload object
+ * @param {number|null} tSmooth - Smoothed air temperature
+ * @param {number|null} tEvap - Evaporator temperature
+ * @param {number|null} tRaw - Raw air temperature
+ * @param {number} powerW - Current power draw (watts)
+ * @param {number|null} deviceTemp - Device internal temperature
+ * @returns {object} MQTT payload object
  */
 function buildMqttPayload(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
   // FLAT structure to minimize object allocation overhead
   // Field names align with state-style naming
-  let cc = S.stats_cycleCount
-  let avgOnSec = cc > 0 ? ri(S.stats_hourRun / cc) : ri(S.stats_hourRun)
-  let avgOffSec = cc > 0 ? ri((S.stats_hourTime - S.stats_hourRun) / cc) : ri(S.stats_hourTime - S.stats_hourRun)
+  let cc = S.sts_cycleCnt
+  let avgOnSec = cc > 0 ? ri(S.sts_hourRunSec / cc) : ri(S.sts_hourRunSec)
+  let avgOffSec = cc > 0 ? ri((S.sts_hourTotalSec - S.sts_hourRunSec) / cc) : ri(S.sts_hourTotalSec - S.sts_hourRunSec)
 
   return {
     tAirRaw: tRaw,
@@ -123,9 +123,9 @@ function buildMqttPayload(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
     tDev: deviceTemp ? r1(deviceTemp) : null,
 
     status: V.sys_status,
-    reason: V.sys_reason,
+    reason: V.sys_statusReason,
     alarm: V.sys_alarm,
-    relayOn: S.sys_relayState ? 1 : 0,
+    relayOn: S.sys_isRelayOn ? 1 : 0,
 
     dutyHr: r1(getCurrentHourDuty()),
     dutyDay: r1(getAvgDuty24h()),
@@ -136,11 +136,11 @@ function buildMqttPayload(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
     avgOnSec: avgOnSec,
     avgOffSec: avgOffSec,
 
-    defrostOn: S.defr_isActive ? 1 : 0,
-    doorOpen: V.door_timer > 0 ? 1 : 0,
-    turboOn: V.turbo_active ? 1 : 0,
+    defrostOn: S.dfr_isActive ? 1 : 0,
+    doorOpen: V.dor_pauseRemSec > 0 ? 1 : 0,
+    turboOn: V.trb_isActive ? 1 : 0,
 
-    health: V.health_lastScore,
+    health: V.hlt_lastScore,
     watts: (V.hw_hasPM && powerW) ? r1(powerW) : null,
   }
 }
@@ -151,14 +151,14 @@ function buildMqttPayload(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
 // ----------------------------------------------------------
 
 /**
- * * PUBLISH STATUS
- * ? Outputs status to console and publishes to MQTT.
+ * * publishStatus - Output status to console and MQTT
  *
- * @param  {number|null} tSmooth     - Smoothed air temperature
- * @param  {number|null} tEvap       - Evaporator temperature
- * @param  {number|null} tRaw        - Raw air temperature
- * @param  {number}      powerW      - Current power draw (watts)
- * @param  {number|null} deviceTemp  - Device internal temperature
+ * @param {number|null} tSmooth - Smoothed air temperature
+ * @param {number|null} tEvap - Evaporator temperature
+ * @param {number|null} tRaw - Raw air temperature
+ * @param {number} powerW - Current power draw (watts)
+ * @param {number|null} deviceTemp - Device internal temperature
+ * @sideeffect Calls print() and MQTT.publish()
  */
 function publishStatus(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
   // Console output

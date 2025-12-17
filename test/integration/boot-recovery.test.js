@@ -82,30 +82,30 @@ describe('Boot Recovery: Scenario 1 - Compressor Was Running', () => {
     const script = await setupForBootRecovery(runtime, {
       hardwareRelayOn: true,
       persistedState: {
-        sys_relayState: true,
-        sys_tsRelayOn: relayOnTime,
-        sys_tsRelayOff: 0,
-        sys_tsLastSave: lastSaveTime,
-        stats_hourRun: 300, // Only 5 minutes recorded
-        stats_hourTime: 300,
-        stats_cycleCount: 1,
-        stats_lifeTime: 0,
-        stats_lifeRun: 0,
-        adapt_hystCurrent: 1.0,
-        defr_isActive: false,
-        weld_snapAir: 0,
+        sys_isRelayOn: true,
+        sys_relayOnTs: relayOnTime,
+        sys_relayOffTs: 0,
+        sys_lastSaveTs: lastSaveTime,
+        sts_hourRunSec: 300, // Only 5 minutes recorded
+        sts_hourTotalSec: 300,
+        sts_cycleCnt: 1,
+        sts_lifeTotalSec: 0,
+        sts_lifeRunSec: 0,
+        adt_hystDeg: 1.0,
+        dfr_isActive: false,
+        wld_airSnapDeg: 0,
       },
     })
 
     // Manually apply persisted state to S
     Object.assign(script.S, {
-      sys_relayState: true,
-      sys_tsRelayOn: relayOnTime,
-      sys_tsRelayOff: 0,
-      sys_tsLastSave: lastSaveTime,
-      stats_hourRun: 300,
-      stats_hourTime: 300,
-      stats_cycleCount: 1,
+      sys_isRelayOn: true,
+      sys_relayOnTs: relayOnTime,
+      sys_relayOffTs: 0,
+      sys_lastSaveTs: lastSaveTime,
+      sts_hourRunSec: 300,
+      sts_hourTotalSec: 300,
+      sts_cycleCnt: 1,
     })
 
     // Run boot recovery
@@ -114,13 +114,13 @@ describe('Boot Recovery: Scenario 1 - Compressor Was Running', () => {
     // Verify: Missed ~5 minutes should be recovered
     // elapsedTotal = now - lastSaveTime = ~300s
     // All elapsed time was run time (compressor was ON)
-    expect(script.S.stats_hourRun).toBeGreaterThan(300)
-    expect(script.S.stats_hourTime).toBeGreaterThan(300)
-    expect(script.S.sys_relayState).toBe(true) // Still running
+    expect(script.S.sts_hourRunSec).toBeGreaterThan(300)
+    expect(script.S.sts_hourTotalSec).toBeGreaterThan(300)
+    expect(script.S.sys_isRelayOn).toBe(true) // Still running
 
-    // Check print history for recovery message
+    // Format: "Script restarted while cooling → added Xm to runtime stats"
     const prints = runtime.getPrintHistory()
-    const recoveryMsg = prints.find((p) => p.message.includes('recovered'))
+    const recoveryMsg = prints.find((p) => p.message.includes('Script restarted while cooling'))
     expect(recoveryMsg).toBeDefined()
   })
 
@@ -136,24 +136,24 @@ describe('Boot Recovery: Scenario 1 - Compressor Was Running', () => {
 
     // Apply state
     Object.assign(script.S, {
-      sys_relayState: true,
-      sys_tsRelayOn: relayOnTime,
-      sys_tsRelayOff: 0,
-      stats_hourRun: 0,
-      weld_snapAir: 5.0,
+      sys_isRelayOn: true,
+      sys_relayOnTs: relayOnTime,
+      sys_relayOffTs: 0,
+      sts_hourRunSec: 0,
+      wld_airSnapDeg: 5.0,
     })
 
     // Run boot recovery
     script.recoverBootState()
 
     // Verify: Compressor should be stopped
-    expect(script.S.sys_relayState).toBe(false)
-    expect(script.S.weld_snapAir).toBe(0) // Reset on forced stop
+    expect(script.S.sys_isRelayOn).toBe(false)
+    expect(script.S.wld_airSnapDeg).toBe(0) // Reset on forced stop
     expect(runtime.getRelayState()).toBe(false) // Hardware switch turned off
 
-    // Check for warning message (actual format: "Compressor overrun...forcing OFF")
+    // Check for warning message (format: "Compressor ran Xm (limit Ym) → turned OFF for protection")
     const prints = runtime.getPrintHistory()
-    const warningMsg = prints.find((p) => p.message.includes('overrun') || p.message.includes('forcing OFF'))
+    const warningMsg = prints.find((p) => p.message.includes('turned OFF for protection'))
     expect(warningMsg).toBeDefined()
   })
 
@@ -166,25 +166,25 @@ describe('Boot Recovery: Scenario 1 - Compressor Was Running', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: true,
-      sys_tsRelayOn: relayOnTime,
-      sys_tsRelayOff: 0,
-      stats_hourRun: 400, // More than actual run (due to previous cycles)
+      sys_isRelayOn: true,
+      sys_relayOnTs: relayOnTime,
+      sys_relayOffTs: 0,
+      sts_hourRunSec: 400, // More than actual run (due to previous cycles)
     })
 
     script.recoverBootState()
 
     // Should just continue, no stat recovery needed
-    expect(script.S.sys_relayState).toBe(true)
+    expect(script.S.sys_isRelayOn).toBe(true)
 
-    // ? Note: When sys_tsLastSave is 0 or elapsedTotal is 0, boot recovery
+    // ? Note: When sys_lastSaveTs is 0 or elapsedTotal is 0, boot recovery
     // ? may not print a message (no stats to recover). Check for any boot message
     // ? or verify state is correctly maintained.
     const prints = runtime.getPrintHistory()
     // If there's a recovery message, great; if not, state should still be valid
     const anyBootMsg = prints.find((p) => p.message.includes('BOOT'))
     // Either we have a boot message or the state is correctly maintained
-    expect(script.S.sys_relayState).toBe(true)
+    expect(script.S.sys_isRelayOn).toBe(true)
   })
 })
 
@@ -209,9 +209,9 @@ describe('Boot Recovery: Scenario 2 - Hardware ON, No Record', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: false, // Software says OFF
-      sys_tsRelayOn: 0,
-      sys_tsRelayOff: 0,
+      sys_isRelayOn: false, // Software says OFF
+      sys_relayOnTs: 0,
+      sys_relayOffTs: 0,
     })
 
     const beforeNow = Math.floor(Date.now() / 1000) - 1 // Allow for ri() rounding
@@ -219,12 +219,12 @@ describe('Boot Recovery: Scenario 2 - Hardware ON, No Record', () => {
     script.recoverBootState()
 
     // Verify: Software state should sync with hardware
-    expect(script.S.sys_relayState).toBe(true)
-    expect(script.S.sys_tsRelayOn).toBeGreaterThanOrEqual(beforeNow)
+    expect(script.S.sys_isRelayOn).toBe(true)
+    expect(script.S.sys_relayOnTs).toBeGreaterThanOrEqual(beforeNow)
 
-    // Actual format: "State mismatch: HW=ON but state=OFF, syncing to hardware"
+    // Format: "Relay was ON but state said OFF (unexpected) → state updated to match"
     const prints = runtime.getPrintHistory()
-    const syncMsg = prints.find((p) => p.message.includes('State mismatch') || p.message.includes('syncing to hardware'))
+    const syncMsg = prints.find((p) => p.message.includes('state updated to match'))
     expect(syncMsg).toBeDefined()
   })
 })
@@ -252,14 +252,14 @@ describe('Boot Recovery: Scenario 3 - Crashed While Cooling', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: true, // Software says was ON
-      sys_tsRelayOn: relayOnTime,
-      sys_tsRelayOff: 0,
-      sys_tsLastSave: lastSaveTime, // Required for time recovery
-      stats_hourRun: 300, // Only 5 min recorded
-      stats_hourTime: 300,
-      stats_cycleCount: 0,
-      weld_snapAir: 5.0,
+      sys_isRelayOn: true, // Software says was ON
+      sys_relayOnTs: relayOnTime,
+      sys_relayOffTs: 0,
+      sys_lastSaveTs: lastSaveTime, // Required for time recovery
+      sts_hourRunSec: 300, // Only 5 min recorded
+      sts_hourTotalSec: 300,
+      sts_cycleCnt: 0,
+      wld_airSnapDeg: 5.0,
     })
 
     script.recoverBootState()
@@ -268,15 +268,15 @@ describe('Boot Recovery: Scenario 3 - Crashed While Cooling', () => {
     // elapsedTotal = now - lastSaveTime = ~600s
     // estRunSec = now - relayOnTime = ~900s
     // missedRun = min(900, 600) = 600s
-    expect(script.S.sys_relayState).toBe(false)
-    expect(script.S.stats_hourRun).toBeGreaterThan(300) // Recovered time
-    expect(script.S.stats_hourTime).toBeGreaterThan(300) // Total time also recovered
-    expect(script.S.stats_cycleCount).toBe(1) // Cycle counted
-    expect(script.S.weld_snapAir).toBe(0) // Reset
+    expect(script.S.sys_isRelayOn).toBe(false)
+    expect(script.S.sts_hourRunSec).toBeGreaterThan(300) // Recovered time
+    expect(script.S.sts_hourTotalSec).toBeGreaterThan(300) // Total time also recovered
+    expect(script.S.sts_cycleCnt).toBe(1) // Cycle counted
+    expect(script.S.wld_airSnapDeg).toBe(0) // Reset
 
-    // Actual format: "Crash while cooling: recovered ~Xm run"
+    // Format: "Script stopped while cooling → added ~Xm to runtime stats"
     const prints = runtime.getPrintHistory()
-    const crashMsg = prints.find((p) => p.message.includes('Crash while cooling'))
+    const crashMsg = prints.find((p) => p.message.includes('Script stopped while cooling'))
     expect(crashMsg).toBeDefined()
   })
 
@@ -288,18 +288,18 @@ describe('Boot Recovery: Scenario 3 - Crashed While Cooling', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: true,
-      sys_tsRelayOn: now - 50000, // Way too long (invalid)
-      sys_tsRelayOff: 0,
-      stats_hourRun: 300,
-      stats_cycleCount: 0,
+      sys_isRelayOn: true,
+      sys_relayOnTs: now - 50000, // Way too long (invalid)
+      sys_relayOffTs: 0,
+      sts_hourRunSec: 300,
+      sts_cycleCnt: 0,
     })
 
     script.recoverBootState()
 
     // State synced but no stat recovery (invalid time)
-    expect(script.S.sys_relayState).toBe(false)
-    expect(script.S.stats_cycleCount).toBe(0) // No cycle counted
+    expect(script.S.sys_isRelayOn).toBe(false)
+    expect(script.S.sts_cycleCnt).toBe(0) // No cycle counted
   })
 })
 
@@ -321,23 +321,23 @@ describe('Boot Recovery: Scenario 4 - Clean State', () => {
       hardwareRelayOn: false,
     })
 
-    // ? Must set sys_tsLastSave for elapsedTotal to be > 0
+    // ? Must set sys_lastSaveTs for elapsedTotal to be > 0
     // ? Otherwise "Clean idle" message won't print
     Object.assign(script.S, {
-      sys_relayState: false,
-      sys_tsRelayOn: 0,
-      sys_tsRelayOff: Date.now() / 1000 - 1000,
-      sys_tsLastSave: Date.now() / 1000 - 500,  // 500s ago
+      sys_isRelayOn: false,
+      sys_relayOnTs: 0,
+      sys_relayOffTs: Date.now() / 1000 - 1000,
+      sys_lastSaveTs: Date.now() / 1000 - 500,  // 500s ago
     })
 
     script.recoverBootState()
 
     // No changes needed
-    expect(script.S.sys_relayState).toBe(false)
+    expect(script.S.sys_isRelayOn).toBe(false)
 
-    // Actual format: "Clean idle: Xm elapsed"
+    // Format: "Was idle for Xm → stats updated"
     const prints = runtime.getPrintHistory()
-    const cleanMsg = prints.find((p) => p.message.includes('Clean idle'))
+    const cleanMsg = prints.find((p) => p.message.includes('Was idle for'))
     expect(cleanMsg).toBeDefined()
   })
 })
@@ -361,7 +361,7 @@ describe('Boot Recovery: Power Monitor Detection', () => {
       power: 85,
     })
 
-    Object.assign(script.S, { sys_relayState: false })
+    Object.assign(script.S, { sys_isRelayOn: false })
 
     script.recoverBootState()
 
@@ -382,7 +382,7 @@ describe('Boot Recovery: Power Monitor Detection', () => {
     })
     delete runtime.switches[0].apower
 
-    Object.assign(script.S, { sys_relayState: false })
+    Object.assign(script.S, { sys_isRelayOn: false })
 
     script.recoverBootState()
 
@@ -411,17 +411,17 @@ describe('Boot Recovery: Fatal Fault History', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: false,
-      fault_fatal: [
+      sys_isRelayOn: false,
+      flt_fatalArr: [
         { t: faultTime, a: 'ALARM_RELAY_WELD', d: 'Temp continued dropping after relay off' },
       ],
     })
 
     script.recoverBootState()
 
-    // Actual format: "Last fatal: ALARM_RELAY_WELD (...), Xh ago"
+    // Format: "Had fatal error Xh ago: ALARM_RELAY_WELD (...)"
     const prints = runtime.getPrintHistory()
-    const fatalMsg = prints.find((p) => p.message.includes('Last fatal'))
+    const fatalMsg = prints.find((p) => p.message.includes('Had fatal error'))
     expect(fatalMsg).toBeDefined()
     expect(fatalMsg.message).toContain('ALARM_RELAY_WELD')
   })
@@ -445,14 +445,14 @@ describe('Boot Recovery: KVS Persistence Verification', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: false,
-      adapt_hystCurrent: 1.8, // Learned value
+      sys_isRelayOn: false,
+      adt_hystDeg: 1.8, // Learned value
     })
 
     script.recoverBootState()
 
     // Learned hysteresis should be preserved
-    expect(script.S.adapt_hystCurrent).toBe(1.8)
+    expect(script.S.adt_hystDeg).toBe(1.8)
   })
 
   it('should preserve defrost state across reboot', async () => {
@@ -461,14 +461,14 @@ describe('Boot Recovery: KVS Persistence Verification', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: false,
-      defr_isActive: true, // Was in defrost
+      sys_isRelayOn: false,
+      dfr_isActive: true, // Was in defrost
     })
 
     script.recoverBootState()
 
     // Defrost state should be preserved
-    expect(script.S.defr_isActive).toBe(true)
+    expect(script.S.dfr_isActive).toBe(true)
   })
 
   it('should preserve weld detection snapshot after clean reboot', async () => {
@@ -477,15 +477,15 @@ describe('Boot Recovery: KVS Persistence Verification', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: false,
-      sys_tsRelayOff: Date.now() / 1000 - 60,
-      weld_snapAir: 4.5, // Snapshot from last turn-off
+      sys_isRelayOn: false,
+      sys_relayOffTs: Date.now() / 1000 - 60,
+      wld_airSnapDeg: 4.5, // Snapshot from last turn-off
     })
 
     script.recoverBootState()
 
     // Weld snapshot should be preserved for continued detection
-    expect(script.S.weld_snapAir).toBe(4.5)
+    expect(script.S.wld_airSnapDeg).toBe(4.5)
   })
 
   it('should preserve hourly stats history array', async () => {
@@ -496,17 +496,17 @@ describe('Boot Recovery: KVS Persistence Verification', () => {
     const history = [50, 45, 48, 52, 55, 60, 58, 55, 50, 48, 45, 42, 40, 38, 35, 32, 30, 28, 26, 24, 22, 20, 18, 16]
 
     Object.assign(script.S, {
-      sys_relayState: false,
-      stats_history: history,
-      stats_hourIdx: 12,
+      sys_isRelayOn: false,
+      sts_dutyHistArr: history,
+      sts_histIdx: 12,
     })
 
     script.recoverBootState()
 
     // History array should be preserved
-    expect(script.S.stats_history.length).toBe(24)
-    expect(script.S.stats_hourIdx).toBe(12)
-    expect(script.S.stats_history[0]).toBe(50)
+    expect(script.S.sts_dutyHistArr.length).toBe(24)
+    expect(script.S.sts_histIdx).toBe(12)
+    expect(script.S.sts_dutyHistArr[0]).toBe(50)
   })
 
   it('should preserve fault logs across reboot', async () => {
@@ -515,18 +515,18 @@ describe('Boot Recovery: KVS Persistence Verification', () => {
     })
 
     Object.assign(script.S, {
-      sys_relayState: false,
-      fault_fatal: [{ t: 1700000000, a: 'WELD', d: 'S:5.0→4.2' }],
-      fault_critical: [{ t: 1700000100, a: 'GHOST', d: '2W' }],
-      fault_error: [],
-      fault_warning: [],
+      sys_isRelayOn: false,
+      flt_fatalArr: [{ t: 1700000000, a: 'WELD', d: 'S:5.0→4.2' }],
+      flt_critArr: [{ t: 1700000100, a: 'GHOST', d: '2W' }],
+      flt_errorArr: [],
+      flt_warnArr: [],
     })
 
     script.recoverBootState()
 
     // All fault arrays should be preserved
-    expect(script.S.fault_fatal.length).toBe(1)
-    expect(script.S.fault_fatal[0].a).toBe('WELD')
-    expect(script.S.fault_critical.length).toBe(1)
+    expect(script.S.flt_fatalArr.length).toBe(1)
+    expect(script.S.flt_fatalArr[0].a).toBe('WELD')
+    expect(script.S.flt_critArr.length).toBe(1)
   })
 })

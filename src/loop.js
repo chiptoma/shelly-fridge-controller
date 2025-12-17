@@ -36,7 +36,7 @@ let loopTimer = null
 function mainLoopTick() {
   // ! CRITICAL: Store timestamp in GLOBAL state, not local variable.
   // ! Shelly mJS closures are broken - local variables become corrupted in async callbacks.
-  V.loopNow = nowSec()
+  V.lop_nowTs = nowSec()
 
   // 1. CHECK PHYSICAL INPUT (TURBO SWITCH)
   let inp = Shelly.getComponentStatus('Input', 0)
@@ -70,9 +70,9 @@ function mainLoopTick() {
       if (!validateSensorReadings($_rAir, $_rEvap)) {
         // Sensor error handling - returns true when fatal threshold reached
         let isFatal = handleSensorError()
-        if (isFatal && !V.sens_wasError) {
+        if (isFatal && !V.sns_wasErr) {
           // First time reaching failure threshold
-          V.sens_wasError = true
+          V.sns_wasErr = true
         }
       } else {
         // Valid readings
@@ -83,7 +83,7 @@ function mainLoopTick() {
         resetSensorError()
 
         // Recovery from previous error state
-        if (V.sens_wasError) {
+        if (V.sns_wasErr) {
           handleSensorRecovery(tAirRaw)
         }
 
@@ -91,41 +91,41 @@ function mainLoopTick() {
         tAirMedian = processSensorData(tAirRaw)
 
         // 5. CHECK SENSOR STUCK (use raw values, not smoothed)
-        airStuck = checkSensorStuck(tAirRaw, 'sens_stuckRefAir', 'sens_stuckTsAir', V.loopNow)
-        evapStuck = checkSensorStuck(tEvap, 'sens_stuckRefEvap', 'sens_stuckTsEvap', V.loopNow)
+        airStuck = checkSensorStuck(tAirRaw, 'sns_airStuckRefDeg', 'sns_airStuckTs', V.lop_nowTs)
+        evapStuck = checkSensorStuck(tEvap, 'sns_evpStuckRefDeg', 'sns_evpStuckTs', V.lop_nowTs)
 
         // 6. POWER MONITORING (if PM available)
-        if (V.hw_hasPM && S.sys_relayState) {
-          let runDur = V.loopNow - S.sys_tsRelayOn
+        if (V.hw_hasPM && S.sys_isRelayOn) {
+          let runDur = V.lop_nowTs - S.sys_relayOnTs
           // ! CRITICAL: setRelay must be called to update state on detection
           if (checkLockedRotor(swWatts, runDur)) {
-            setRelay(false, V.loopNow, 0, 0, true)
+            setRelay(false, V.lop_nowTs, 0, 0, true)
           } else if (checkGhostRun(swWatts, runDur)) {
-            setRelay(false, V.loopNow, 0, 0, true)
+            setRelay(false, V.lop_nowTs, 0, 0, true)
           } else if (runDur > C.pwr_startMaskSec && swWatts >= C.pwr_runMinW) {
             // ? Compressor running normally - reset ghost count
             resetGhostCount()
           }
-        } else if (!S.sys_relayState) {
+        } else if (!S.sys_isRelayOn) {
           // Reset ghost timer when relay is OFF
-          V.pwr_ghostTimer = 0
+          V.pwr_ghostSec = 0
         }
 
         // 7. COOLING HEALTH CHECK
-        checkCoolingHealth(tEvap, V.loopNow)
+        checkCoolingHealth(tEvap, V.lop_nowTs)
 
         // 8. DOOR DETECTION (only with valid sensors)
-        detectDoorOpen(tAirMedian, V.loopNow)
+        detectDoorOpen(tAirMedian, V.lop_nowTs)
 
         // 9. DEFROST TRIGGER CHECK (only with valid sensors)
         checkDefrostTrigger(tEvap)
 
         // 10. HIGH TEMP ALARM CHECK (only with valid sensors)
         let isDeepDefrost = isScheduledDefrost()
-        checkHighTempAlarm(V.sens_smoothAir, isDeepDefrost)
+        checkHighTempAlarm(V.sns_airSmoothDeg, isDeepDefrost)
 
         // 11. WELD DETECTION (only with valid sensors)
-        checkWeldDetection(V.sens_smoothAir, V.loopNow)
+        checkWeldDetection(V.sns_airSmoothDeg, V.lop_nowTs)
       }
 
       // ============================================================
@@ -138,42 +138,42 @@ function mainLoopTick() {
 
       // Clear non-fatal alarms for re-evaluation
       clearNonFatalAlarms()
-      V.sys_reason = RSN.NONE
-      V.sys_statusDetail = 'NONE'
+      V.sys_statusReason = RSN.NONE
+      V.sys_detail = 'NONE'
 
       // Re-apply sensor alarms
-      let alarmFail = (V.sens_errCount >= C.sys_sensFailLimit)
+      let alarmFail = (V.sns_errCnt >= C.sys_sensFailLimit)
       applySensorAlarms(alarmFail, airStuck || evapStuck)
 
       // 13. UPDATE METRICS
-      updateMetrics(S.sys_relayState, C.sys_loopSec)
+      updateMetrics(S.sys_isRelayOn, C.sys_loopSec)
 
       // 14. PROCESS ALARM EDGES (Fault logging)
       let alarmAfter = V.sys_alarm
       processAlarmEdges(alarmBefore, alarmAfter, swWatts, tAirRaw, tEvap)
 
       // 15. DETERMINE MODE
-      let mode = determineMode(V.sens_smoothAir, tEvap, V.loopNow)
+      let mode = determineMode(V.sns_airSmoothDeg, tEvap, V.lop_nowTs)
 
       // 16. EXECUTE SWITCH DECISION
       let isLimp = (V.sys_alarm === ALM.FAIL || V.sys_alarm === ALM.STUCK)
-      let switchResult = executeSwitchDecision(mode.wantOn, V.loopNow, V.sens_smoothAir, tEvap, isLimp)
+      let switchResult = executeSwitchDecision(mode.wantOn, V.lop_nowTs, V.sns_airSmoothDeg, tEvap, isLimp)
 
       // ? Update status from mode determination only if NO action was taken.
       // ? When blocked OR switched, executeSwitchDecision already set correct status.
       if (!switchResult.blocked && !switchResult.switched) {
         V.sys_status = mode.status
-        if (mode.reason !== RSN.NONE) V.sys_reason = mode.reason
-        if (mode.detail !== 'NONE') V.sys_statusDetail = mode.detail
+        if (mode.reason !== RSN.NONE) V.sys_statusReason = mode.reason
+        if (mode.detail !== 'NONE') V.sys_detail = mode.detail
       }
 
-      // 17. PERIODIC STATE SAVE
-      if (V.loopNow - V.lastSave > 3600) {
+      // 17. PERIODIC STATE SAVE (every 15 min max)
+      if (V.lop_nowTs - V.lop_lastSaveTs > 900) {
         persistState()
       }
 
       // 18. REPORT STATUS
-      publishStatus(V.sens_smoothAir, tEvap, tAirRaw, swWatts, swTemp)
+      publishStatus(V.sns_airSmoothDeg, tEvap, tAirRaw, swWatts, swTemp)
     })
   })
 }

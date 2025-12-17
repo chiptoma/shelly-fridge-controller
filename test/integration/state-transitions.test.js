@@ -28,7 +28,7 @@ async function setupStateTransition(runtime, options = {}) {
 
   // Apply initial state
   if (options.relayState !== undefined) {
-    state.S.sys_relayState = options.relayState
+    state.S.sys_isRelayOn = options.relayState
     runtime.switches[0].output = options.relayState
   }
   if (options.alarm !== undefined) {
@@ -39,7 +39,7 @@ async function setupStateTransition(runtime, options = {}) {
   }
   if (options.airTemp !== undefined) {
     runtime.setTemperature(config.C.sys_sensAirId, options.airTemp)
-    state.V.sens_smoothAir = options.airTemp
+    state.V.sns_airSmoothDeg = options.airTemp
   }
   if (options.evapTemp !== undefined) {
     runtime.setTemperature(config.C.sys_sensEvapId, options.evapTemp)
@@ -87,7 +87,7 @@ describe('State Transition: BOOT → IDLE', () => {
     })
 
     // Allow timing
-    script.S.sys_tsRelayOff = Date.now() / 1000 - 1000
+    script.S.sys_relayOffTs = Date.now() / 1000 - 1000
 
     const mode = script.control.determineMode(4.0, -8.0)
 
@@ -164,8 +164,8 @@ describe('State Transition: IDLE → COOLING', () => {
       alarm: 'NONE',
     })
 
-    script.V.turbo_active = true
-    script.V.turbo_remSec = 1000
+    script.V.trb_isActive = true
+    script.V.trb_remSec = 1000
 
     // Even with temp in range, turbo forces cooling
     const mode = script.control.determineMode(3.5, -8.0)
@@ -196,7 +196,7 @@ describe('State Transition: COOLING → IDLE', () => {
     })
 
     // Set recent relay on time (to avoid max run protection)
-    script.S.sys_tsRelayOn = Date.now() / 1000 - 300 // 5 minutes ago
+    script.S.sys_relayOnTs = Date.now() / 1000 - 300 // 5 minutes ago
 
     // Below lower band (target=4, hyst=1, lower=3)
     const mode = script.control.determineMode(2.5, -10.0)
@@ -252,8 +252,8 @@ describe('State Transition: COOLING → IDLE', () => {
 
     // Set relay on time to exceed max run
     const now = Date.now() / 1000
-    script.S.sys_tsRelayOn = now - script.C.comp_maxRunSec - 10
-    script.V.turbo_active = false
+    script.S.sys_relayOnTs = now - script.C.comp_maxRunSec - 10
+    script.V.trb_isActive = false
 
     const mode = script.control.determineMode(5.0, -10.0, now)
 
@@ -357,21 +357,21 @@ describe('State Transition: LIMP → Normal (Sensor Recovery)', () => {
     })
 
     // Start in sensor failure
-    script.V.sens_errCount = script.C.sys_sensFailLimit
+    script.V.sns_errCnt = script.C.sys_sensFailLimit
     script.V.sys_alarm = script.ALM.FAIL
-    script.V.sens_wasError = true
+    script.V.sns_wasErr = true
 
     // Sensors return - call recovery
     script.sensors.handleSensorRecovery(5.0)
 
     // Buffer should be re-initialized
-    expect(script.V.sens_bufAir).toEqual([5.0, 5.0, 5.0])
-    expect(script.V.sens_smoothAir).toBe(5.0)
-    expect(script.V.sens_wasError).toBe(false)
+    expect(script.V.sns_airBuf).toEqual([5.0, 5.0, 5.0])
+    expect(script.V.sns_airSmoothDeg).toBe(5.0)
+    expect(script.V.sns_wasErr).toBe(false)
 
     // Reset error count
     script.sensors.resetSensorError()
-    expect(script.V.sens_errCount).toBe(0)
+    expect(script.V.sns_errCnt).toBe(0)
 
     // Clear alarm
     script.alarms.clearNonFatalAlarms()
@@ -385,12 +385,12 @@ describe('State Transition: LIMP → Normal (Sensor Recovery)', () => {
   it('should reset door reference on sensor recovery', async () => {
     script = await setupStateTransition(runtime, {})
 
-    script.V.door_refTs = 1000
-    script.V.sens_wasError = true
+    script.V.dor_refTs = 1000
+    script.V.sns_wasErr = true
 
     script.sensors.handleSensorRecovery(5.0)
 
-    expect(script.V.door_refTs).toBe(0)
+    expect(script.V.dor_refTs).toBe(0)
   })
 })
 
@@ -464,14 +464,14 @@ describe('State Transition: Defrost Mode', () => {
       alarm: 'NONE',
     })
 
-    script.S.defr_isActive = false
-    script.V.turbo_active = false
+    script.S.dfr_isActive = false
+    script.V.trb_isActive = false
 
     // Check defrost trigger
     const triggered = script.features.checkDefrostTrigger(-18.0)
 
     expect(triggered).toBe(true)
-    expect(script.S.defr_isActive).toBe(true)
+    expect(script.S.dfr_isActive).toBe(true)
   })
 
   it('should return DEFROST mode when active', async () => {
@@ -480,7 +480,7 @@ describe('State Transition: Defrost Mode', () => {
       alarm: 'NONE',
     })
 
-    script.S.defr_isActive = true
+    script.S.dfr_isActive = true
 
     const mode = script.control.determineMode(5.0, -6.0)
 
@@ -491,15 +491,15 @@ describe('State Transition: Defrost Mode', () => {
   it('should exit DEFROST after dwell period complete', async () => {
     script = await setupStateTransition(runtime, {})
 
-    script.S.defr_isActive = true
-    script.V.turbo_active = false
+    script.S.dfr_isActive = true
+    script.V.trb_isActive = false
 
     // Accumulate dwell time until complete
     for (let i = 0; i <= script.C.defr_dynDwellSec / script.C.sys_loopSec; i++) {
       script.features.handleDynamicDefrost(script.C.defr_dynEndDeg)
     }
 
-    expect(script.S.defr_isActive).toBe(false)
+    expect(script.S.dfr_isActive).toBe(false)
   })
 })
 
@@ -523,14 +523,14 @@ describe('State Transition: Door Pause', () => {
       alarm: 'NONE',
     })
 
-    script.V.door_refTemp = 4.0
-    script.V.door_refTs = Date.now() / 1000 - 5 // 5 seconds ago
-    script.V.door_timer = 0
+    script.V.dor_refDeg = 4.0
+    script.V.dor_refTs = Date.now() / 1000 - 5 // 5 seconds ago
+    script.V.dor_pauseRemSec = 0
 
     const detected = script.features.detectDoorOpen(10.0, Date.now() / 1000)
 
     expect(detected).toBe(true)
-    expect(script.V.door_timer).toBeGreaterThan(0)
+    expect(script.V.dor_pauseRemSec).toBeGreaterThan(0)
   })
 
   it('should return DOOR_PAUSE mode when active', async () => {
@@ -539,7 +539,7 @@ describe('State Transition: Door Pause', () => {
       alarm: 'NONE',
     })
 
-    script.V.door_timer = 100 // Active door pause
+    script.V.dor_pauseRemSec = 100 // Active door pause
 
     const mode = script.control.determineMode(6.0, -10.0)
 
@@ -553,7 +553,7 @@ describe('State Transition: Door Pause', () => {
       alarm: 'NONE',
     })
 
-    script.V.door_timer = -5 // Expired
+    script.V.dor_pauseRemSec = -5 // Expired
 
     expect(script.features.isDoorPauseActive()).toBe(false)
   })

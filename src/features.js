@@ -18,55 +18,37 @@ let defr_dwellTimer = 0
 // ----------------------------------------------------------
 
 /**
- * * GET EFFECTIVE HYSTERESIS
- * ? Returns base hysteresis when adaptive disabled, otherwise bounded adaptive value.
+ * * getEffectiveHysteresis - Get current hysteresis value
+ * ? Returns base value when adaptive disabled, bounded adaptive otherwise.
  *
- * @returns {number} - Current hysteresis value
+ * @returns {number} Current hysteresis value
  */
 function getEffectiveHysteresis() {
   // ? When adaptive is disabled, use base hysteresis from config
   if (!C.adapt_enable) return C.ctrl_hystDeg
   // ? Adaptive mode: bound within configured limits
-  if (S.adapt_hystCurrent > C.adapt_hystMaxDeg) return C.adapt_hystMaxDeg
-  if (S.adapt_hystCurrent < C.adapt_hystMinDeg) return C.adapt_hystMinDeg
-  return S.adapt_hystCurrent
+  if (S.adt_hystDeg > C.adapt_hystMaxDeg) return C.adapt_hystMaxDeg
+  if (S.adt_hystDeg < C.adapt_hystMinDeg) return C.adapt_hystMinDeg
+  return S.adt_hystDeg
 }
 
 /**
- * * ADAPT HYSTERESIS - Trend-Confirmed Cycle-Time Seeking
- * ? Uses TOTAL cycle time (ON + OFF) with trend confirmation to prevent oscillation.
- * ? Uses CYCLE COUNT as secondary signal to compensate for boundary effects.
+ * * adaptHysteresis - Adjust hysteresis based on cycle times
+ * ? Uses trend confirmation to prevent oscillation. Requires 2 consecutive signals.
  *
- * ? Design Philosophy (anti-oscillation, uses ADAPT constants):
- * ?   < DANGER_MULT (15min)  = DANGER zone (immediate widen, no confirmation)
- * ?   < SHORT_MULT (18min)   = Short-cycling → pending WIDEN (needs confirmation)
- * ?   18-28 min cycle        = STABLE zone (prevents flip-flop)
- * ?   > STABLE_PAD (28min)   = Long cycles → pending TIGHTEN (needs confirmation)
+ * @param {number} avgOn - Average ON time in seconds
+ * @param {number} avgOff - Average OFF time in seconds
+ * @param {number} cycleCount - Number of cycles this hour
+ * @returns {string|null} 'widen', 'tighten', 'blocked', or null
  *
- * ? Cycle Count Signals (compensates for hourly averaging distortion):
- * ?   cycleCount >= HIGH_CYCLE_COUNT && totalCycle < HIGH_CYCLE_MAX_SEC → danger
- * ?   cycleCount <= LOW_CYCLE_COUNT && totalCycle > LOW_CYCLE_MIN_SEC → tighten
- *
- * ? Trend Confirmation (sticky tracking survives stable zone):
- * ?   - Tracks V.adapt_lastDir ('widen'|'tighten'|null) and V.adapt_consecCount
- * ?   - First trigger: count=1, track direction
- * ?   - Second consecutive: count=2, ACT
- * ?   - Stable zone: maintain tracking (don't reset)
- * ?   - Direction change: reset counter, start new direction
- *
- * @param  {number} avgOn      - Average ON time in seconds
- * @param  {number} avgOff     - Average OFF time in seconds
- * @param  {number} cycleCount - Number of cycles this hour
- * @returns {string|null}       - 'widen', 'tighten', 'blocked', or null
- *
- * @mutates S.adapt_hystCurrent - Updated hysteresis value (±DANGER_STEP or ±NORMAL_STEP)
- * @mutates V.adapt_lastDir     - Tracking direction ('widen'|'tighten'|null)
- * @mutates V.adapt_consecCount - Consecutive same-direction count (0-2)
+ * @mutates S.adt_hystDeg - Updated hysteresis value
+ * @mutates V.adt_lastDir - Tracking direction ('widen'|'tighten'|null)
+ * @mutates V.adt_consecCnt - Consecutive same-direction count (0-2)
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Multi-zone adaptive algorithm
 function adaptHysteresis(avgOn, avgOff, cycleCount) {
   // === GUARDS ===
-  if (V.turbo_active) return null
+  if (V.trb_isActive) return null
   if (!C.adapt_enable) return null
   if (cycleCount < 1) return null
 
@@ -93,21 +75,21 @@ function adaptHysteresis(avgOn, avgOff, cycleCount) {
 
   // === FREEZE PROTECTION GUARD ===
   let canWiden = true
-  let newLower = C.ctrl_targetDeg - (S.adapt_hystCurrent + 0.1)
+  let newLower = C.ctrl_targetDeg - (S.adt_hystDeg + 0.1)
   if (newLower <= C.comp_freezeCutDeg + ADAPT.FREEZE_MARGIN_DEG) {
     canWiden = false
   }
 
   // === DANGER ZONE: Immediate action (no confirmation needed) ===
   // ? Compressor protection takes priority over anti-oscillation
-  if (totalCycle < dangerZone && canWiden && S.adapt_hystCurrent < C.adapt_hystMaxDeg) {
-    S.adapt_hystCurrent = r2(S.adapt_hystCurrent + ADAPT.DANGER_STEP_DEG)
-    if (S.adapt_hystCurrent > C.adapt_hystMaxDeg) {
-      S.adapt_hystCurrent = C.adapt_hystMaxDeg
+  if (totalCycle < dangerZone && canWiden && S.adt_hystDeg < C.adapt_hystMaxDeg) {
+    S.adt_hystDeg = r2(S.adt_hystDeg + ADAPT.DANGER_STEP_DEG)
+    if (S.adt_hystDeg > C.adapt_hystMaxDeg) {
+      S.adt_hystDeg = C.adapt_hystMaxDeg
     }
-    V.adapt_lastDir = 'widen'
-    V.adapt_consecCount = 0
-    print('⚠️ ADAPT Short cycling: widening hysteresis to ' + S.adapt_hystCurrent.toFixed(1)
+    V.adt_lastDir = 'widen'
+    V.adt_consecCnt = 0
+    print('⚠️ ADAPT Short cycling: widening hysteresis to ' + S.adt_hystDeg.toFixed(1)
           + ' (cycle ' + (totalCycle / 60).toFixed(0) + 'm'
           + ', duty ' + (dutyCycle * 100).toFixed(0) + '%)')
     return 'widen'
@@ -115,9 +97,9 @@ function adaptHysteresis(avgOn, avgOff, cycleCount) {
 
   // === DETERMINE DESIRED DIRECTION ===
   let wantDir = null
-  if (totalCycle < minCycle && canWiden && S.adapt_hystCurrent < C.adapt_hystMaxDeg) {
+  if (totalCycle < minCycle && canWiden && S.adt_hystDeg < C.adapt_hystMaxDeg) {
     wantDir = 'widen'
-  } else if (totalCycle > maxCycle && avgOff > avgOn && S.adapt_hystCurrent > C.adapt_hystMinDeg) {
+  } else if (totalCycle > maxCycle && avgOff > avgOn && S.adt_hystDeg > C.adapt_hystMinDeg) {
     // ? Only tighten if system has idle headroom (OFF > ON means duty < 50%)
     // ? Prevents tightening when system is already struggling
     wantDir = 'tighten'
@@ -138,12 +120,12 @@ function adaptHysteresis(avgOn, avgOff, cycleCount) {
   }
 
   // === TREND CONFIRMATION ===
-  if (wantDir === V.adapt_lastDir) {
-    V.adapt_consecCount++
+  if (wantDir === V.adt_lastDir) {
+    V.adt_consecCnt++
   } else {
     // Direction changed - start new trend
-    V.adapt_lastDir = wantDir
-    V.adapt_consecCount = 1
+    V.adt_lastDir = wantDir
+    V.adt_consecCnt = 1
     print('ℹ️ ADAPT Tracking ' + wantDir + ', step 1 of 2'
           + ' (cycle ' + (totalCycle / 60).toFixed(0) + 'm'
           + ', duty ' + (dutyCycle * 100).toFixed(0) + '%)')
@@ -151,30 +133,30 @@ function adaptHysteresis(avgOn, avgOff, cycleCount) {
   }
 
   // === REQUIRE 2 CONSECUTIVE ===
-  if (V.adapt_consecCount < 2) {
-    print('ℹ️ ADAPT Tracking ' + wantDir + ', step ' + V.adapt_consecCount + ' of 2'
+  if (V.adt_consecCnt < 2) {
+    print('ℹ️ ADAPT Tracking ' + wantDir + ', step ' + V.adt_consecCnt + ' of 2'
           + ' (cycle ' + (totalCycle / 60).toFixed(0) + 'm'
           + ', duty ' + (dutyCycle * 100).toFixed(0) + '%)')
     return null
   }
 
   // === EXECUTE ADAPTATION ===
-  V.adapt_consecCount = 0  // Reset after acting
+  V.adt_consecCnt = 0  // Reset after acting
 
   if (wantDir === 'widen') {
-    S.adapt_hystCurrent = r2(S.adapt_hystCurrent + ADAPT.NORMAL_STEP_DEG)
-    if (S.adapt_hystCurrent > C.adapt_hystMaxDeg) {
-      S.adapt_hystCurrent = C.adapt_hystMaxDeg
+    S.adt_hystDeg = r2(S.adt_hystDeg + ADAPT.NORMAL_STEP_DEG)
+    if (S.adt_hystDeg > C.adapt_hystMaxDeg) {
+      S.adt_hystDeg = C.adapt_hystMaxDeg
     }
-    print('✅ ADAPT Widened hysteresis to ' + S.adapt_hystCurrent.toFixed(1)
+    print('✅ ADAPT Widened hysteresis to ' + S.adt_hystDeg.toFixed(1)
           + ' (cycle ' + (totalCycle / 60).toFixed(0) + 'm'
           + ', duty ' + (dutyCycle * 100).toFixed(0) + '%)')
     return 'widen'
   }
 
   if (wantDir === 'tighten') {
-    S.adapt_hystCurrent = r2(S.adapt_hystCurrent - ADAPT.NORMAL_STEP_DEG)
-    print('✅ ADAPT Tightened hysteresis to ' + S.adapt_hystCurrent.toFixed(1)
+    S.adt_hystDeg = r2(S.adt_hystDeg - ADAPT.NORMAL_STEP_DEG)
+    print('✅ ADAPT Tightened hysteresis to ' + S.adt_hystDeg.toFixed(1)
           + ' (cycle ' + (totalCycle / 60).toFixed(0) + 'm'
           + ', duty ' + (dutyCycle * 100).toFixed(0) + '%)')
     return 'tighten'
@@ -189,27 +171,27 @@ function adaptHysteresis(avgOn, avgOff, cycleCount) {
 // ----------------------------------------------------------
 
 /**
- * * CHECK TURBO SWITCH
- * ? Detects rising edge on physical input switch to activate turbo.
+ * * checkTurboSwitch - Detect rising edge on input switch
+ * ? Activates turbo mode on low-to-high transition.
  *
- * @param  {boolean} switchState - Current switch state
- * @returns {boolean}             - True if turbo just activated
+ * @param {boolean} switchState - Current switch state
+ * @returns {boolean} True if turbo just activated
  *
- * @mutates V.turbo_lastSw  - Previous switch state for edge detection
- * @mutates V.turbo_active  - Set true on rising edge (if enabled)
- * @mutates V.turbo_remSec  - Reset to turbo_maxTimeSec on activation
+ * @mutates V.trb_prevSw - Previous switch state for edge detection
+ * @mutates V.trb_isActive - Set true on rising edge (if enabled)
+ * @mutates V.trb_remSec - Reset to turbo_maxTimeSec on activation
  */
 function checkTurboSwitch(switchState) {
   // Always track switch state (even when disabled) to detect edge correctly
-  let wasLow = !V.turbo_lastSw
-  V.turbo_lastSw = switchState
+  let wasLow = !V.trb_prevSw
+  V.trb_prevSw = switchState
 
   if (!C.turbo_enable) return false
 
   let activated = false
   if (switchState && wasLow) {
-    V.turbo_active = true
-    V.turbo_remSec = C.turbo_maxTimeSec
+    V.trb_isActive = true
+    V.trb_remSec = C.turbo_maxTimeSec
     print('TURBO ⚡ Switch activated: turbo ON')
     activated = true
   }
@@ -218,28 +200,27 @@ function checkTurboSwitch(switchState) {
 }
 
 /**
- * * HANDLE TURBO MODE
- * ? Decrements timer and returns overridden target/hysteresis.
+ * * handleTurboMode - Decrement timer and return overrides
  * ? Deactivates turbo when timer expires.
  *
- * @param  {number} dt - Time delta (seconds)
- * @returns {object|null} - { target, hyst, detail } or null if not active
+ * @param {number} dt - Time delta (seconds)
+ * @returns {object|null} { target, hyst, detail } or null if not active
  *
- * @mutates V.turbo_remSec - Decremented by dt each call
- * @mutates V.turbo_active - Set false when timer expires
+ * @mutates V.trb_remSec - Decremented by dt each call
+ * @mutates V.trb_isActive - Set false when timer expires
  */
 function handleTurboMode(dt) {
-  if (!V.turbo_active) return null
+  if (!V.trb_isActive) return null
 
-  if (V.turbo_remSec > 0) {
-    V.turbo_remSec -= dt
+  if (V.trb_remSec > 0) {
+    V.trb_remSec -= dt
     return {
       target: C.turbo_targetDeg,
       hyst: C.turbo_hystDeg,
-      detail: 'TURBO: ' + (V.turbo_remSec / 60).toFixed(0) + 'm left',
+      detail: 'TURBO: ' + (V.trb_remSec / 60).toFixed(0) + 'm left',
     }
   } else {
-    V.turbo_active = false
+    V.trb_isActive = false
     print('ℹ️ TURBO Timer expired: turbo deactivated')
     return null
   }
@@ -251,54 +232,52 @@ function handleTurboMode(dt) {
 // ----------------------------------------------------------
 
 /**
- * * DETECT DOOR OPEN
- * ? Monitors rate of temperature rise to detect door events.
+ * * detectDoorOpen - Monitor temperature rise for door events
  * ? Triggers pause timer when rate exceeds threshold.
  *
- * @param  {number} tAirMedian - Current median air temperature
- * @param  {number} now        - Current timestamp (seconds)
- * @returns {boolean}           - True if door event detected this call
+ * @param {number} tAirMedian - Current median air temperature
+ * @param {number} now - Current timestamp (seconds)
+ * @returns {boolean} True if door event detected this call
  *
- * @mutates V.door_refTemp - Reference temperature for rate calculation
- * @mutates V.door_refTs   - Reference timestamp for rate calculation
- * @mutates V.door_timer   - Set to door_pauseSec on detection, decremented each call
+ * @mutates V.dor_refDeg - Reference temperature for rate calculation
+ * @mutates V.dor_refTs - Reference timestamp for rate calculation
+ * @mutates V.dor_pauseRemSec - Set to door_pauseSec on detection
  */
 function detectDoorOpen(tAirMedian, now) {
   if (!C.door_enable) return false
 
   let detected = false
 
-  if (V.door_refTs > 0 && V.door_refTemp !== 0) {
-    let dt = now - V.door_refTs
+  if (V.dor_refTs > 0 && V.dor_refDeg !== 0) {
+    let dt = now - V.dor_refTs
     // ? Guard: Only calculate rate if dt is at least half the loop interval.
     // ? Prevents false positives from timer overlap or clock jitter.
     if (dt >= C.sys_loopSec * 0.5) {
-      let rate = (tAirMedian - V.door_refTemp) / dt * 60.0
+      let rate = (tAirMedian - V.dor_refDeg) / dt * 60.0
       if (rate > C.door_rateDegMin) {
-        V.door_timer = C.door_pauseSec
+        V.dor_pauseRemSec = C.door_pauseSec
         print('DOOR 🚪 Event detected: +' + rate.toFixed(2) + ' deg/min')
         detected = true
       }
     }
   }
 
-  V.door_refTemp = r2(tAirMedian)
-  V.door_refTs = now
+  V.dor_refDeg = r2(tAirMedian)
+  V.dor_refTs = now
 
   // Decrement timer
-  if (V.door_timer > 0) V.door_timer -= C.sys_loopSec
+  if (V.dor_pauseRemSec > 0) V.dor_pauseRemSec -= C.sys_loopSec
 
   return detected
 }
 
 /**
- * * IS DOOR PAUSE ACTIVE
- * ? Returns true if currently in door-pause period.
+ * * isDoorPauseActive - Check if in door-pause period
  *
- * @returns {boolean} - True if door timer > 0
+ * @returns {boolean} True if door timer > 0
  */
 function isDoorPauseActive() {
-  return V.door_timer > 0
+  return V.dor_pauseRemSec > 0
 }
 
 // ----------------------------------------------------------
@@ -307,12 +286,10 @@ function isDoorPauseActive() {
 // ----------------------------------------------------------
 
 /**
- * * IS SCHEDULED DEFROST
- * ? Checks if currently in scheduled defrost window.
- * ! Note: Creates fresh Date internally - mJS loses Date prototype
- * ! when passed as function argument through async callbacks.
+ * * isScheduledDefrost - Check if in scheduled defrost window
+ * ! Creates fresh Date internally - mJS loses Date prototype in callbacks.
  *
- * @returns {boolean} - True if in defrost window
+ * @returns {boolean} True if in defrost window
  */
 function isScheduledDefrost() {
   if (!C.defr_schedEnable) return false
@@ -322,23 +299,22 @@ function isScheduledDefrost() {
 }
 
 /**
- * * CHECK DEFROST TRIGGER
- * ? Checks if evaporator is cold enough to trigger dynamic defrost.
+ * * checkDefrostTrigger - Check if evap triggers dynamic defrost
+ * ? Triggers when evaporator reaches defr_dynTrigDeg.
  *
- * @param  {number} tEvap - Evaporator temperature
- * @returns {boolean}      - True if defrost should trigger
+ * @param {number} tEvap - Evaporator temperature
+ * @returns {boolean} True if defrost should trigger
  *
- * @mutates S.defr_isActive - Set true when evap <= defr_dynTrigDeg
- *
+ * @mutates S.dfr_isActive - Set true when evap <= defr_dynTrigDeg
  * @sideeffect Calls persistState() on defrost trigger
  */
 function checkDefrostTrigger(tEvap) {
   if (!C.defr_dynEnable) return false
-  if (V.turbo_active) return false
-  if (S.defr_isActive) return false
+  if (V.trb_isActive) return false
+  if (S.dfr_isActive) return false
 
   if (tEvap <= C.defr_dynTrigDeg) {
-    S.defr_isActive = true
+    S.dfr_isActive = true
     persistState()
     print('DEFR ❄️ Dynamic defrost: triggered at evap ' + tEvap.toFixed(1) + 'C')
     return true
@@ -348,28 +324,26 @@ function checkDefrostTrigger(tEvap) {
 }
 
 /**
- * * HANDLE DYNAMIC DEFROST
- * ? Manages defrost dwell timer and completion.
+ * * handleDynamicDefrost - Manage defrost dwell and completion
  * ? Returns true while defrost is active.
  *
- * @param  {number} tEvap - Evaporator temperature
- * @returns {boolean}      - True if defrost is active
+ * @param {number} tEvap - Evaporator temperature
+ * @returns {boolean} True if defrost is active
  *
- * @mutates S.defr_isActive   - Set false when defrost completes
- * @mutates defr_dwellTimer   - Module-local timer incremented/reset
- *
+ * @mutates S.dfr_isActive - Set false when defrost completes
+ * @mutates defr_dwellTimer - Module-local timer incremented/reset
  * @sideeffect Calls persistState() on defrost completion
  */
 function handleDynamicDefrost(tEvap) {
   if (!C.defr_dynEnable) return false
-  if (!S.defr_isActive) return false
-  if (V.turbo_active) return false
+  if (!S.dfr_isActive) return false
+  if (V.trb_isActive) return false
 
   // Check if evap has warmed up enough
   if (tEvap >= C.defr_dynEndDeg) {
     defr_dwellTimer += C.sys_loopSec
     if (defr_dwellTimer >= C.defr_dynDwellSec) {
-      S.defr_isActive = false
+      S.dfr_isActive = false
       defr_dwellTimer = 0
       persistState()
       print('✅ DEFR Dynamic defrost: complete')
@@ -388,11 +362,10 @@ function handleDynamicDefrost(tEvap) {
 // ----------------------------------------------------------
 
 /**
- * * HANDLE LIMP MODE
- * ? Executes blind duty cycling based on uptime.
- * ? Returns status for display.
+ * * handleLimpMode - Execute blind duty cycling
+ * ? Used when sensors have failed, cycles based on uptime.
  *
- * @returns {object} - { wantOn, status, detail }
+ * @returns {object} { wantOn, status, detail }
  */
 function handleLimpMode() {
   if (!C.limp_enable) {
