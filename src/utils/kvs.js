@@ -10,7 +10,12 @@
 // ----------------------------------------------------------
 
 /**
+ * * pickKeys - Extract subset of object keys
+ * ? Creates new object with only specified keys from source.
  *
+ * @param {object} obj  - Source object
+ * @param {string[]} keys - Keys to extract
+ * @returns {object} New object with only specified keys
  */
 function pickKeys(obj, keys) {
   let result = {}
@@ -39,7 +44,8 @@ function loadChunksSeq(mapping, target, onDone) {
   let idx = 0
 
   /**
-   *
+   * * next - Load next chunk in sequence
+   * @internal
    */
   function next() {
     if (idx >= keys.length) {
@@ -140,7 +146,8 @@ function syncToKvs(mapping, source, loadedChunks, onDone, label) {
 
   let idx = 0
   /**
-   *
+   * * next - Process next sync operation
+   * @internal
    */
   function next() {
     if (idx >= ops.length) {
@@ -192,7 +199,8 @@ function saveAllToKvs(mapping, source, onDone) {
 
   let idx = 0
   /**
-   *
+   * * next - Save next chunk in sequence
+   * @internal
    */
   function next() {
     if (idx >= keys.length) {

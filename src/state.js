@@ -115,14 +115,23 @@ function persistState() {
 // ----------------------------------------------------------
 
 /**
+ * * isTimestampInvalid - Check if timestamp is outside valid range
+ * ? Returns true if timestamp is >60s in future or >1 year in past.
  *
+ * @param {number} ts  - Timestamp to validate (seconds)
+ * @param {number} now - Current time (seconds)
+ * @returns {boolean} True if timestamp is invalid
  */
 function isTimestampInvalid(ts, now) {
   return ts > now + 60 || ts < now - 31536000
 }
 
 /**
+ * * sanitizeLoadedState - Validate and fix corrupted state after KVS load
+ * ? Orchestrates timestamp, stats, and fault sanitization.
  *
+ * @param {number} now - Current time in seconds
+ * @mutates S - Resets invalid fields to safe defaults
  */
 function sanitizeLoadedState(now) {
   sanitizeTimestamps(now)
@@ -131,7 +140,11 @@ function sanitizeLoadedState(now) {
 }
 
 /**
+ * * sanitizeTimestamps - Reset relay timestamps if corrupted
+ * ? Detects future timestamps or timestamps older than 1 year.
  *
+ * @param {number} now - Current time in seconds
+ * @mutates S.sys_tsRelayOff, S.sys_tsRelayOn, S.sys_relayState, S.sys_tsLastSave
  */
 function sanitizeTimestamps(now) {
   if (isTimestampInvalid(S.sys_tsRelayOff, now) || isTimestampInvalid(S.sys_tsRelayOn, now)) {
@@ -144,7 +157,10 @@ function sanitizeTimestamps(now) {
 }
 
 /**
+ * * sanitizeStats - Reset statistics if corrupted
+ * ? Validates history array length (24h) and ensures counters are non-negative.
  *
+ * @mutates S.stats_history, S.stats_hourIdx, S.stats_hourTime, S.stats_hourRun, S.stats_cycleCount
  */
 function sanitizeStats() {
   if (!S.stats_history || S.stats_history.constructor !== Array || S.stats_history.length !== 24) {
@@ -159,7 +175,10 @@ function sanitizeStats() {
 }
 
 /**
+ * * sanitizeFaults - Reset fault arrays if corrupted
+ * ? Ensures each fault severity level is a valid array.
  *
+ * @mutates S.fault_fatal, S.fault_critical, S.fault_error, S.fault_warning
  */
 function sanitizeFaults() {
   if (!S.fault_fatal || S.fault_fatal.constructor !== Array) S.fault_fatal = []

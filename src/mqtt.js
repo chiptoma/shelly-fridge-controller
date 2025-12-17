@@ -38,7 +38,8 @@ function setupMqttCommands() {
 // ----------------------------------------------------------
 
 /**
- *
+ * * handleTurbo - Activate turbo cooling mode via MQTT
+ * @mutates V.turbo_active, V.turbo_remSec
  */
 function handleTurbo() {
   if (!C.turbo_enable) { print('⚠️ MQTT Turbo disabled: ignoring command (feature disabled)'); return }
@@ -48,7 +49,8 @@ function handleTurbo() {
 }
 
 /**
- *
+ * * handleTurboOff - Deactivate turbo cooling mode via MQTT
+ * @mutates V.turbo_active, V.turbo_remSec
  */
 function handleTurboOff() {
   V.turbo_active = false
@@ -57,14 +59,16 @@ function handleTurboOff() {
 }
 
 /**
- *
+ * * handleStatus - Log status request via MQTT
+ * ? Status is published automatically each loop tick.
  */
 function handleStatus() {
   print('ℹ️ MQTT Status requested')
 }
 
 /**
- *
+ * * handleResetAlarms - Clear active alarm state via MQTT
+ * @mutates V.sys_alarm
  */
 function handleResetAlarms() {
   V.sys_alarm = ALM.NONE
@@ -72,7 +76,11 @@ function handleResetAlarms() {
 }
 
 /**
+ * * handleSetpoint - Update target temperature via MQTT
+ * ? Validates new value and persists to KVS on success.
  *
+ * @param {object} cmd - Command object with value field
+ * @mutates C.ctrl_targetDeg
  */
 function handleSetpoint(cmd) {
   // Apply setpoint via shared validator, rollback on failure
@@ -90,7 +98,11 @@ function handleSetpoint(cmd) {
 }
 
 /**
+ * * handleMqttMessage - Process incoming MQTT command
+ * ? Rate-limited to 1 command per 2 seconds. Parses JSON and routes to handler.
  *
+ * @param {string} topic   - MQTT topic
+ * @param {string} message - JSON command payload
  */
 function handleMqttMessage(topic, message) {
   // Rate limit: 1 command per 2 seconds (prevents flooding)
