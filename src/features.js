@@ -117,7 +117,9 @@ function adaptHysteresis(avgOn, avgOff, cycleCount) {
   let wantDir = null
   if (totalCycle < minCycle && canWiden && S.adapt_hystCurrent < C.adapt_hystMaxDeg) {
     wantDir = 'widen'
-  } else if (totalCycle > maxCycle && dutyCycle < 0.75 && S.adapt_hystCurrent > C.adapt_hystMinDeg) {
+  } else if (totalCycle > maxCycle && avgOff > avgOn && S.adapt_hystCurrent > C.adapt_hystMinDeg) {
+    // ? Only tighten if system has idle headroom (OFF > ON means duty < 50%)
+    // ? Prevents tightening when system is already struggling
     wantDir = 'tighten'
   }
 

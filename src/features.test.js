@@ -200,17 +200,18 @@ describe('Features', () => {
       expect(mockV.adapt_consecCount).toBe(1)   // Unchanged
     })
 
-    it('should tighten after trend confirmation (2 consecutive long cycles)', () => {
-      // ? maxCycle = 2400s, totalCycle = 2500s > 2400s, duty = 63%
+    it('should tighten after trend confirmation (2 consecutive long cycles with idle headroom)', () => {
+      // ? maxCycle = 1680s, totalCycle = 2000s > 1680s, avgOff > avgOn (55% OFF, 45% ON)
+      // ? New logic: only tighten when system has idle headroom (avgOff > avgOn)
       mockS.adapt_hystCurrent = 1.0
       // First call - starts tracking
-      let result = adaptHysteresis(1600, 900, 3)
+      let result = adaptHysteresis(900, 1100, 3) // 45% duty, has idle headroom
       expect(result).toBeNull()
       expect(mockV.adapt_lastDir).toBe('tighten')
       expect(mockV.adapt_consecCount).toBe(1)
 
       // Second call - confirms and acts
-      result = adaptHysteresis(1600, 900, 3)
+      result = adaptHysteresis(900, 1100, 3)
       expect(result).toBe('tighten')
       expect(mockS.adapt_hystCurrent).toBe(0.8) // -0.2 step
     })
@@ -231,14 +232,15 @@ describe('Features', () => {
       expect(mockS.adapt_hystCurrent).toBe(0.8) // +0.3 step (danger zone)
     })
 
-    it('should tighten easier on low cycle count (<=3 cycles)', () => {
+    it('should tighten easier on low cycle count (<=3 cycles) when system has idle headroom', () => {
       // ? Low cycle count indicates long cycles (efficient), lower maxCycle threshold
-      // ? totalCycle = 1600s (26.7 min), cycleCount = 3 → lower maxCycle to 1500s → tighten!
+      // ? totalCycle = 1600s (26.7 min), cycleCount = 3 → lower maxCycle to 1500s
+      // ? avgOff > avgOn (62.5% OFF) → system has idle headroom → tighten
       mockS.adapt_hystCurrent = 1.0
       mockV.adapt_lastDir = 'tighten'
       mockV.adapt_consecCount = 1  // Already tracking
 
-      const result = adaptHysteresis(1000, 600, 3) // totalCycle = 1600s, count = 3
+      const result = adaptHysteresis(600, 1000, 3) // totalCycle = 1600s, 37.5% duty, idle headroom
       expect(result).toBe('tighten')
       expect(mockS.adapt_hystCurrent).toBe(0.8) // -0.2 step
     })

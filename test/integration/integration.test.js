@@ -1282,7 +1282,7 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     expect(S.adapt_hystCurrent).toBeGreaterThan(1.0)
   })
 
-  it('should tighten hysteresis when ON periods are too long', async () => {
+  it('should tighten hysteresis when system has idle headroom (avgOff > avgOn)', async () => {
     const { adaptHysteresis } = await import('../../src/features.js')
     const { S, V } = await import('../../src/state.js')
     const { C } = await import('../../src/config.js')
@@ -1295,15 +1295,16 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     V.adapt_consecCount = 0
 
     // ? New algorithm requires trend confirmation (2 consecutive triggers)
-    // ? Long ON, adequate OFF: totalCycle = 2300s = 38 min > maxCycle (25 min)
+    // ? totalCycle = 2300s = 38 min > maxCycle (28 min)
+    // ? avgOff (1500) > avgOn (800) → system has idle headroom → can tighten
 
     // First call - starts tracking
-    let result = adaptHysteresis(1500, 800, 3)
+    let result = adaptHysteresis(800, 1500, 3) // 35% duty, idle headroom
     expect(result).toBeNull()
     expect(V.adapt_lastDir).toBe('tighten')
 
     // Second call - confirms and acts
-    result = adaptHysteresis(1500, 800, 3)
+    result = adaptHysteresis(800, 1500, 3)
     expect(result).toBe('tighten')
     expect(S.adapt_hystCurrent).toBeLessThan(2.0)
   })
