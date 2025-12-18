@@ -15,7 +15,8 @@ let ST_KEYS = {
   'fridge_st_core': ['sys_relayOnTs', 'sys_relayOffTs', 'sys_isRelayOn', 'sys_lastSaveTs',
     'wld_airSnapDeg', 'adt_hystDeg', 'dfr_isActive'],
   'fridge_st_stats': ['sts_lifeTotalSec', 'sts_lifeRunSec', 'sts_hourTotalSec', 'sts_hourRunSec',
-    'sts_dutyHistArr', 'sts_histIdx', 'sts_cycleCnt'],
+    'sts_histIdx', 'sts_cycleCnt'],
+  'fridge_st_hist': ['sts_dutyHistArr'],
   'fridge_st_faults': ['flt_fatalArr', 'flt_critArr', 'flt_errorArr', 'flt_warnArr'],
 }
 
@@ -131,7 +132,6 @@ function isTimestampInvalid(ts, now) {
  * Orchestrates timestamp, stats, and fault sanitization.
  *
  * @param {number} now - Current time in seconds
- * @mutates S - Resets invalid fields to safe defaults
  */
 function sanitizeLoadedState(now) {
   sanitizeTimestamps(now)
@@ -144,7 +144,6 @@ function sanitizeLoadedState(now) {
  * Detects future timestamps or timestamps older than 1 year.
  *
  * @param {number} now - Current time in seconds
- * @mutates S.sys_relayOffTs, S.sys_relayOnTs, S.sys_isRelayOn, S.sys_lastSaveTs
  */
 function sanitizeTimestamps(now) {
   if (isTimestampInvalid(S.sys_relayOffTs, now) || isTimestampInvalid(S.sys_relayOnTs, now)) {
@@ -159,8 +158,6 @@ function sanitizeTimestamps(now) {
 /**
  * sanitizeStats - Reset statistics if corrupted
  * Validates history array length (24h) and ensures counters are non-negative.
- *
- * @mutates S.sts_dutyHistArr, S.sts_histIdx, S.sts_hourTotalSec, S.sts_hourRunSec, S.sts_cycleCnt
  */
 function sanitizeStats() {
   if (!S.sts_dutyHistArr || S.sts_dutyHistArr.constructor !== Array || S.sts_dutyHistArr.length !== 24) {
@@ -177,8 +174,6 @@ function sanitizeStats() {
 /**
  * sanitizeFaults - Reset fault arrays if corrupted
  * Ensures each fault severity level is a valid array.
- *
- * @mutates S.flt_fatalArr, S.flt_critArr, S.flt_errorArr, S.flt_warnArr
  */
 function sanitizeFaults() {
   if (!S.flt_fatalArr || S.flt_fatalArr.constructor !== Array) S.flt_fatalArr = []

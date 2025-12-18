@@ -283,6 +283,74 @@ describe('Features', () => {
       const result = adaptHysteresis(200, 500, 0)
       expect(result).toBeNull()
     })
+
+    // ----------------------------------------------------------
+    // BOUNDARY TESTS - MIN/MAX LIMITS
+    // ----------------------------------------------------------
+
+    it('should clamp to max when widen exceeds adt_hystMaxDeg', () => {
+      // Start at 1.4, max is 1.5, step is 0.2 → would be 1.6 but clamps to 1.5
+      mockS.adt_hystDeg = 1.4
+      mockC.adt_hystMaxDeg = 1.5
+      // Danger zone: totalCycle < 450s triggers immediate widen (+0.3)
+      const result = adaptHysteresis(150, 150, 3) // totalCycle = 300s
+      expect(result).toBe('widen')
+      expect(mockS.adt_hystDeg).toBe(1.5) // Clamped to max, not 1.7
+    })
+
+    it('should not widen when already at max', () => {
+      // Start at max, short cycle should want to widen but can't
+      mockS.adt_hystDeg = 1.5
+      mockC.adt_hystMaxDeg = 1.5
+      // totalCycle = 500s is above danger (450s) but below min (540s)
+      const result = adaptHysteresis(250, 250, 3)
+      expect(result).toBeNull() // Can't widen further
+      expect(mockS.adt_hystDeg).toBe(1.5) // Unchanged
+    })
+
+    it('should clamp to max when confirmed widen exceeds limit', () => {
+      // Start at 1.4, confirm widen with normal step (+0.2) → 1.6 clamps to 1.5
+      mockS.adt_hystDeg = 1.4
+      mockC.adt_hystMaxDeg = 1.5
+      mockV.adt_lastDir = 'widen'
+      mockV.adt_consecCnt = 1  // One tracking already
+      // totalCycle = 500s < minCycle (540s), above danger zone (450s)
+      const result = adaptHysteresis(250, 250, 3)
+      expect(result).toBe('widen')
+      expect(mockS.adt_hystDeg).toBe(1.5) // Clamped to max
+    })
+
+    it('should allow tighten to go below min (getEffectiveHysteresis clamps on read)', () => {
+      // Start at 0.4, min is 0.3, step is 0.2 → stored becomes 0.2
+      // getEffectiveHysteresis will clamp to 0.3 when reading
+      mockS.adt_hystDeg = 0.4
+      mockC.adt_hystMinDeg = 0.3
+      mockV.adt_lastDir = 'tighten'
+      mockV.adt_consecCnt = 1
+      // Long cycle with idle headroom to trigger tighten
+      const result = adaptHysteresis(900, 1100, 2) // 45% duty, has headroom
+      expect(result).toBe('tighten')
+      expect(mockS.adt_hystDeg).toBe(0.2) // Raw value below min
+      // getEffectiveHysteresis would return 0.3 (min)
+      expect(getEffectiveHysteresis()).toBe(0.3)
+    })
+
+    it('should not enter tighten path when already at min', () => {
+      // Guard: S.adt_hystDeg > C.adt_hystMinDeg must be true to tighten
+      mockS.adt_hystDeg = 0.3
+      mockC.adt_hystMinDeg = 0.3
+      // Long cycle with idle headroom
+      const result = adaptHysteresis(900, 1100, 2)
+      expect(result).toBeNull() // Can't tighten further
+      expect(mockS.adt_hystDeg).toBe(0.3) // Unchanged
+    })
+
+    it('should return base hysteresis when adaptive disabled and value exceeds max', () => {
+      mockC.adt_enable = false
+      mockC.ctl_hystDeg = 1.0
+      mockS.adt_hystDeg = 2.0 // Above max, but adaptive disabled
+      expect(getEffectiveHysteresis()).toBe(1.0) // Returns base config value
+    })
   })
 
   // ----------------------------------------------------------

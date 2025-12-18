@@ -54,6 +54,7 @@ describe('State', () => {
     it('should map all state categories', () => {
       expect(ST_KEYS['fridge_st_core']).toBeDefined()
       expect(ST_KEYS['fridge_st_stats']).toBeDefined()
+      expect(ST_KEYS['fridge_st_hist']).toBeDefined()
       expect(ST_KEYS['fridge_st_faults']).toBeDefined()
     })
 
@@ -72,6 +73,12 @@ describe('State', () => {
 
     it('should reference valid S keys in stats', () => {
       ST_KEYS['fridge_st_stats'].forEach((key) => {
+        expect(S[key]).toBeDefined()
+      })
+    })
+
+    it('should reference valid S keys in hist', () => {
+      ST_KEYS['fridge_st_hist'].forEach((key) => {
         expect(S[key]).toBeDefined()
       })
     })
@@ -377,6 +384,88 @@ describe('State', () => {
       expect(S.sts_hourTotalSec).toBe(0)
       expect(S.sts_hourRunSec).toBe(0)
       expect(S.sts_cycleCnt).toBe(0)
+    })
+
+    // ----------------------------------------------------------
+    // SANITIZE FAULTS EDGE CASES
+    // ----------------------------------------------------------
+
+    it('should reset flt_fatalArr when not an array', () => {
+      S.flt_fatalArr = 'not an array'
+      S.flt_critArr = []
+      S.flt_errorArr = []
+      S.flt_warnArr = []
+      loadState(() => {})
+      loadChunksSeqCallback({})
+
+      expect(S.flt_fatalArr).toBeInstanceOf(Array)
+      expect(S.flt_fatalArr.length).toBe(0)
+    })
+
+    it('should reset flt_critArr when null', () => {
+      S.flt_fatalArr = []
+      S.flt_critArr = null
+      S.flt_errorArr = []
+      S.flt_warnArr = []
+      loadState(() => {})
+      loadChunksSeqCallback({})
+
+      expect(S.flt_critArr).toBeInstanceOf(Array)
+      expect(S.flt_critArr.length).toBe(0)
+    })
+
+    it('should reset flt_errorArr when object instead of array', () => {
+      S.flt_fatalArr = []
+      S.flt_critArr = []
+      S.flt_errorArr = { code: 'E001' }
+      S.flt_warnArr = []
+      loadState(() => {})
+      loadChunksSeqCallback({})
+
+      expect(S.flt_errorArr).toBeInstanceOf(Array)
+      expect(S.flt_errorArr.length).toBe(0)
+    })
+
+    it('should reset flt_warnArr when undefined', () => {
+      S.flt_fatalArr = []
+      S.flt_critArr = []
+      S.flt_errorArr = []
+      S.flt_warnArr = undefined
+      loadState(() => {})
+      loadChunksSeqCallback({})
+
+      expect(S.flt_warnArr).toBeInstanceOf(Array)
+      expect(S.flt_warnArr.length).toBe(0)
+    })
+
+    it('should handle mixed valid/invalid fault arrays', () => {
+      S.flt_fatalArr = ['WELD']  // Valid - should preserve
+      S.flt_critArr = 'corrupted'  // Invalid - should reset
+      S.flt_errorArr = []  // Valid - should preserve
+      S.flt_warnArr = 12345  // Invalid - should reset
+      loadState(() => {})
+      loadChunksSeqCallback({})
+
+      expect(S.flt_fatalArr).toEqual(['WELD'])
+      expect(S.flt_critArr).toBeInstanceOf(Array)
+      expect(S.flt_critArr.length).toBe(0)
+      expect(S.flt_errorArr).toEqual([])
+      expect(S.flt_warnArr).toBeInstanceOf(Array)
+      expect(S.flt_warnArr.length).toBe(0)
+    })
+
+    it('should preserve valid fault arrays with content', () => {
+      S.flt_fatalArr = ['WELD', 'ROTOR']
+      S.flt_critArr = ['SENSOR']
+      S.flt_errorArr = ['E001', 'E002']
+      S.flt_warnArr = ['W001']
+      loadState(() => {})
+      loadChunksSeqCallback({})
+
+      expect(S.flt_fatalArr).toEqual(['WELD', 'ROTOR'])
+      expect(S.flt_critArr).toEqual(['SENSOR'])
+      expect(S.flt_errorArr).toEqual(['E001', 'E002'])
+      expect(S.flt_warnArr).toEqual(['W001'])
     })
   })
 })

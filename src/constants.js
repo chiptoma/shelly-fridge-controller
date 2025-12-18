@@ -89,7 +89,7 @@ let ADAPT = {
   //   Widen hysteresis after trend confirmation.
   //
   // STABLE_PAD = 480s (8min) added to targetMaxSec (20min) → 28min
-  //   Creates 10-minute deadband (18-28min) to prevent oscillation.
+  //   Creates 10min deadband (18-28min) to prevent oscillation.
   //   Wider than typical (5min) due to thermal lag in refrigeration.
 
   DANGER_MULT: 1.5,           // Immediate widen threshold multiplier

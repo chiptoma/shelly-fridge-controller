@@ -22,7 +22,6 @@ import { r2, getMedian3, calcEMA } from './utils/math.js'
  * @param {string} tsKey - Key for timestamp in V
  * @param {number} now - Current timestamp (seconds)
  * @returns {boolean} True if sensor is stuck
- * @mutates V[refKey], V[tsKey] - Updated when value changes
  */
 function checkSensorStuck(val, refKey, tsKey, now) {
   // Skip if stuck detection disabled
@@ -56,7 +55,6 @@ function checkSensorStuck(val, refKey, tsKey, now) {
  * Increments error counter and returns true if limit exceeded.
  *
  * @returns {boolean} True if sensor fail limit exceeded
- * @mutates V.sns_errCnt - Incremented on each call
  */
 function handleSensorError() {
   V.sns_errCnt++
@@ -73,10 +71,6 @@ function handleSensorError() {
  * Resets buffers and re-initializes smoothing.
  *
  * @param {number} tAirRaw - Raw air temperature reading
- * @mutates V.sns_airBuf, V.sns_bufIdx, V.sns_airSmoothDeg - Buffer reset
- * @mutates V.dor_refTs, V.dor_refDeg - Door detection reset
- * @mutates V.sns_airStuckRefDeg, V.sns_evpStuckRefDeg - Stuck detection reset
- * @mutates V.sns_wasErr - Cleared
  */
 function handleSensorRecovery(tAirRaw) {
   V.sns_airBuf[0] = tAirRaw
@@ -104,8 +98,6 @@ function handleSensorRecovery(tAirRaw) {
  *
  * @param {number} tAirRaw - Raw air temperature reading
  * @returns {number} Median-filtered air temperature
- * @mutates V.sns_airBuf, V.sns_bufIdx - Circular buffer update
- * @mutates V.sns_airSmoothDeg - EMA smoothed value
  */
 function processSensorData(tAirRaw) {
   // First valid reading warmup: seed buffer and smoothing for clean startup
@@ -151,8 +143,6 @@ function validateSensorReadings(rAir, rEvap) {
 /**
  * resetSensorError - Reset sensor error counter
  * Called when valid reading received.
- *
- * @mutates V.sns_errCnt - Reset to 0
  */
 function resetSensorError() {
   V.sns_errCnt = 0

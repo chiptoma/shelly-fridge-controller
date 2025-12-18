@@ -439,7 +439,8 @@ State split into chunks for efficient storage:
 | KVS Key | Contents |
 |---------|----------|
 | `fridge_st_core` | Relay timestamps, relay state, weld snapshot, adaptive hyst |
-| `fridge_st_stats` | Lifetime/hourly stats, duty history, cycle count |
+| `fridge_st_stats` | Lifetime/hourly stats, cycle count |
+| `fridge_st_hist` | Duty history array (24-hour ring buffer) |
 | `fridge_st_faults` | Fault history arrays (fatal, critical, error, warning) |
 
 ### Save Triggers

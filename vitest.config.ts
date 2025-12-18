@@ -22,14 +22,12 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       exclude: [
         'node_modules/**',
-        '**/*.test.ts',
+        '**/*.test.{ts,js}',
         '**/*.spec.ts',
         '**/*.vitest.ts',
+        '**/*.config.{ts,js}',
         'coverage/**',
         'dist/**',
-        '**/*.config.ts',
-        '**/*.config.js',
-        '**/*.test.js',
         'test/**',
       ],
       thresholds: {

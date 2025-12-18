@@ -32,6 +32,7 @@
     "shelly:list": "ts-node --project tools/tsconfig.json tools/shelly-deploy/deploy.ts --list",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "typecheck:tools": "tsc --noEmit -p tools/tsconfig.json",
     "clean": "rm -rf coverage dist logs"
   },
   "keywords": [

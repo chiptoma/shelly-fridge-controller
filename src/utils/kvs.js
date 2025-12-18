@@ -39,7 +39,6 @@ function pickKeys(obj, keys) {
  * @param {object} mapping - Key mappings (e.g., CFG_KEYS)
  * @param {object} target - Target object to merge into
  * @param {Function} onDone - Callback with loadedChunks object
- * @mutates target - Merged with values from KVS
  */
 function loadChunksSeq(mapping, target, onDone) {
   let keys = Object.keys(mapping)
@@ -120,7 +119,9 @@ function loadChunksSeq(mapping, target, onDone) {
  * @param {object | null} loadedChunk - Chunk loaded from KVS (or null)
  * @param {string[]} expectedKeys - Array of expected key names
  * @returns {boolean} - True if sync needed
+ * @internal
  */
+// NOTE: Exported for testing only
 function chunkNeedsSync(loadedChunk, expectedKeys) {
   if (!loadedChunk) return true
 
@@ -146,6 +147,63 @@ function chunkNeedsSync(loadedChunk, expectedKeys) {
 // ----------------------------------------------------------
 
 /**
+ * mergeChunk - Merge loaded chunk with defaults for schema mismatch
+ *
+ * @param {object} chunk - Loaded chunk from KVS
+ * @param {string[]} expectedKeys - Expected field names
+ * @param {object} source - Source defaults
+ * @returns {object} Merged chunk
+ * @internal
+ */
+function mergeChunk(chunk, expectedKeys, source) {
+  let merged = {}
+  for (let j = 0; j < expectedKeys.length; j++) {
+    let field = expectedKeys[j]
+    merged[field] = chunk[field] !== undefined ? chunk[field] : source[field]
+  }
+  return merged
+}
+
+/**
+ * buildSyncOps - Build list of KVS sync operations
+ *
+ * @param {object} mapping - Key mappings (e.g., ST_KEYS)
+ * @param {object} source - Source object (defaults)
+ * @param {object} loadedChunks - Already loaded chunks from KVS
+ * @returns {{ toSave: Array, toDelete: Array }} Operations to perform
+ * @internal
+ */
+function buildSyncOps(mapping, source, loadedChunks) {
+  let toSave = []
+  let toDelete = []
+
+  let mapKeys = Object.keys(mapping)
+  for (let i = 0; i < mapKeys.length; i++) {
+    let key = mapKeys[i]
+    let chunk = loadedChunks[key]
+    let expectedKeys = mapping[key]
+
+    if (chunk === false || chunk === undefined) {
+      // Parse error or first boot - save defaults
+      toSave.push({ key: key, data: pickKeys(source, expectedKeys) })
+    } else if (chunkNeedsSync(chunk, expectedKeys)) {
+      // Schema mismatch - merge: preserve loaded, add missing from defaults
+      toSave.push({ key: key, data: mergeChunk(chunk, expectedKeys, source) })
+    }
+  }
+
+  // Check for orphaned KVS keys to delete
+  let loadKeys = Object.keys(loadedChunks)
+  for (let i = 0; i < loadKeys.length; i++) {
+    if (loadedChunks[loadKeys[i]] !== false && !mapping[loadKeys[i]]) {
+      toDelete.push(loadKeys[i])
+    }
+  }
+
+  return { toSave: toSave, toDelete: toDelete }
+}
+
+/**
  * syncToKvs - Sync chunks to KVS storage with smart merging
  * Parse error (false) or first boot (undefined): saves defaults.
  * Schema mismatch: preserves loaded values, adds missing from defaults.
@@ -157,44 +215,9 @@ function chunkNeedsSync(loadedChunk, expectedKeys) {
  * @param {string} label - Label for logging
  */
 function syncToKvs(mapping, source, loadedChunks, onDone, label) {
-  let toSave = []
-  let toDelete = []
-
-  let mapKeys = Object.keys(mapping)
-  for (let i = 0; i < mapKeys.length; i++) {
-    let key = mapKeys[i]
-    let chunk = loadedChunks[key]
-    let expectedKeys = mapping[key]
-
-    if (chunk === false) {
-      // Parse error - data corrupted, save defaults
-      toSave.push({ key: key, data: pickKeys(source, expectedKeys) })
-    } else if (chunk === undefined) {
-      // First boot - key not found, save defaults
-      toSave.push({ key: key, data: pickKeys(source, expectedKeys) })
-    } else if (chunkNeedsSync(chunk, expectedKeys)) {
-      // Schema mismatch - MERGE: preserve loaded, add missing from defaults
-      let merged = {}
-      for (let j = 0; j < expectedKeys.length; j++) {
-        let field = expectedKeys[j]
-        if (chunk[field] !== undefined) {
-          merged[field] = chunk[field]  // PRESERVE loaded value
-        } else {
-          merged[field] = source[field]  // ADD missing from default
-        }
-      }
-      // Extra fields automatically excluded (only iterate expectedKeys)
-      toSave.push({ key: key, data: merged })
-    }
-  }
-
-  // Check for orphaned KVS keys to delete
-  let loadKeys = Object.keys(loadedChunks)
-  for (let i = 0; i < loadKeys.length; i++) {
-    if (loadedChunks[loadKeys[i]] !== false && !mapping[loadKeys[i]]) {
-      toDelete.push(loadKeys[i])
-    }
-  }
+  let result = buildSyncOps(mapping, source, loadedChunks)
+  let toSave = result.toSave
+  let toDelete = result.toDelete
 
   if (toSave.length === 0 && toDelete.length === 0) {
     if (onDone) Timer.set(0, false, onDone)
@@ -271,7 +294,8 @@ function saveAllToKvs(mapping, source, onDone) {
     }
     let key = keys[idx]
     let chunk = pickKeys(source, mapping[key])
-    Shelly.call('KVS.Set', { key: key, value: JSON.stringify(chunk) }, function () {
+    Shelly.call('KVS.Set', { key: key, value: JSON.stringify(chunk) }, function ($_r, $_e, $_m) {
+      if ($_e !== 0) print('⚠️ KVS   : saveAllToKvs ' + key + ' failed: ' + $_m)
       idx++
       Timer.set(0, false, next)
     })
@@ -288,4 +312,5 @@ export {
   loadChunksSeq,
   syncToKvs,
   saveAllToKvs,
+  chunkNeedsSync,  // Exported for testing
 }

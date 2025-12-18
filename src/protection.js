@@ -108,10 +108,6 @@ function isFreezeProtectionActive(tCtrl) {
  * @param  {number} tCtrl - Control temperature (smoothed air)
  * @param  {number} now   - Current timestamp (seconds)
  * @returns {boolean}      - True if weld detected
- *
- * @mutates V.sys_alarm - Set to ALM.WELD if weld detected
- *
- * @sideeffect Calls recordFault('fatal', 'WELD', ...) on detection
  */
 function checkWeldDetection(tCtrl, now) {
   if (!C.wld_enable) return false
@@ -146,8 +142,6 @@ function checkWeldDetection(tCtrl, now) {
  * @param  {number} tEvap - Evaporator temperature
  * @param  {number} now   - Current timestamp (seconds)
  * @returns {boolean}      - True if cooling failure suspected
- *
- * @mutates V.sys_alarm - Set to ALM.COOL if gas leak suspected
  */
 function checkCoolingHealth(tEvap, now) {
   // Only check while running, after minimum check time
@@ -182,10 +176,6 @@ function checkCoolingHealth(tEvap, now) {
  * @param  {number} watts   - Current power consumption
  * @param  {number} runDur  - How long relay has been on (seconds)
  * @returns {boolean}        - True if locked rotor detected
- *
- * @mutates V.sys_alarm - Set to ALM.LOCKED if rotor locked
- *
- * @sideeffect Calls recordFault('fatal', 'LOCKED', ...) on detection
  */
 function checkLockedRotor(watts, runDur) {
   if (!C.pwr_enable) return false
@@ -212,12 +202,6 @@ function checkLockedRotor(watts, runDur) {
  * @param  {number} watts   - Current power consumption
  * @param  {number} runDur  - How long relay has been on (seconds)
  * @returns {boolean}        - True if ghost run detected
- *
- * @mutates V.pwr_ghostSec - Accumulated low-power duration
- * @mutates V.pwr_ghostCnt - Incremented on each ghost trip
- * @mutates V.sys_alarm      - Set to ALM.GHOST or ALM.LOCKED (escalated)
- *
- * @sideeffect Calls recordFault('fatal', 'GHOST_ESC', ...) on escalation
  */
 function checkGhostRun(watts, runDur) {
   if (!V.hw_hasPM) return false

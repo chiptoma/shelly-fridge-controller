@@ -138,7 +138,6 @@ let CFG_KEYS = {
  * @param {number} min - Minimum allowed value
  * @param {number} max - Maximum allowed value
  * @param {string[]} bad - Array to collect invalid field names
- * @mutates C[f] - Reset to DEFAULT[f] if invalid
  */
 function validateNumber(f, min, max, bad) {
   let v = C[f]
