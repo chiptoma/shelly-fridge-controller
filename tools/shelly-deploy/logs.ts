@@ -21,7 +21,6 @@ program
 
 const options = program.opts()
 
-// eslint-disable-next-line sonarjs/cognitive-complexity
 async function checkScriptErrors() {
   const config = getConfig()
   const client = new ShellyRPCClient({

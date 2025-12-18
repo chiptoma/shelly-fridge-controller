@@ -279,7 +279,6 @@ class ShellyDeployer {
   /**
    * Main execution
    */
-  // eslint-disable-next-line sonarjs/cognitive-complexity
   async run(): Promise<void> {
     try {
       // Handle different modes
