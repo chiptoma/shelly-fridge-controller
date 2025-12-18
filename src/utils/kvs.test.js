@@ -393,6 +393,20 @@ describe('KVS Utilities', () => {
 
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Config sync'))
     })
+
+    it('should not print sync summary when label provided but no changes needed', () => {
+      const mapping = { chunk1: ['a', 'b'] }
+      const source = { a: 1, b: 2 }
+      const loadedChunks = { chunk1: { a: 1, b: 2 } }
+      const onDone = vi.fn()
+
+      syncToKvs(mapping, source, loadedChunks, onDone, 'NoChanges')
+      timerCallbacks[0]() // Trigger callback
+
+      expect(onDone).toHaveBeenCalled()
+      // Should not print sync summary when no changes
+      expect(global.print).not.toHaveBeenCalledWith(expect.stringContaining('NoChanges sync'))
+    })
   })
 
   // ----------------------------------------------------------

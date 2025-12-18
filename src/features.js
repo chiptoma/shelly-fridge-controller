@@ -41,7 +41,8 @@ function getEffectiveHysteresis() {
  * @param {number} cycleCount - Number of cycles this hour
  * @returns {string|null} 'widen', 'tighten', 'blocked', or null
  */
-// eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Multi-zone adaptive algorithm
+// eslint-disable-next-line complexity -- 4 zones (danger/short/stable/long) with cycle count compensation
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Zone transitions require trend confirmation to prevent oscillation
 function adaptHysteresis(avgOn, avgOff, cycleCount) {
   // === GUARDS ===
   if (V.trb_isActive) return null

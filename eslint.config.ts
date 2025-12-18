@@ -105,7 +105,7 @@ const jsdocRules: Rules = {
   'jsdoc/check-types': 'error',
   'jsdoc/valid-types': 'error',
   'jsdoc/check-param-names': 'error',
-  'jsdoc/check-tag-names': ['error', { definedTags: ['category', 'internal', 'mutates', 'sideeffect', 'reads'] }],
+  'jsdoc/check-tag-names': ['error', { definedTags: ['category', 'internal', 'reads'] }],
   'jsdoc/require-returns': 'off',
   'jsdoc/require-description': ['error', { checkConstructors: false, contexts: ['FunctionDeclaration'] }],
   'jsdoc/require-param-description': 'warn',
@@ -165,7 +165,7 @@ const relaxedRules: Rules = {
 // ==============================================================================
 
 export default tseslint.config(
-  { ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'logs/**', 'src/test-utils/**'] },
+  { ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'logs/**', 'src/test-utils/**', '.stryker-tmp/**', 'reports/**'] },
 
   // SOURCE FILES (Shelly Device Code)
   {

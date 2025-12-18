@@ -63,7 +63,8 @@ function evaluateThermostat(tCtrl, target, hyst) {
  * @param {number} tEvap - Current evap temperature
  * @param {boolean} skipSnap - Skip snapshot capture
  */
-// eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Inherent control logic complexity
+// eslint-disable-next-line complexity -- 10 branches for relay state transitions with snapshot capture
+// eslint-disable-next-line sonarjs/cognitive-complexity -- ON/OFF paths have distinct timing and metric logic
 function setRelay(state, now, tAir, tEvap, skipSnap) {
   // Log state change
   if (state && !S.sys_isRelayOn) {
@@ -71,7 +72,7 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
     if (S.sys_relayOffTs > 0 && now > S.sys_relayOffTs) {
       offSec = now - S.sys_relayOffTs
     }
-    let msg = 'RELAY ON' + (V.trb_isActive ? ' (TURBO)' : '')
+    let msg = '⚡ RELAY ON' + (V.trb_isActive ? ' (TURBO)' : '')
     if (offSec > 0) {
       msg += ' (after ' + formatXmYs(offSec) + ' off)'
     }
@@ -81,7 +82,7 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
     if (S.sys_relayOnTs > 0 && now > S.sys_relayOnTs) {
       onSec = now - S.sys_relayOnTs
     }
-    print('RELAY OFF (after ' + formatXmYs(onSec) + ' on)')
+    print('⏹️ RELAY OFF (after ' + formatXmYs(onSec) + ' on)')
   }
 
   // Update logical relay state to match commanded state
@@ -154,7 +155,8 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
  * @param {number} now - Current timestamp (seconds)
  * @returns {object} { wantOn, status, reason, detail }
  */
-// eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- State machine with many transitions
+// eslint-disable-next-line complexity -- 9 priority levels in mode determination (fatal/limp/turbo/door/defrost/freeze/maxrun/dynamic/normal)
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Priority cascade requires sequential evaluation with early returns
 function determineMode(tCtrl, tEvap, now) {
   // Get base target and hysteresis
   let target = C.ctl_targetDeg

@@ -314,7 +314,7 @@ class ShellyMonitor {
     }
 
     // Add level indicator
-    const levelColors: Record<string, chalk.Chalk> = {
+    const levelColors: Record<string, typeof chalk.gray> = {
       debug: chalk.gray,
       info: chalk.cyan,
       warning: chalk.yellow,

@@ -223,6 +223,15 @@ describe('Configuration', () => {
       expect(C.adt_hystMaxDeg).toBe(DEFAULT.adt_hystMaxDeg)
     })
 
+    it('should revert both target time bounds if min >= max', () => {
+      C.adt_targetMinSec = 1200
+      C.adt_targetMaxSec = 600
+      const bad = validateConfig()
+      expect(bad).toContain('adt_target_range')
+      expect(C.adt_targetMinSec).toBe(DEFAULT.adt_targetMinSec)
+      expect(C.adt_targetMaxSec).toBe(DEFAULT.adt_targetMaxSec)
+    })
+
     it('should print warning when values are reverted', () => {
       C.sys_loopSec = 0
       validateConfig()

@@ -237,6 +237,20 @@ describe('Reporting', () => {
 
       expect(payload.watts).toBeNull()
     })
+
+    it('should maintain stable payload schema for HA integration', () => {
+      // This test catches unintended breaking changes to MQTT payload structure
+      const payload = buildMqttPayload(4.5, -10.0, 4.52, 75.5, 35)
+      const keys = Object.keys(payload).sort()
+
+      // Schema stability: these fields are consumed by Home Assistant integrations
+      expect(keys).toEqual([
+        'alarm', 'avgOffSec', 'avgOnSec', 'defrostOn', 'doorOpen',
+        'dutyDay', 'dutyHr', 'dutyLife', 'health', 'hoursLife',
+        'hyst', 'reason', 'relayOn', 'status', 'tAirRaw',
+        'tAirSmt', 'tDev', 'tEvap', 'turboOn', 'watts',
+      ])
+    })
   })
 
   // ----------------------------------------------------------
