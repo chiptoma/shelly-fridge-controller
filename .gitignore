@@ -38,3 +38,4 @@ logs/
 *.backup
 *.backup.*
 *.old.*
+.stryker-tmp/
