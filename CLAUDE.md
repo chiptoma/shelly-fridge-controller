@@ -211,6 +211,16 @@ for (let i = 0; i < arr.length; i++) {
 Shelly.call('KVS.Get', { key: k }, function($_r, $_e, $_m) {
   if ($_e === 0 && $_r) { /* success */ }
 })
+
+// Global timestamp (avoids Date.now() allocation in callbacks)
+// V.lop_nowTs is set once per tick in loop.js, used everywhere else
+V.lop_nowTs = Math.floor(Date.now() / 1000)  // Set at tick start
+
+// In callbacks/handlers, use V.lop_nowTs instead of Date.now()
+function handleSomething() {
+  let elapsed = V.lop_nowTs - S.sys_relayOnTs  // Good - no allocation
+  // let elapsed = Date.now()/1000 - S.sys_relayOnTs  // Bad - allocates
+}
 ```
 
 ### Bad Patterns (Avoid)
@@ -584,5 +594,5 @@ Current production build:
 - **Bundle size**: ~30KB (under 32KB limit)
 - **Runtime memory**: ~14KB (56% of 25KB limit)
 - **Peak memory**: ~22KB (88% of limit)
-- **Test count**: 842 tests
+- **Test count**: 843 tests
 - **Coverage**: ~98%

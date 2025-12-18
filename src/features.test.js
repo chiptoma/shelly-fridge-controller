@@ -354,6 +354,110 @@ describe('Features', () => {
   })
 
   // ----------------------------------------------------------
+  // PROPERTY-BASED TESTS (using fast-check)
+  // ----------------------------------------------------------
+
+  describe('adaptHysteresis property-based', async () => {
+    const fc = await import('fast-check')
+
+    it('should always return valid result type', () => {
+      fc.assert(
+        fc.property(
+          fc.integer({ min: 60, max: 3600 }), // avgOn
+          fc.integer({ min: 60, max: 3600 }), // avgOff
+          fc.integer({ min: 0, max: 10 }),    // cycleCount
+          (avgOn, avgOff, cycleCount) => {
+            // Reset state for each property test
+            mockS.adt_hystDeg = 0.8
+            mockV.trb_isActive = false
+            mockV.adt_lastDir = null
+            mockV.adt_consecCnt = 0
+
+            const result = adaptHysteresis(avgOn, avgOff, cycleCount)
+            return (
+              result === null
+              || result === 'widen'
+              || result === 'tighten'
+              || result === 'blocked'
+            )
+          },
+        ),
+        { numRuns: 100 },
+      )
+    })
+
+    it('should never exceed max hysteresis', () => {
+      fc.assert(
+        fc.property(
+          fc.integer({ min: 60, max: 600 }), // short cycles
+          fc.integer({ min: 60, max: 600 }),
+          fc.integer({ min: 1, max: 10 }),
+          (avgOn, avgOff, cycleCount) => {
+            // Reset state
+            mockS.adt_hystDeg = 1.4 // Near max
+            mockV.trb_isActive = false
+            mockV.adt_lastDir = null
+            mockV.adt_consecCnt = 0
+
+            adaptHysteresis(avgOn, avgOff, cycleCount)
+            return mockS.adt_hystDeg <= mockC.adt_hystMaxDeg
+          },
+        ),
+        { numRuns: 100 },
+      )
+    })
+
+    it('should never return effective hysteresis below min', () => {
+      fc.assert(
+        fc.property(
+          fc.integer({ min: 1000, max: 3600 }), // long cycles
+          fc.integer({ min: 1000, max: 3600 }),
+          fc.integer({ min: 1, max: 3 }),       // low cycle count
+          (avgOn, avgOff, cycleCount) => {
+            // Reset state with idle headroom (avgOff > avgOn)
+            mockS.adt_hystDeg = 0.4 // Near min
+            mockV.trb_isActive = false
+            mockV.adt_lastDir = 'tighten'
+            mockV.adt_consecCnt = 1 // Need confirmation
+
+            adaptHysteresis(avgOn, avgOff, cycleCount)
+            // S.adt_hystDeg can go below min, but getEffectiveHysteresis clamps on read
+            return getEffectiveHysteresis() >= mockC.adt_hystMinDeg
+          },
+        ),
+        { numRuns: 100 },
+      )
+    })
+
+    it('should respect freeze protection margin', () => {
+      fc.assert(
+        fc.property(
+          fc.integer({ min: 60, max: 300 }), // very short cycles
+          fc.integer({ min: 60, max: 300 }),
+          fc.integer({ min: 1, max: 10 }),
+          (avgOn, avgOff, cycleCount) => {
+            // Set up freeze protection scenario
+            mockC.ctl_targetDeg = 2.0
+            mockC.cmp_freezeCutDeg = 0.0
+            mockS.adt_hystDeg = 1.5 // Wide hysteresis
+            mockV.trb_isActive = false
+            mockV.adt_lastDir = null
+            mockV.adt_consecCnt = 0
+
+            adaptHysteresis(avgOn, avgOff, cycleCount)
+
+            // Lower bound = target - hysteresis
+            // Must not cross freeze cut + margin
+            const lowerBound = mockC.ctl_targetDeg - mockS.adt_hystDeg
+            return lowerBound >= mockC.cmp_freezeCutDeg + mockADAPT.FREEZE_MARGIN_DEG
+          },
+        ),
+        { numRuns: 100 },
+      )
+    })
+  })
+
+  // ----------------------------------------------------------
   // TURBO MODE TESTS
   // ----------------------------------------------------------
 

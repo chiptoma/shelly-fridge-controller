@@ -48,7 +48,8 @@ function mainLoopTick() {
   // CRITICAL: Use $_ prefix for callback params to prevent Terser from minifying
   // to single letters that shadow math functions (ri, r1, r2) due to mJS scoping bug
   Shelly.call('Temperature.GetStatus', { id: C.sys_sensAirId }, function ($_rAir) {
-    // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Main loop orchestration
+    // eslint-disable-next-line complexity -- 8 sequential phases: sensors/stuck/defrost/door/mode/switch/power/report
+    // eslint-disable-next-line sonarjs/cognitive-complexity -- Each phase has error handling and state coordination
     Shelly.call('Temperature.GetStatus', { id: C.sys_sensEvpId }, function ($_rEvap) {
 
       let tAirRaw = null

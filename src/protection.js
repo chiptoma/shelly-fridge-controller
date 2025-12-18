@@ -15,7 +15,7 @@ import { recordFault } from './alarms.js'
 // ----------------------------------------------------------
 
 /**
- * CAN TURN ON
+ * canTurnOn - Check if minimum OFF time elapsed
  * Checks if minimum OFF time has elapsed to allow turning ON.
  *
  * @param  {number} now - Current timestamp (seconds)
@@ -26,7 +26,7 @@ function canTurnOn(now) {
 }
 
 /**
- * CAN TURN OFF
+ * canTurnOff - Check if minimum ON time elapsed
  * Checks if minimum ON time has elapsed to allow turning OFF.
  *
  * @param  {number} now - Current timestamp (seconds)
@@ -38,7 +38,7 @@ function canTurnOff(now) {
 }
 
 /**
- * GET TIME UNTIL ON ALLOWED
+ * getTimeUntilOnAllowed - Time until turn-on allowed
  * Returns seconds remaining until turn-on is allowed.
  *
  * @param  {number} now - Current timestamp (seconds)
@@ -50,7 +50,7 @@ function getTimeUntilOnAllowed(now) {
 }
 
 /**
- * GET TIME UNTIL OFF ALLOWED
+ * getTimeUntilOffAllowed - Time until turn-off allowed
  * Returns seconds remaining until turn-off is allowed.
  *
  * @param  {number} now - Current timestamp (seconds)
@@ -67,7 +67,7 @@ function getTimeUntilOffAllowed(now) {
 // ----------------------------------------------------------
 
 /**
- * IS MAX RUN EXCEEDED
+ * isMaxRunExceeded - Check if max run time exceeded
  * Checks if compressor has exceeded maximum continuous run time.
  *
  * @param  {number} now - Current timestamp (seconds)
@@ -85,7 +85,7 @@ function isMaxRunExceeded(now) {
 // ----------------------------------------------------------
 
 /**
- * IS FREEZE PROTECTION ACTIVE
+ * isFreezeProtectionActive - Check if freeze cut engaged
  * Checks if air temp is below freeze cut threshold.
  *
  * @param  {number} tCtrl - Control temperature (smoothed air)
@@ -101,7 +101,7 @@ function isFreezeProtectionActive(tCtrl) {
 // ----------------------------------------------------------
 
 /**
- * CHECK WELD DETECTION
+ * checkWeldDetection - Monitor for relay weld
  * Monitors for relay weld: if temp drops after turn-off, relay is stuck.
  * Only checks during detection window (waitSec < t < winSec).
  *
@@ -135,7 +135,7 @@ function checkWeldDetection(tCtrl, now) {
 // ----------------------------------------------------------
 
 /**
- * CHECK COOLING HEALTH
+ * checkCoolingHealth - Monitor for gas leak
  * If evap temp is too close to air temp while running, suspect gas leak.
  * Only checks after minimum run time to allow evap to cool.
  *
@@ -169,7 +169,7 @@ function checkCoolingHealth(tEvap, now) {
 // ----------------------------------------------------------
 
 /**
- * CHECK LOCKED ROTOR
+ * checkLockedRotor - Detect seized motor
  * Detects excessive power draw indicating seized motor.
  * CRITICAL: Caller must call setRelay(false) when this returns true.
  *
@@ -194,7 +194,7 @@ function checkLockedRotor(watts, runDur) {
 }
 
 /**
- * CHECK GHOST RUN
+ * checkGhostRun - Detect motor not running
  * Detects unexpectedly low power indicating motor not running.
  * Escalates to fatal after pwr_ghostMaxCnt repeated occurrences.
  * CRITICAL: Caller must call setRelay(false) when this returns true.
@@ -234,7 +234,7 @@ function checkGhostRun(watts, runDur) {
 }
 
 /**
- * RESET GHOST COUNT
+ * resetGhostCount - Reset ghost run counter
  * Resets ghost run counter after successful compressor operation.
  * Call this after compressor runs normally for a period.
  */

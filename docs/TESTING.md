@@ -185,13 +185,13 @@ npm run test:watch
 ## Test Coverage
 
 The project maintains high test coverage:
-- **842 total tests**
+- **843 total tests**
 - **~98% coverage** on core modules
 
 ### Coverage by Area
-- Unit tests: ~477 tests (src/*.test.js + src/utils/*.test.js)
-- Integration tests: ~214 tests (test/integration/)
-- Simulations: ~89 tests (test/simulations/)
+- Unit tests: ~502 tests (src/*.test.js + src/utils/*.test.js)
+- Integration tests: ~217 tests (test/integration/)
+- Simulations: ~86 tests (test/simulations/)
 - Bundle tests: ~38 tests (test/bundle/)
 
 ## Key Testing Patterns

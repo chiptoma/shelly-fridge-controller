@@ -237,21 +237,21 @@ describe('Control', () => {
     it('should print ON message', () => {
       mockS.sys_relayOffTs = 940 // 60s ago
       setRelay(true, 1000, 5.0, -10.0, false)
-      expect(global.print).toHaveBeenCalledWith('RELAY ON (after 01m00s off)')
+      expect(global.print).toHaveBeenCalledWith('⚡ RELAY ON (after 01m00s off)')
     })
 
     it('should print OFF message with duration', () => {
       mockS.sys_isRelayOn = true
       mockS.sys_relayOnTs = 100
       setRelay(false, 700, 5.0, -10.0, false)
-      expect(global.print).toHaveBeenCalledWith('RELAY OFF (after 10m00s on)')
+      expect(global.print).toHaveBeenCalledWith('⏹️ RELAY OFF (after 10m00s on)')
     })
 
     it('should print TURBO suffix when turbo active', () => {
       mockS.sys_relayOffTs = 940
       mockV.trb_isActive = true
       setRelay(true, 1000, 5.0, -10.0, false)
-      expect(global.print).toHaveBeenCalledWith('RELAY ON (TURBO) (after 01m00s off)')
+      expect(global.print).toHaveBeenCalledWith('⚡ RELAY ON (TURBO) (after 01m00s off)')
     })
 
     it('should log error when Shelly.call fails', () => {

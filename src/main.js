@@ -20,7 +20,8 @@ import { startMainLoop } from './loop.js'
  * Handles discrepancies between KVS state and actual hardware.
  * Recovers missed runtime stats from unclean shutdowns.
  */
-// eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Boot recovery state machine
+// eslint-disable-next-line complexity -- 12 branches for boot phase priority cascade (alarm/limp/recovery/normal)
+// eslint-disable-next-line sonarjs/cognitive-complexity -- Each branch is a distinct boot state with specific handling
 function recoverBootState() {
   let now = nowSec()
   let sw = Shelly.getComponentStatus('Switch', 0)

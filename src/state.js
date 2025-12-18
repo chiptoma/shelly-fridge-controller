@@ -106,9 +106,8 @@ let V = {
 function persistState() {
   // Record when state was saved (used for boot recovery)
   S.sys_lastSaveTs = Math.floor(Date.now() / 1000)
-  saveAllToKvs(ST_KEYS, S, function () {
-    V.lop_lastSaveTs = S.sys_lastSaveTs
-  })
+  V.lop_lastSaveTs = S.sys_lastSaveTs
+  saveAllToKvs(ST_KEYS, S, function () {})
 }
 
 // ----------------------------------------------------------
