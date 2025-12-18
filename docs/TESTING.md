@@ -26,9 +26,7 @@ test/
 │
 ├── utils/            # Test utilities and infrastructure
 │   ├── index.js              # Central exports
-│   ├── shelly-simulator.js   # Full Shelly runtime simulator
-│   ├── scenario-runner.js    # Declarative test framework
-│   └── shelly-mock.js        # Simple mocks for unit tests
+│   └── shelly-simulator.js   # Full Shelly runtime simulator
 │
 └── README.md         # Test folder documentation
 
@@ -85,69 +83,6 @@ runtime.advanceTimeFast(3600000)    // Fast-forward 1 hour (fires timers)
 runtime.getRelayHistory()
 runtime.getPrintHistory()
 runtime.getLastMqttMessage()
-```
-
-### ScenarioRunner (`test/utils/scenario-runner.js`)
-
-A declarative test framework for writing step-based integration tests:
-
-```javascript
-import { ScenarioRunner, scenario } from '../test/utils/scenario-runner.js'
-
-const testScenario = scenario('Normal Cooling Cycle')
-  .describe('Tests basic thermostat operation')
-  .expect('Should turn ON when warm, OFF when cold')
-  .initial({ airTemp: 8.0, evapTemp: -5.0 })
-  .setup(async (runtime) => {
-    // Initialize your modules
-  })
-  .at(0).setTemp(8.0, -5.0)
-  .at(0).runLoops(5)
-  .at(0).expectRelay(true, 'Should start cooling')
-  .at(100).setTemp(3.0, -10.0)
-  .at(100).runLoops(5)
-  .at(100).expectRelay(false, 'Should stop when cold')
-  .build()
-
-const runner = new ScenarioRunner({ verbose: true })
-const result = await runner.run(testScenario)
-```
-
-### Available Scenario Actions
-
-| Action | Parameters | Description |
-|--------|------------|-------------|
-| `setTemp` | `air, evap` | Set sensor temperatures |
-| `setPower` | `watts` | Set relay power reading |
-| `setInput` | `state` | Set digital input state |
-| `disconnectSensor` | `sensorId` | Simulate sensor failure |
-| `reconnectSensor` | `sensorId, tempC` | Restore sensor |
-| `advanceTime` | `seconds` | Advance virtual clock |
-| `runLoops` | `count` | Run main loop N times |
-| `mqttCommand` | `topic, message` | Send MQTT message |
-| `expectRelay` | `state, message` | Assert relay ON/OFF |
-| `expectAlarm` | `alarm, message` | Assert alarm state |
-| `expectStatus` | `status, message` | Assert system status |
-| `expectState` | `stateType, key, value` | Assert S or V value |
-| `expectPrint` | `contains` | Assert console output |
-| `snapshot` | `label` | Capture state snapshot |
-| `custom` | `fn(runtime)` | Run custom callback |
-
-### Shelly Mocks (`test/utils/shelly-mock.js`)
-
-Simple mocks for unit tests that don't need full simulation:
-
-```javascript
-import { setupShellyMocks, mockTemperatures } from '../test/utils/shelly-mock.js'
-
-beforeEach(() => {
-  setupShellyMocks()
-})
-
-it('should read temperatures', () => {
-  mockTemperatures(5.0, -10.0)
-  // Your test...
-})
 ```
 
 ## Writing Tests
@@ -250,13 +185,13 @@ npm run test:watch
 ## Test Coverage
 
 The project maintains high test coverage:
-- **818+ total tests**
+- **818 total tests**
 - **~98% coverage** on core modules
 
 ### Coverage by Area
-- Unit tests: ~380 tests (src/*.test.js)
-- Integration tests: ~215 tests (test/integration/)
-- Simulations: ~85 tests (test/simulations/)
+- Unit tests: ~477 tests (src/*.test.js + src/utils/*.test.js)
+- Integration tests: ~214 tests (test/integration/)
+- Simulations: ~89 tests (test/simulations/)
 - Bundle tests: ~38 tests (test/bundle/)
 
 ## Key Testing Patterns
@@ -284,4 +219,4 @@ Key features:
 - **Dynamic Import Pattern**: Modules are loaded AFTER mocks are configured
 - **Full TypeScript**: Tests have full type checking
 - **Module Isolation**: Each test gets fresh module instances
-- **Fast Execution**: 818 tests run in ~1s
+- **Fast Execution**: 820 tests run in ~1s

@@ -1,14 +1,14 @@
 // ==============================================================================
-// * FRIDGE CONTROLLER STATE
-// ? Persisted state (S) and volatile state (V) structures.
-// ? Includes KVS key mappings and persistence operations.
+// FRIDGE CONTROLLER STATE
+// Persisted state (S) and volatile state (V) structures.
+// Includes KVS key mappings and persistence operations.
 // ==============================================================================
 
 import { loadChunksSeq, syncToKvs, saveAllToKvs } from './utils/kvs.js'
 import { ri } from './utils/math.js'
 
 // ----------------------------------------------------------
-// * KVS KEY MAPPINGS - STATE
+// KVS KEY MAPPINGS - STATE
 // ----------------------------------------------------------
 
 let ST_KEYS = {
@@ -20,7 +20,7 @@ let ST_KEYS = {
 }
 
 // ----------------------------------------------------------
-// * PERSISTED STATE (S)
+// PERSISTED STATE (S)
 // ----------------------------------------------------------
 
 let S = {
@@ -47,7 +47,7 @@ let S = {
 }
 
 // ----------------------------------------------------------
-// * VOLATILE STATE (V)
+// VOLATILE STATE (V)
 // ----------------------------------------------------------
 
 let V = {
@@ -84,23 +84,23 @@ let V = {
 
   hw_hasPM: false,
   pwr_ghostSec: 0,
-  pwr_ghostCnt: 0,     // ? Tracks repeated ghost runs for escalation
+  pwr_ghostCnt: 0,     // Tracks repeated ghost runs for escalation
 
   flt_pendCode: null,
 
   lop_lastSaveTs: 0,
 
-  // ! CRITICAL: Timestamp captured at start of each loop tick.
-  // ! Shelly mJS closures don't work correctly with Date.now() - must use global.
+  // CRITICAL: Timestamp captured at start of each loop tick.
+  // Shelly mJS closures don't work correctly with Date.now() - must use global.
   lop_nowTs: 0,
 }
 
 // ----------------------------------------------------------
-// * STATE PERSISTENCE
+// STATE PERSISTENCE
 // ----------------------------------------------------------
 
 /**
- * * persistState - Save current state to KVS
+ * persistState - Save current state to KVS
  */
 function persistState() {
   // Record when state was saved (used for boot recovery)
@@ -111,12 +111,12 @@ function persistState() {
 }
 
 // ----------------------------------------------------------
-// * LOAD STATE FROM KVS
+// LOAD STATE FROM KVS
 // ----------------------------------------------------------
 
 /**
- * * isTimestampInvalid - Check if timestamp is outside valid range
- * ? Returns true if timestamp is >60s in future or >1 year in past.
+ * isTimestampInvalid - Check if timestamp is outside valid range
+ * Returns true if timestamp is >60s in future or >1 year in past.
  *
  * @param {number} ts  - Timestamp to validate (seconds)
  * @param {number} now - Current time (seconds)
@@ -127,8 +127,8 @@ function isTimestampInvalid(ts, now) {
 }
 
 /**
- * * sanitizeLoadedState - Validate and fix corrupted state after KVS load
- * ? Orchestrates timestamp, stats, and fault sanitization.
+ * sanitizeLoadedState - Validate and fix corrupted state after KVS load
+ * Orchestrates timestamp, stats, and fault sanitization.
  *
  * @param {number} now - Current time in seconds
  * @mutates S - Resets invalid fields to safe defaults
@@ -140,8 +140,8 @@ function sanitizeLoadedState(now) {
 }
 
 /**
- * * sanitizeTimestamps - Reset relay timestamps if corrupted
- * ? Detects future timestamps or timestamps older than 1 year.
+ * sanitizeTimestamps - Reset relay timestamps if corrupted
+ * Detects future timestamps or timestamps older than 1 year.
  *
  * @param {number} now - Current time in seconds
  * @mutates S.sys_relayOffTs, S.sys_relayOnTs, S.sys_isRelayOn, S.sys_lastSaveTs
@@ -157,8 +157,8 @@ function sanitizeTimestamps(now) {
 }
 
 /**
- * * sanitizeStats - Reset statistics if corrupted
- * ? Validates history array length (24h) and ensures counters are non-negative.
+ * sanitizeStats - Reset statistics if corrupted
+ * Validates history array length (24h) and ensures counters are non-negative.
  *
  * @mutates S.sts_dutyHistArr, S.sts_histIdx, S.sts_hourTotalSec, S.sts_hourRunSec, S.sts_cycleCnt
  */
@@ -175,8 +175,8 @@ function sanitizeStats() {
 }
 
 /**
- * * sanitizeFaults - Reset fault arrays if corrupted
- * ? Ensures each fault severity level is a valid array.
+ * sanitizeFaults - Reset fault arrays if corrupted
+ * Ensures each fault severity level is a valid array.
  *
  * @mutates S.flt_fatalArr, S.flt_critArr, S.flt_errorArr, S.flt_warnArr
  */
@@ -188,23 +188,23 @@ function sanitizeFaults() {
 }
 
 /**
- * * loadState - Load persisted state from KVS
+ * loadState - Load persisted state from KVS
  *
  * Fetches state chunks from KVS and merges with defaults.
  * Validates timestamps and calls onComplete when done.
- * ? Smart sync: only writes if schema changed, never overwrites on load failure.
+ * Smart sync: only writes if schema changed, never overwrites on load failure.
  *
  * @param {Function} onComplete - Called when state loading complete
  */
 function loadState(onComplete) {
   print('➡️ STATE : Loading from KVS...')
 
-  // ? Load chunks sequentially (reduces peak memory)
+  // Load chunks sequentially (reduces peak memory)
   loadChunksSeq(ST_KEYS, S, function (stChunks) {
     let now = Date.now() / 1000
     sanitizeLoadedState(now)
 
-    // ? Smart sync: preserves KVS on load failure, only syncs schema changes
+    // Smart sync: preserves KVS on load failure, only syncs schema changes
     syncToKvs(ST_KEYS, S, stChunks, function () {
       print('✅ STATE : Loaded')
       V.lop_lastSaveTs = ri(Date.now() / 1000)
@@ -214,7 +214,7 @@ function loadState(onComplete) {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export { S, V, ST_KEYS, persistState, loadState }

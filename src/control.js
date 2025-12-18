@@ -1,7 +1,7 @@
 // ==============================================================================
-// * CONTROL ENGINE
-// ? Main decision engine for compressor control.
-// ? Handles mode determination, thermostat logic, and relay switching.
+// CONTROL ENGINE
+// Main decision engine for compressor control.
+// Handles mode determination, thermostat logic, and relay switching.
 // ==============================================================================
 
 import { ST, RSN, ALM } from './constants.js'
@@ -13,13 +13,13 @@ import { getEffectiveHysteresis, handleTurboMode, handleLimpMode, handleDynamicD
 import { incrementCycleCount } from './metrics.js'
 
 // ----------------------------------------------------------
-// * STATUS HELPERS
-// ? Convenience functions for setting system status.
+// STATUS HELPERS
+// Convenience functions for setting system status.
 // ----------------------------------------------------------
 
 /**
- * * setIdleState - Set status to IDLE with given reason
- * ? Uses WANT_IDLE if relay is currently on.
+ * setIdleState - Set status to IDLE with given reason
+ * Uses WANT_IDLE if relay is currently on.
  *
  * @param {string} reason - Reason code from RSN
  * @mutates V.sys_status - Set to ST.IDLE or ST.WANT_IDLE
@@ -31,13 +31,13 @@ function setIdleState(reason) {
 }
 
 // ----------------------------------------------------------
-// * THERMOSTAT LOGIC
-// ? Hysteresis-based temperature control.
+// THERMOSTAT LOGIC
+// Hysteresis-based temperature control.
 // ----------------------------------------------------------
 
 /**
- * * evaluateThermostat - Check if compressor should run
- * ? Uses hysteresis band to determine on/off.
+ * evaluateThermostat - Check if compressor should run
+ * Uses hysteresis band to determine on/off.
  *
  * @param {number} tCtrl - Control temperature
  * @param {number} target - Target temperature
@@ -51,13 +51,13 @@ function evaluateThermostat(tCtrl, target, hyst) {
 }
 
 // ----------------------------------------------------------
-// * RELAY CONTROL
-// ? Direct relay switching with state management.
+// RELAY CONTROL
+// Direct relay switching with state management.
 // ----------------------------------------------------------
 
 /**
- * * setRelay - Switch relay and update timestamps
- * ? Captures snapshots for weld detection and health scoring.
+ * setRelay - Switch relay and update timestamps
+ * Captures snapshots for weld detection and health scoring.
  *
  * @param {boolean} state - Desired relay state
  * @param {number} now - Current timestamp (seconds)
@@ -93,16 +93,16 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
   // Update logical relay state to match commanded state
   S.sys_isRelayOn = state
 
-  // ? Pre-compute timestamp BEFORE Shelly.call to avoid mJS scoping bug
-  // ? where callback parameters shadow outer scope functions (ri minified to same name)
+  // Pre-compute timestamp BEFORE Shelly.call to avoid mJS scoping bug
+  // where callback parameters shadow outer scope functions (ri minified to same name)
   let tsNow = ri(now)
 
-  // ? Track if this is an emergency shutdown (locked rotor, ghost, etc.)
+  // Track if this is an emergency shutdown (locked rotor, ghost, etc.)
   let isEmergency = skipSnap && !state
 
   // Execute hardware switch with verification callback
-  // ? CRITICAL: Use $_ prefix for callback params to prevent Terser from minifying
-  // ? to single letters that shadow math functions (ri, r1, r2) due to mJS scoping bug
+  // CRITICAL: Use $_ prefix for callback params to prevent Terser from minifying
+  // to single letters that shadow math functions (ri, r1, r2) due to mJS scoping bug
   let switchCb = function ($_cbRes, $_cbErr, $_cbMsg) {
     if ($_cbErr !== 0) {
       print('RELAY CMD FAILED: ' + $_cbErr)
@@ -146,14 +146,14 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
 }
 
 // ----------------------------------------------------------
-// * MODE DETERMINATION
-// ? Returns object on-demand. Pre-allocation reverted due to
-// ? initial heap constraints on Shelly's ~25KB limit.
+// MODE DETERMINATION
+// Returns object on-demand. Pre-allocation reverted due to
+// initial heap constraints on Shelly's ~25KB limit.
 // ----------------------------------------------------------
 
 /**
- * * determineMode - Main decision engine for relay state
- * ? Priority order: Fatal > Limp > Defrost > Door > Freeze > MaxRun > Normal
+ * determineMode - Main decision engine for relay state
+ * Priority order: Fatal > Limp > Defrost > Door > Freeze > MaxRun > Normal
  *
  * @param {number} tCtrl - Control temperature (smoothed air)
  * @param {number} tEvap - Evaporator temperature
@@ -165,7 +165,7 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- State machine with many transitions
 function determineMode(tCtrl, tEvap, now) {
   // Get base target and hysteresis
-  let target = C.ctrl_targetDeg
+  let target = C.ctl_targetDeg
   let hyst = getEffectiveHysteresis()
 
   // Priority 1: FATAL ALARMS (WELD, LOCKED)
@@ -231,14 +231,14 @@ function determineMode(tCtrl, tEvap, now) {
 }
 
 // ----------------------------------------------------------
-// * SWITCH DECISION
-// ? Returns object on-demand. Pre-allocation reverted due to
-// ? initial heap constraints on Shelly's ~25KB limit.
+// SWITCH DECISION
+// Returns object on-demand. Pre-allocation reverted due to
+// initial heap constraints on Shelly's ~25KB limit.
 // ----------------------------------------------------------
 
 /**
- * * executeSwitchDecision - Apply timing guards and switch relay
- * ? Enforces min ON/OFF times unless in limp mode.
+ * executeSwitchDecision - Apply timing guards and switch relay
+ * Enforces min ON/OFF times unless in limp mode.
  *
  * @param {boolean} wantOn - Desired relay state
  * @param {number} now - Current timestamp (seconds)
@@ -299,7 +299,7 @@ function executeSwitchDecision(wantOn, now, tAir, tEvap, isLimp) {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export {

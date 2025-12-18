@@ -1,14 +1,14 @@
 // ==============================================================================
-// * STATE TRANSITION INTEGRATION TESTS
-// ? Tests all state machine transitions: BOOT, IDLE, COOLING, LIMP modes.
-// ? Validates proper state flow and alarm handling across transitions.
+// STATE TRANSITION INTEGRATION TESTS
+// Tests all state machine transitions: BOOT, IDLE, COOLING, LIMP modes.
+// Validates proper state flow and alarm handling across transitions.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * TEST SETUP
+// TEST SETUP
 // ----------------------------------------------------------
 
 async function setupStateTransition(runtime, options = {}) {
@@ -42,7 +42,7 @@ async function setupStateTransition(runtime, options = {}) {
     state.V.sns_airSmoothDeg = options.airTemp
   }
   if (options.evapTemp !== undefined) {
-    runtime.setTemperature(config.C.sys_sensEvapId, options.evapTemp)
+    runtime.setTemperature(config.C.sys_sensEvpId, options.evapTemp)
   }
 
   runtime.script = {
@@ -65,7 +65,7 @@ async function setupStateTransition(runtime, options = {}) {
 }
 
 // ----------------------------------------------------------
-// * BOOT → IDLE TRANSITION
+// BOOT → IDLE TRANSITION
 // ----------------------------------------------------------
 
 describe('State Transition: BOOT → IDLE', () => {
@@ -115,7 +115,7 @@ describe('State Transition: BOOT → IDLE', () => {
 })
 
 // ----------------------------------------------------------
-// * IDLE → COOLING TRANSITION
+// IDLE → COOLING TRANSITION
 // ----------------------------------------------------------
 
 describe('State Transition: IDLE → COOLING', () => {
@@ -176,7 +176,7 @@ describe('State Transition: IDLE → COOLING', () => {
 })
 
 // ----------------------------------------------------------
-// * COOLING → IDLE TRANSITION
+// COOLING → IDLE TRANSITION
 // ----------------------------------------------------------
 
 describe('State Transition: COOLING → IDLE', () => {
@@ -252,7 +252,7 @@ describe('State Transition: COOLING → IDLE', () => {
 
     // Set relay on time to exceed max run
     const now = Date.now() / 1000
-    script.S.sys_relayOnTs = now - script.C.comp_maxRunSec - 10
+    script.S.sys_relayOnTs = now - script.C.cmp_maxRunSec - 10
     script.V.trb_isActive = false
 
     const mode = script.control.determineMode(5.0, -10.0, now)
@@ -264,7 +264,7 @@ describe('State Transition: COOLING → IDLE', () => {
 })
 
 // ----------------------------------------------------------
-// * NORMAL → LIMP TRANSITION
+// NORMAL → LIMP TRANSITION
 // ----------------------------------------------------------
 
 describe('State Transition: Normal → LIMP', () => {
@@ -319,8 +319,8 @@ describe('State Transition: Normal → LIMP', () => {
     script = await setupStateTransition(runtime, {})
 
     // LIMP mode cycles based on uptime
-    // ON period: 0 to limp_onSec
-    // OFF period: limp_onSec to limp_onSec + limp_offSec
+    // ON period: 0 to lmp_onSec
+    // OFF period: lmp_onSec to lmp_onSec + lmp_offSec
 
     // During ON period
     global.Shelly.getUptimeMs = () => 100 * 1000 // 100s into cycle
@@ -329,7 +329,7 @@ describe('State Transition: Normal → LIMP', () => {
     expect(limpOn.status).toBe(script.ST.LIMP_COOL)
 
     // During OFF period
-    global.Shelly.getUptimeMs = () => (script.C.limp_onSec + 100) * 1000
+    global.Shelly.getUptimeMs = () => (script.C.lmp_onSec + 100) * 1000
     const limpOff = script.features.handleLimpMode()
     expect(limpOff.wantOn).toBe(false)
     expect(limpOff.status).toBe(script.ST.LIMP_IDLE)
@@ -337,7 +337,7 @@ describe('State Transition: Normal → LIMP', () => {
 })
 
 // ----------------------------------------------------------
-// * LIMP → NORMAL TRANSITION (Sensor Recovery)
+// LIMP → NORMAL TRANSITION (Sensor Recovery)
 // ----------------------------------------------------------
 
 describe('State Transition: LIMP → Normal (Sensor Recovery)', () => {
@@ -395,7 +395,7 @@ describe('State Transition: LIMP → Normal (Sensor Recovery)', () => {
 })
 
 // ----------------------------------------------------------
-// * FATAL ALARM STATE MACHINE
+// FATAL ALARM STATE MACHINE
 // ----------------------------------------------------------
 
 describe('State Transition: Fatal Alarm States', () => {
@@ -446,7 +446,7 @@ describe('State Transition: Fatal Alarm States', () => {
 })
 
 // ----------------------------------------------------------
-// * DEFROST MODE TRANSITIONS
+// DEFROST MODE TRANSITIONS
 // ----------------------------------------------------------
 
 describe('State Transition: Defrost Mode', () => {
@@ -495,8 +495,8 @@ describe('State Transition: Defrost Mode', () => {
     script.V.trb_isActive = false
 
     // Accumulate dwell time until complete
-    for (let i = 0; i <= script.C.defr_dynDwellSec / script.C.sys_loopSec; i++) {
-      script.features.handleDynamicDefrost(script.C.defr_dynEndDeg)
+    for (let i = 0; i <= script.C.dfr_dynDwellSec / script.C.sys_loopSec; i++) {
+      script.features.handleDynamicDefrost(script.C.dfr_dynEndDeg)
     }
 
     expect(script.S.dfr_isActive).toBe(false)
@@ -504,7 +504,7 @@ describe('State Transition: Defrost Mode', () => {
 })
 
 // ----------------------------------------------------------
-// * DOOR PAUSE TRANSITIONS
+// DOOR PAUSE TRANSITIONS
 // ----------------------------------------------------------
 
 describe('State Transition: Door Pause', () => {

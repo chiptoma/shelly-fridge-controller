@@ -1,7 +1,7 @@
 // ==============================================================================
-// * MAIN ENTRY POINT
-// ? Initializes the fridge controller system.
-// ? Loads config/state from KVS, recovers boot state, and starts main loop.
+// MAIN ENTRY POINT
+// Initializes the fridge controller system.
+// Loads config/state from KVS, recovers boot state, and starts main loop.
 // ==============================================================================
 
 import { C } from './config.js'
@@ -12,11 +12,11 @@ import { setupMqttCommands } from './mqtt.js'
 import { startMainLoop } from './loop.js'
 
 // ----------------------------------------------------------
-// * BOOT RECOVERY
+// BOOT RECOVERY
 // ----------------------------------------------------------
 
 /**
- * * recoverBootState - Sync software state with hardware
+ * recoverBootState - Sync software state with hardware
  *
  * Handles discrepancies between KVS state and actual hardware.
  * Recovers missed runtime stats from unclean shutdowns.
@@ -27,26 +27,26 @@ function recoverBootState() {
   let sw = Shelly.getComponentStatus('Switch', 0)
   let hwOn = (sw && sw.output === true)
 
-  // ? Calculate total elapsed time since last save (includes both ON and OFF time)
+  // Calculate total elapsed time since last save (includes both ON and OFF time)
   let elapsedTotal = 0
   if (S.sys_lastSaveTs > 0 && now > S.sys_lastSaveTs) {
     elapsedTotal = now - S.sys_lastSaveTs
-    // ? Cap at 1 hour to prevent stats corruption from stale timestamps
+    // Cap at 1 hour to prevent stats corruption from stale timestamps
     if (elapsedTotal > 3600) elapsedTotal = 3600
   }
 
   if (hwOn && S.sys_isRelayOn) {
-    // ? Hardware ON, state says ON - compressor was running
+    // Hardware ON, state says ON - compressor was running
     let runSec = now - S.sys_relayOnTs
-    if (runSec < 0 || runSec > C.comp_maxRunSec) {
-      print('⚠️ BOOT  : Compressor ran ' + ri(runSec / 60) + 'm (limit ' + ri(C.comp_maxRunSec / 60) + 'm) → turned OFF for protection')
+    if (runSec < 0 || runSec > C.cmp_maxRunSec) {
+      print('⚠️ BOOT  : Compressor ran ' + ri(runSec / 60) + 'm (limit ' + ri(C.cmp_maxRunSec / 60) + 'm) → turned OFF for protection')
       Shelly.call('Switch.Set', { id: 0, on: false })
       S.sys_isRelayOn = false
       S.sys_relayOffTs = ri(now)
       S.wld_airSnapDeg = 0
       persistState()
     } else if (elapsedTotal > 0) {
-      // ? Add to BOTH hourly AND lifetime stats
+      // Add to BOTH hourly AND lifetime stats
       S.sts_hourRunSec += elapsedTotal
       S.sts_hourTotalSec += elapsedTotal
       S.sts_lifeRunSec += elapsedTotal
@@ -55,17 +55,17 @@ function recoverBootState() {
       persistState()
     }
   } else if (hwOn && !S.sys_isRelayOn) {
-    // ? Hardware ON but state says OFF - unexpected state
-    // ? Don't trust stale timestamps, sync to hardware and start fresh
+    // Hardware ON but state says OFF - unexpected state
+    // Don't trust stale timestamps, sync to hardware and start fresh
     print('⚠️ BOOT  : Relay was ON but state said OFF (unexpected) → state updated to match')
     S.sys_isRelayOn = true
     S.sys_relayOnTs = ri(now)
     persistState()
   } else if (!hwOn && S.sys_isRelayOn) {
-    // ? Hardware OFF but state says ON - crashed/stopped while cooling
+    // Hardware OFF but state says ON - crashed/stopped while cooling
     let estRunSec = now - S.sys_relayOnTs
-    if (estRunSec > 0 && estRunSec < C.comp_maxRunSec && elapsedTotal > 0) {
-      // ? Use min of estimated run time and elapsed time
+    if (estRunSec > 0 && estRunSec < C.cmp_maxRunSec && elapsedTotal > 0) {
+      // Use min of estimated run time and elapsed time
       let missedRun = (estRunSec < elapsedTotal) ? estRunSec : elapsedTotal
       S.sts_hourRunSec += missedRun
       S.sts_hourTotalSec += elapsedTotal
@@ -79,9 +79,9 @@ function recoverBootState() {
     S.wld_airSnapDeg = 0
     persistState()
   } else {
-    // ? Hardware OFF, state says OFF - clean idle state
+    // Hardware OFF, state says OFF - clean idle state
     if (elapsedTotal > 0) {
-      // ? Only add to time stats, not run stats (compressor was off)
+      // Only add to time stats, not run stats (compressor was off)
       S.sts_hourTotalSec += elapsedTotal
       S.sts_lifeTotalSec += elapsedTotal
       print('ℹ️ BOOT  : Was idle for ' + ri(elapsedTotal / 60) + 'm → stats updated')
@@ -98,11 +98,11 @@ function recoverBootState() {
 }
 
 // ----------------------------------------------------------
-// * INITIALIZATION
+// INITIALIZATION
 // ----------------------------------------------------------
 
 /**
- * * initialize - Main boot sequence
+ * initialize - Main boot sequence
  */
 function initialize() {
   V.sys_startMs = Shelly.getUptimeMs()
@@ -119,13 +119,13 @@ function initialize() {
 }
 
 // ----------------------------------------------------------
-// * START
+// START
 // ----------------------------------------------------------
 
 initialize()
 
 // ----------------------------------------------------------
-// * EXPORTS (for testing)
+// EXPORTS (for testing)
 // ----------------------------------------------------------
 
 export { recoverBootState, initialize }

@@ -13,7 +13,7 @@ process.env.DOTENV_FLOW_SILENT = 'true'
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'true'
 
 // Load .env file from project root
-// ? Use override:true to ensure .env values take precedence over system env vars
+// Use override:true to ensure .env values take precedence over system env vars
 dotenv.config({
   path: path.resolve(__dirname, '../../.env'),
   override: true,
@@ -71,7 +71,7 @@ class ConfigManager {
       enableDebug: process.env.ENABLE_DEBUG === 'true',
 
       // Build settings
-      // ? Note: Build is handled by tools/*.cjs pipeline, deploy just reads OUTPUT_PATH
+      // Note: Build is handled by tools/*.cjs pipeline, deploy just reads OUTPUT_PATH
       outputPath: process.env.OUTPUT_PATH || 'dist/main.js',
 
       // Upload settings

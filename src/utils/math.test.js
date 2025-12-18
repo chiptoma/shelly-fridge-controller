@@ -1,13 +1,13 @@
 // ==============================================================================
-// * MATH UTILITIES TESTS
-// ? Tests for rounding, median, EMA, and time formatting functions.
+// MATH UTILITIES TESTS
+// Tests for rounding, median, EMA, and time formatting functions.
 // ==============================================================================
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { r1, r2, r3, ri, nowSec, getMedian3, calcEMA, formatXmYs } from './math.js'
 
 // ----------------------------------------------------------
-// * ROUNDING FUNCTIONS
+// ROUNDING FUNCTIONS
 // ----------------------------------------------------------
 
 describe('Rounding Functions', () => {
@@ -97,7 +97,7 @@ describe('Rounding Functions', () => {
 })
 
 // ----------------------------------------------------------
-// * TIME FUNCTIONS
+// TIME FUNCTIONS
 // ----------------------------------------------------------
 
 describe('Time Functions', () => {
@@ -168,7 +168,7 @@ describe('Time Functions', () => {
 })
 
 // ----------------------------------------------------------
-// * MEDIAN CALCULATION
+// MEDIAN CALCULATION
 // ----------------------------------------------------------
 
 describe('getMedian3', () => {
@@ -214,7 +214,7 @@ describe('getMedian3', () => {
 })
 
 // ----------------------------------------------------------
-// * EXPONENTIAL MOVING AVERAGE
+// EXPONENTIAL MOVING AVERAGE
 // ----------------------------------------------------------
 
 describe('calcEMA', () => {

@@ -6,7 +6,7 @@ Memory-constrained Shelly Plus 1PM device controller for refrigeration system wi
 
 **Key Constraints:**
 - Runtime memory: ~15KB typical, ~25KB peak limit
-- Bundle size: 30KB max (scripts fail to upload beyond this)
+- Bundle size: 32KB max (scripts fail to upload beyond this)
 - JavaScript only (Shelly mJS runtime, ES5-ish with ES6 modules)
 - No classes, minimal closures, pre-allocated structures
 
@@ -122,7 +122,7 @@ CONSTANTS (constants.js)          CONFIG (config.js)           STATE (state.js)
 Compile-time, never change         User-configurable            Runtime values
 
 ALM = { NONE, TEMP, SENSOR }      C.ctrl_targetDeg = 4         S.sys_isRelayOn = false
-RSN = { NONE, TEMP, TIMER }       C.ctrl_hystBase = 1.0        S.sts_lifeRunSec = 0
+RSN = { NONE, TEMP, TIMER }       C.ctrl_hystDeg = 1.0         S.sts_lifeRunSec = 0
 ICO = { IDLE: '', RUN: '' }       C.turbo_enable = true        V.sys_status = 'IDLE'
                                   ...                           V.trb_isActive = false
 
@@ -148,7 +148,7 @@ let V = {
   sys_alarm: 'NONE',       // Active alarm
   sns_airSmoothDeg: null,    // Smoothed temperature
   trb_isActive: false,     // Turbo mode state
-  loopNow: 0,              // Current timestamp (set each tick)
+  lop_nowTs: 0,            // Current timestamp (set each tick)
   // ... transient state
 }
 ```
@@ -160,7 +160,7 @@ State and config are chunked for efficient KVS storage:
 ```javascript
 // config.js - Config chunks
 let CFG_KEYS = {
-  'fridge_cfg_ctrl': ['ctrl_targetDeg', 'ctrl_hystBase', 'ctrl_minRunSec', ...],
+  'fridge_cfg_ctrl': ['ctrl_targetDeg', 'ctrl_hystDeg', 'ctrl_smoothAlpha'],
   'fridge_cfg_turbo': ['turbo_enable', 'turbo_targetDeg', ...],
   // ...
 }
@@ -254,14 +254,14 @@ The build process concatenates and minifies source files:
 
 ```bash
 # Full build pipeline
-pnpm run build
+npm run build
 # 1. tools/concat.cjs - Concatenates src/*.js in dependency order
 # 2. tools/minify.cjs - Minifies with terser, preserves reserved names
 # 3. tools/validate-bundle.cjs - Syntax validation
 
 # Individual steps (if needed)
-pnpm run build:concat    # Step 1 only
-pnpm run build:minify    # Steps 2 + 3
+npm run build:concat    # Step 1 only
+npm run build:minify    # Steps 2 + 3
 ```
 
 ### File Concatenation Order
@@ -365,16 +365,16 @@ describe('Module Name', () => {
 
 ```bash
 # Run all tests
-pnpm test
+npm test
 
 # Run with coverage
-pnpm test:coverage
+npm test:coverage
 
 # Run specific file
-pnpm test src/sensors.test.js
+npm test src/sensors.test.js
 
 # Watch mode
-pnpm test -- --watch
+npm test -- --watch
 ```
 
 ### Current Coverage
@@ -401,16 +401,16 @@ The project includes a TypeScript-based deployment tool:
 
 ```bash
 # Build and deploy with live monitoring
-pnpm run deploy:monitor
+npm run deploy:monitor
 
 # Deploy only
-pnpm run deploy
+npm run deploy
 
 # View logs
-pnpm run shelly:logs
+npm run shelly:logs
 
 # Check status
-pnpm run shelly:status
+npm run shelly:status
 ```
 
 ### Environment Configuration
@@ -434,18 +434,18 @@ Use semantic comment prefixes for visual scanning:
 
 ```javascript
 // ==============================================================================
-// * FILE TITLE (UPPERCASE)
-// ? Purpose: High-level intent of this module.
+// FILE TITLE (UPPERCASE)
+// Purpose: High-level intent of this module.
 // ==============================================================================
 
 // ----------------------------------------------------------
-// * SECTION TITLE
-// ? Context note explaining this section.
+// SECTION TITLE
+// Context note explaining this section.
 // ----------------------------------------------------------
 
 /**
- * * functionName - Brief description (imperative verb)
- * ? Extended explanation if behavior is non-obvious.
+ * functionName - Brief description (imperative verb)
+ * Extended explanation if behavior is non-obvious.
  *
  * @param {number} value - Parameter description
  * @returns {boolean} Return description
@@ -484,18 +484,18 @@ Limit `?` prefix to 1-2 lines maximum. For complex logic, use inline comments in
 ```javascript
 // Good: Concise description
 /**
- * * adaptHysteresis - Adjust hysteresis based on cycle times
- * ? Uses trend confirmation to prevent oscillation.
+ * adaptHysteresis - Adjust hysteresis based on cycle times
+ * Uses trend confirmation to prevent oscillation.
  */
 
 // Avoid: Multi-line ? prose
 /**
- * * adaptHysteresis - Adjust hysteresis
- * ? Uses trend confirmation.
- * ? Uses cycle count as secondary signal.
- * ? Design philosophy: ...
- * ? Zone 1: ...
- * ? Zone 2: ...
+ * adaptHysteresis - Adjust hysteresis
+ * Uses trend confirmation.
+ * Uses cycle count as secondary signal.
+ * Design philosophy: ...
+ * Zone 1: ...
+ * Zone 2: ...
  */
 ```
 
@@ -516,7 +516,7 @@ Limit `?` prefix to 1-2 lines maximum. For complex logic, use inline comments in
 ```javascript
 // Example with multiple mutations
 /**
- * * setRelay - Switch relay and update timestamps
+ * setRelay - Switch relay and update timestamps
  *
  * @mutates S.sys_isRelayOn - Set to requested state
  * @mutates S.sys_relayOnTs - Updated when turning on
@@ -556,37 +556,37 @@ let currentTemp = V.sns_airSmoothDeg
 1. Identify which file owns the responsibility
 2. Add to existing file (prefer flat over new files)
 3. Add corresponding tests
-4. Run `pnpm test` to verify
-5. Run `pnpm run build` to verify bundle size
-6. Run `pnpm run deploy:monitor` to test on device
+4. Run `npm test` to verify
+5. Run `npm run build` to verify bundle size
+6. Run `npm run deploy:monitor` to test on device
 
 ### Making Changes
 
 ```bash
 # 1. Run tests first
-pnpm test
+npm test
 
 # 2. Make changes
 
 # 3. Run tests again
-pnpm test
+npm test
 
 # 4. Check lint
-pnpm run lint
+npm run lint
 
 # 5. Build and verify
-pnpm run build
+npm run build
 
 # 6. Deploy and monitor
-pnpm run deploy:monitor
+npm run deploy:monitor
 ```
 
 ### Review Checklist
 
-- [ ] Tests pass (`pnpm test`)
-- [ ] Coverage maintained (`pnpm test:coverage`)
-- [ ] Lint clean (`pnpm run lint`)
-- [ ] Bundle under 30KB (`pnpm run build`)
+- [ ] Tests pass (`npm test`)
+- [ ] Coverage maintained (`npm test:coverage`)
+- [ ] Lint clean (`npm run lint`)
+- [ ] Bundle under 32KB (`npm run build`)
 - [ ] Memory patterns followed (no classes, no spread)
 - [ ] State mutations documented with `@mutates`
 - [ ] Side effects documented with `@sideeffect`
@@ -619,22 +619,22 @@ pnpm run deploy:monitor
 
 | Script | Description |
 |--------|-------------|
-| `pnpm test` | Run all tests |
-| `pnpm test:coverage` | Run tests with coverage |
-| `pnpm test:integration` | Run integration tests only |
-| `pnpm test:simulations` | Run simulation tests only |
-| `pnpm run build` | Full build (concat + minify + validate) |
-| `pnpm run build:concat` | Concatenate source files only |
-| `pnpm run build:minify` | Minify + validate only |
-| `pnpm run lint` | Run ESLint |
-| `pnpm run lint:fix` | Fix ESLint issues |
-| `pnpm run deploy` | Build and deploy to Shelly |
-| `pnpm run deploy:monitor` | Deploy and monitor live logs |
-| `pnpm run shelly:status` | Check script status |
-| `pnpm run shelly:logs` | View script logs |
-| `pnpm run shelly:monitor` | Live log monitoring |
-| `pnpm run shelly:stop` | Stop script on device |
-| `pnpm run shelly:start` | Start script on device |
+| `npm test` | Run all tests |
+| `npm test:coverage` | Run tests with coverage |
+| `npm test:integration` | Run integration tests only |
+| `npm test:simulations` | Run simulation tests only |
+| `npm run build` | Full build (concat + minify + validate) |
+| `npm run build:concat` | Concatenate source files only |
+| `npm run build:minify` | Minify + validate only |
+| `npm run lint` | Run ESLint |
+| `npm run lint:fix` | Fix ESLint issues |
+| `npm run deploy` | Build and deploy to Shelly |
+| `npm run deploy:monitor` | Deploy and monitor live logs |
+| `npm run shelly:status` | Check script status |
+| `npm run shelly:logs` | View script logs |
+| `npm run shelly:monitor` | Live log monitoring |
+| `npm run shelly:stop` | Stop script on device |
+| `npm run shelly:start` | Start script on device |
 
 ---
 
@@ -643,14 +643,14 @@ pnpm run deploy:monitor
 ### Memory Issues
 
 If seeing memory errors or OOM:
-1. Check peak memory with `pnpm run deploy:monitor`
+1. Check peak memory with `npm run deploy:monitor`
 2. Look for array allocations in loops
 3. Ensure no object spread usage
 4. Verify sequential KVS loading is used
 
 ### Build Failures
 
-If bundle exceeds 30KB:
+If bundle exceeds 32KB:
 1. Check for accidental imports
 2. Remove unused exports
 3. Verify minification reserved list is minimal
@@ -668,8 +668,8 @@ If tests pass individually but fail together:
 ## Production Metrics
 
 Current production build:
-- **Bundle size**: ~29KB (under 30KB limit)
+- **Bundle size**: ~30KB (under 32KB limit)
 - **Runtime memory**: ~14KB (56% of 25KB limit)
 - **Peak memory**: ~22KB (88% of limit)
-- **Test count**: 818+ tests
+- **Test count**: 820+ tests
 - **Coverage**: 97.92%

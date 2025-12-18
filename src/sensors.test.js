@@ -1,6 +1,6 @@
 // ==============================================================================
-// * SENSOR TESTS
-// ? Validates sensor reading, smoothing, and health monitoring.
+// SENSOR TESTS
+// Validates sensor reading, smoothing, and health monitoring.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -31,10 +31,10 @@ describe('Sensors', () => {
     // Create mock config
     mockC = {
       sys_sensFailLimit: 5,
-      sens_stuckEnable: true,
-      sens_stuckEpsDeg: 0.2,
-      sens_stuckTimeSec: 14400,
-      ctrl_smoothAlpha: 0.08,
+      sns_stuckEnable: true,
+      sns_stuckEpsDeg: 0.2,
+      sns_stuckTimeSec: 14400,
+      ctl_smoothAlpha: 0.08,
     }
 
     // Mock print
@@ -72,7 +72,7 @@ describe('Sensors', () => {
   })
 
   // ----------------------------------------------------------
-  // * CHECK SENSOR STUCK TESTS
+  // CHECK SENSOR STUCK TESTS
   // ----------------------------------------------------------
 
   describe('checkSensorStuck', () => {
@@ -127,7 +127,7 @@ describe('Sensors', () => {
   })
 
   // ----------------------------------------------------------
-  // * HANDLE SENSOR ERROR TESTS
+  // HANDLE SENSOR ERROR TESTS
   // ----------------------------------------------------------
 
   describe('handleSensorError', () => {
@@ -152,7 +152,7 @@ describe('Sensors', () => {
   })
 
   // ----------------------------------------------------------
-  // * HANDLE SENSOR RECOVERY TESTS
+  // HANDLE SENSOR RECOVERY TESTS
   // ----------------------------------------------------------
 
   describe('handleSensorRecovery', () => {
@@ -197,12 +197,12 @@ describe('Sensors', () => {
   })
 
   // ----------------------------------------------------------
-  // * PROCESS SENSOR DATA TESTS
+  // PROCESS SENSOR DATA TESTS
   // ----------------------------------------------------------
 
   describe('processSensorData', () => {
     it('should update circular buffer', () => {
-      // ? Must set sns_airSmoothDeg to non-null to skip warmup path
+      // Must set sns_airSmoothDeg to non-null to skip warmup path
       mockV.sns_airSmoothDeg = 4.0
       mockV.sns_bufIdx = 0
       processSensorData(5.0)
@@ -212,7 +212,7 @@ describe('Sensors', () => {
     })
 
     it('should wrap buffer index at 3', () => {
-      // ? Must set sns_airSmoothDeg to non-null to skip warmup path
+      // Must set sns_airSmoothDeg to non-null to skip warmup path
       mockV.sns_airSmoothDeg = 4.0
       mockV.sns_bufIdx = 2
       processSensorData(5.0)
@@ -255,7 +255,7 @@ describe('Sensors', () => {
   })
 
   // ----------------------------------------------------------
-  // * VALIDATE SENSOR READINGS TESTS
+  // VALIDATE SENSOR READINGS TESTS
   // ----------------------------------------------------------
 
   describe('validateSensorReadings', () => {
@@ -296,7 +296,7 @@ describe('Sensors', () => {
   })
 
   // ----------------------------------------------------------
-  // * RESET SENSOR ERROR TESTS
+  // RESET SENSOR ERROR TESTS
   // ----------------------------------------------------------
 
   describe('resetSensorError', () => {

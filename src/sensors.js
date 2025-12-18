@@ -1,7 +1,7 @@
 // ==============================================================================
-// * SENSOR MANAGEMENT
-// ? Sensor reading, smoothing, and health monitoring.
-// ? Handles median filtering, EMA smoothing, and stuck detection.
+// SENSOR MANAGEMENT
+// Sensor reading, smoothing, and health monitoring.
+// Handles median filtering, EMA smoothing, and stuck detection.
 // ==============================================================================
 
 import { C } from './config.js'
@@ -9,13 +9,13 @@ import { S, V } from './state.js'
 import { r2, getMedian3, calcEMA } from './utils/math.js'
 
 // ----------------------------------------------------------
-// * SENSOR STUCK DETECTION
-// ? Checks if a sensor value has been stuck for too long.
+// SENSOR STUCK DETECTION
+// Checks if a sensor value has been stuck for too long.
 // ----------------------------------------------------------
 
 /**
- * * checkSensorStuck - Check if sensor value is stuck
- * ? Updates reference value and timestamp if sensor moved.
+ * checkSensorStuck - Check if sensor value is stuck
+ * Updates reference value and timestamp if sensor moved.
  *
  * @param {number} val - Current sensor value
  * @param {string} refKey - Key for reference value in V
@@ -26,7 +26,7 @@ import { r2, getMedian3, calcEMA } from './utils/math.js'
  */
 function checkSensorStuck(val, refKey, tsKey, now) {
   // Skip if stuck detection disabled
-  if (!C.sens_stuckEnable) return false
+  if (!C.sns_stuckEnable) return false
 
   // Initialize reference on first call
   if (V[refKey] === null) {
@@ -36,24 +36,24 @@ function checkSensorStuck(val, refKey, tsKey, now) {
   }
 
   // Check if value moved enough to reset timer
-  if (Math.abs(val - V[refKey]) > C.sens_stuckEpsDeg) {
+  if (Math.abs(val - V[refKey]) > C.sns_stuckEpsDeg) {
     V[refKey] = r2(val)
     V[tsKey] = now
     return false
   }
 
   // Check if stuck too long
-  return (now - V[tsKey]) > C.sens_stuckTimeSec
+  return (now - V[tsKey]) > C.sns_stuckTimeSec
 }
 
 // ----------------------------------------------------------
-// * SENSOR ERROR HANDLING
-// ? Increments error count and checks against threshold.
+// SENSOR ERROR HANDLING
+// Increments error count and checks against threshold.
 // ----------------------------------------------------------
 
 /**
- * * handleSensorError - Handle sensor read failure
- * ? Increments error counter and returns true if limit exceeded.
+ * handleSensorError - Handle sensor read failure
+ * Increments error counter and returns true if limit exceeded.
  *
  * @returns {boolean} True if sensor fail limit exceeded
  * @mutates V.sns_errCnt - Incremented on each call
@@ -64,13 +64,13 @@ function handleSensorError() {
 }
 
 // ----------------------------------------------------------
-// * SENSOR RECOVERY
-// ? Resets buffers and state after sensor recovery.
+// SENSOR RECOVERY
+// Resets buffers and state after sensor recovery.
 // ----------------------------------------------------------
 
 /**
- * * handleSensorRecovery - Handle sensor recovery after errors
- * ? Resets buffers and re-initializes smoothing.
+ * handleSensorRecovery - Handle sensor recovery after errors
+ * Resets buffers and re-initializes smoothing.
  *
  * @param {number} tAirRaw - Raw air temperature reading
  * @mutates V.sns_airBuf, V.sns_bufIdx, V.sns_airSmoothDeg - Buffer reset
@@ -86,7 +86,7 @@ function handleSensorRecovery(tAirRaw) {
   V.sns_airSmoothDeg = r2(tAirRaw)
   V.dor_refTs = 0
   V.dor_refDeg = 0
-  // ? Reset stuck detection to prevent false alarms after recovery
+  // Reset stuck detection to prevent false alarms after recovery
   V.sns_airStuckRefDeg = null
   V.sns_evpStuckRefDeg = null
   V.sns_wasErr = false
@@ -94,13 +94,13 @@ function handleSensorRecovery(tAirRaw) {
 }
 
 // ----------------------------------------------------------
-// * SENSOR DATA PROCESSING
-// ? Applies median filter and EMA smoothing to raw readings.
+// SENSOR DATA PROCESSING
+// Applies median filter and EMA smoothing to raw readings.
 // ----------------------------------------------------------
 
 /**
- * * processSensorData - Process raw sensor readings
- * ? Applies median filter for spike rejection, then EMA for smoothing.
+ * processSensorData - Process raw sensor readings
+ * Applies median filter for spike rejection, then EMA for smoothing.
  *
  * @param {number} tAirRaw - Raw air temperature reading
  * @returns {number} Median-filtered air temperature
@@ -126,14 +126,14 @@ function processSensorData(tAirRaw) {
   let tAirMedian = getMedian3(V.sns_airBuf[0], V.sns_airBuf[1], V.sns_airBuf[2])
 
   // Apply EMA smoothing
-  V.sns_airSmoothDeg = r2(calcEMA(tAirMedian, V.sns_airSmoothDeg, C.ctrl_smoothAlpha))
+  V.sns_airSmoothDeg = r2(calcEMA(tAirMedian, V.sns_airSmoothDeg, C.ctl_smoothAlpha))
 
   return tAirMedian
 }
 
 /**
- * * validateSensorReadings - Check if sensor readings are valid
- * ? Returns true if both air and evap readings are valid numbers.
+ * validateSensorReadings - Check if sensor readings are valid
+ * Returns true if both air and evap readings are valid numbers.
  *
  * @param {object} rAir - Air sensor response from Shelly
  * @param {object} rEvap - Evap sensor response from Shelly
@@ -141,16 +141,16 @@ function processSensorData(tAirRaw) {
  */
 function validateSensorReadings(rAir, rEvap) {
   if (!rAir || !rEvap) return false
-  // ? Use == null to catch both null and undefined
-  // ? isNaN(null) returns false because Number(null) === 0
+  // Use == null to catch both null and undefined
+  // isNaN(null) returns false because Number(null) === 0
   if (rAir.tC == null || rEvap.tC == null) return false
   if (isNaN(rAir.tC) || isNaN(rEvap.tC)) return false
   return true
 }
 
 /**
- * * resetSensorError - Reset sensor error counter
- * ? Called when valid reading received.
+ * resetSensorError - Reset sensor error counter
+ * Called when valid reading received.
  *
  * @mutates V.sns_errCnt - Reset to 0
  */
@@ -159,8 +159,8 @@ function resetSensorError() {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
-// ? ES module exports for testing. Stripped during bundling.
+// EXPORTS
+// ES module exports for testing. Stripped during bundling.
 // ----------------------------------------------------------
 
 export {

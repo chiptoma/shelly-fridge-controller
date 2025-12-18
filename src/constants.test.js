@@ -1,6 +1,6 @@
 // ==============================================================================
-// * CONSTANTS TESTS
-// ? Validates that all constant enums are properly defined.
+// CONSTANTS TESTS
+// Validates that all constant enums are properly defined.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -19,7 +19,7 @@ describe('Constants', () => {
   })
 
   // ----------------------------------------------------------
-  // * STATUS (ST) TESTS
+  // STATUS (ST) TESTS
   // ----------------------------------------------------------
 
   describe('ST (Status)', () => {
@@ -41,7 +41,7 @@ describe('Constants', () => {
   })
 
   // ----------------------------------------------------------
-  // * REASON (RSN) TESTS
+  // REASON (RSN) TESTS
   // ----------------------------------------------------------
 
   describe('RSN (Reason)', () => {
@@ -63,7 +63,7 @@ describe('Constants', () => {
   })
 
   // ----------------------------------------------------------
-  // * ALARM (ALM) TESTS
+  // ALARM (ALM) TESTS
   // ----------------------------------------------------------
 
   describe('ALM (Alarm)', () => {
@@ -90,7 +90,7 @@ describe('Constants', () => {
   })
 
   // ----------------------------------------------------------
-  // * ICONS (ICO) TESTS
+  // ICONS (ICO) TESTS
   // ----------------------------------------------------------
 
   describe('ICO (Icons)', () => {
@@ -121,7 +121,7 @@ describe('Constants', () => {
   })
 
   // ----------------------------------------------------------
-  // * ADAPTIVE HYSTERESIS (ADAPT) TESTS
+  // ADAPTIVE HYSTERESIS (ADAPT) TESTS
   // ----------------------------------------------------------
 
   describe('ADAPT (Adaptive Hysteresis)', () => {

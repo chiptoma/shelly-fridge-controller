@@ -1,7 +1,7 @@
 // ==============================================================================
-// * MAIN LOOP
-// ? Orchestrates all modules per timer tick.
-// ? Handles sensor reading, alarm evaluation, mode determination, and reporting.
+// MAIN LOOP
+// Orchestrates all modules per timer tick.
+// Handles sensor reading, alarm evaluation, mode determination, and reporting.
 // ==============================================================================
 
 import { ALM, RSN } from './constants.js'
@@ -17,25 +17,25 @@ import { determineMode, executeSwitchDecision, setRelay } from './control.js'
 import { publishStatus } from './reporting.js'
 
 // ----------------------------------------------------------
-// * LOOP STATE
-// ? Timer reference for cleanup.
+// LOOP STATE
+// Timer reference for cleanup.
 // ----------------------------------------------------------
 
 let loopTimer = null
 
 // ----------------------------------------------------------
-// * MAIN LOOP TICK
-// ? Single iteration of the control loop.
+// MAIN LOOP TICK
+// Single iteration of the control loop.
 // ----------------------------------------------------------
 
 /**
- * * MAIN LOOP TICK
- * ? Executes one complete control cycle.
- * ? Called by Timer.set every sys_loopSec seconds.
+ * MAIN LOOP TICK
+ * Executes one complete control cycle.
+ * Called by Timer.set every sys_loopSec seconds.
  */
 function mainLoopTick() {
-  // ! CRITICAL: Store timestamp in GLOBAL state, not local variable.
-  // ! Shelly mJS closures are broken - local variables become corrupted in async callbacks.
+  // CRITICAL: Store timestamp in GLOBAL state, not local variable.
+  // Shelly mJS closures are broken - local variables become corrupted in async callbacks.
   V.lop_nowTs = nowSec()
 
   // 1. CHECK PHYSICAL INPUT (TURBO SWITCH)
@@ -45,11 +45,11 @@ function mainLoopTick() {
   }
 
   // 2. READ SENSORS (Async chain)
-  // ? CRITICAL: Use $_ prefix for callback params to prevent Terser from minifying
-  // ? to single letters that shadow math functions (ri, r1, r2) due to mJS scoping bug
+  // CRITICAL: Use $_ prefix for callback params to prevent Terser from minifying
+  // to single letters that shadow math functions (ri, r1, r2) due to mJS scoping bug
   Shelly.call('Temperature.GetStatus', { id: C.sys_sensAirId }, function ($_rAir) {
     // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Main loop orchestration
-    Shelly.call('Temperature.GetStatus', { id: C.sys_sensEvapId }, function ($_rEvap) {
+    Shelly.call('Temperature.GetStatus', { id: C.sys_sensEvpId }, function ($_rEvap) {
 
       let tAirRaw = null
       let tEvap = null
@@ -97,13 +97,13 @@ function mainLoopTick() {
         // 6. POWER MONITORING (if PM available)
         if (V.hw_hasPM && S.sys_isRelayOn) {
           let runDur = V.lop_nowTs - S.sys_relayOnTs
-          // ! CRITICAL: setRelay must be called to update state on detection
+          // CRITICAL: setRelay must be called to update state on detection
           if (checkLockedRotor(swWatts, runDur)) {
             setRelay(false, V.lop_nowTs, 0, 0, true)
           } else if (checkGhostRun(swWatts, runDur)) {
             setRelay(false, V.lop_nowTs, 0, 0, true)
           } else if (runDur > C.pwr_startMaskSec && swWatts >= C.pwr_runMinW) {
-            // ? Compressor running normally - reset ghost count
+            // Compressor running normally - reset ghost count
             resetGhostCount()
           }
         } else if (!S.sys_isRelayOn) {
@@ -159,8 +159,8 @@ function mainLoopTick() {
       let isLimp = (V.sys_alarm === ALM.FAIL || V.sys_alarm === ALM.STUCK)
       let switchResult = executeSwitchDecision(mode.wantOn, V.lop_nowTs, V.sns_airSmoothDeg, tEvap, isLimp)
 
-      // ? Update status from mode determination only if NO action was taken.
-      // ? When blocked OR switched, executeSwitchDecision already set correct status.
+      // Update status from mode determination only if NO action was taken.
+      // When blocked OR switched, executeSwitchDecision already set correct status.
       if (!switchResult.blocked && !switchResult.switched) {
         V.sys_status = mode.status
         if (mode.reason !== RSN.NONE) V.sys_statusReason = mode.reason
@@ -179,13 +179,13 @@ function mainLoopTick() {
 }
 
 // ----------------------------------------------------------
-// * LOOP CONTROL
-// ? Start and stop the main loop timer.
+// LOOP CONTROL
+// Start and stop the main loop timer.
 // ----------------------------------------------------------
 
 /**
- * * START MAIN LOOP
- * ? Initializes the repeating timer for main loop execution.
+ * START MAIN LOOP
+ * Initializes the repeating timer for main loop execution.
  */
 function startMainLoop() {
   if (loopTimer !== null) {
@@ -198,8 +198,8 @@ function startMainLoop() {
 }
 
 /**
- * * STOP MAIN LOOP
- * ? Clears the timer to stop loop execution.
+ * STOP MAIN LOOP
+ * Clears the timer to stop loop execution.
  */
 function stopMainLoop() {
   if (loopTimer !== null) {
@@ -210,8 +210,8 @@ function stopMainLoop() {
 }
 
 /**
- * * IS LOOP RUNNING
- * ? Returns true if main loop timer is active.
+ * IS LOOP RUNNING
+ * Returns true if main loop timer is active.
  *
  * @returns {boolean} - True if running
  */
@@ -220,7 +220,7 @@ function isLoopRunning() {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export {

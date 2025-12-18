@@ -1,6 +1,6 @@
 // ==============================================================================
-// * ALARM TESTS
-// ? Validates alarm detection, severity mapping, and fault logging.
+// ALARM TESTS
+// Validates alarm detection, severity mapping, and fault logging.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -35,7 +35,7 @@ describe('Alarms', () => {
     }
 
     // Create mock volatile state
-    // ? alarm_highTimer is now module-local in alarms.js
+    // alarm_highTimer is now module-local in alarms.js
     mockV = {
       sys_alarm: 'NONE',
       sns_airSmoothDeg: 5.0,
@@ -48,9 +48,9 @@ describe('Alarms', () => {
     // Create mock config
     mockC = {
       sys_loopSec: 5,
-      alarm_highEnable: true,
-      alarm_highDeg: 15.0,
-      alarm_highDelaySec: 300,
+      alm_highEnable: true,
+      alm_highDeg: 15.0,
+      alm_highDelaySec: 300,
     }
 
     // Mock global print
@@ -94,7 +94,7 @@ describe('Alarms', () => {
   })
 
   // ----------------------------------------------------------
-  // * GET SEVERITY TESTS
+  // GET SEVERITY TESTS
   // ----------------------------------------------------------
 
   describe('getSeverity', () => {
@@ -132,7 +132,7 @@ describe('Alarms', () => {
   })
 
   // ----------------------------------------------------------
-  // * FORMAT FAULT DETAIL TESTS
+  // FORMAT FAULT DETAIL TESTS
   // ----------------------------------------------------------
 
   describe('formatFaultDetail', () => {
@@ -181,7 +181,7 @@ describe('Alarms', () => {
   })
 
   // ----------------------------------------------------------
-  // * RECORD FAULT TESTS
+  // RECORD FAULT TESTS
   // ----------------------------------------------------------
 
   describe('recordFault', () => {
@@ -239,7 +239,7 @@ describe('Alarms', () => {
   })
 
   // ----------------------------------------------------------
-  // * PROCESS ALARM EDGES TESTS
+  // PROCESS ALARM EDGES TESTS
   // ----------------------------------------------------------
 
   describe('processAlarmEdges', () => {
@@ -308,7 +308,7 @@ describe('Alarms', () => {
   })
 
   // ----------------------------------------------------------
-  // * CLEAR NON-FATAL ALARMS TESTS
+  // CLEAR NON-FATAL ALARMS TESTS
   // ----------------------------------------------------------
 
   describe('clearNonFatalAlarms', () => {
@@ -350,7 +350,7 @@ describe('Alarms', () => {
   })
 
   // ----------------------------------------------------------
-  // * APPLY SENSOR ALARMS TESTS
+  // APPLY SENSOR ALARMS TESTS
   // ----------------------------------------------------------
 
   describe('applySensorAlarms', () => {
@@ -366,8 +366,8 @@ describe('Alarms', () => {
       expect(mockV.sys_alarm).toBe(mockALM.STUCK)
     })
 
-    // ? Design decision: FAIL takes priority over STUCK
-    // ? A sensor returning null is worse than a frozen value
+    // Design decision: FAIL takes priority over STUCK
+    // A sensor returning null is worse than a frozen value
     it('should apply FAIL over STUCK (FAIL is worse)', () => {
       mockV.sys_alarm = mockALM.NONE
       applySensorAlarms(true, true)
@@ -382,8 +382,8 @@ describe('Alarms', () => {
   })
 
   // ----------------------------------------------------------
-  // * CHECK HIGH TEMP ALARM TESTS
-  // ? Timer is now module-local, so tests verify behavior via multiple calls
+  // CHECK HIGH TEMP ALARM TESTS
+  // Timer is now module-local, so tests verify behavior via multiple calls
   // ----------------------------------------------------------
 
   describe('checkHighTempAlarm', () => {
@@ -394,8 +394,8 @@ describe('Alarms', () => {
     })
 
     it('should trigger alarm after delay exceeded via multiple calls', () => {
-      // ? mockC.alarm_highDelaySec = 300, sys_loopSec = 5
-      // ? Need > 60 calls (300/5 = 60) to exceed delay
+      // mockC.alarm_highDelaySec = 300, sys_loopSec = 5
+      // Need > 60 calls (300/5 = 60) to exceed delay
       for (let i = 0; i < 60; i++) {
         checkHighTempAlarm(16.0, false)
       }
@@ -439,7 +439,7 @@ describe('Alarms', () => {
     })
 
     it('should not trigger when disabled', () => {
-      mockC.alarm_highEnable = false
+      mockC.alm_highEnable = false
       for (let i = 0; i < 61; i++) {
         checkHighTempAlarm(16.0, false)
       }

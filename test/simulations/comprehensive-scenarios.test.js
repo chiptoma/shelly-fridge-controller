@@ -1,14 +1,14 @@
 // ==============================================================================
-// * COMPREHENSIVE SCENARIO SIMULATIONS
-// ? Extended simulations for edge cases, combined failures, and long-running tests.
-// ? Ensures the fridge controller handles all real-world scenarios correctly.
+// COMPREHENSIVE SCENARIO SIMULATIONS
+// Extended simulations for edge cases, combined failures, and long-running tests.
+// Ensures the fridge controller handles all real-world scenarios correctly.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * TEST HELPERS
+// TEST HELPERS
 // ----------------------------------------------------------
 
 async function setupController(runtime, options = {}) {
@@ -115,7 +115,7 @@ function advanceTime(runtime, seconds) {
 }
 
 // ----------------------------------------------------------
-// * HIGH TEMPERATURE ALARM SCENARIOS
+// HIGH TEMPERATURE ALARM SCENARIOS
 // ----------------------------------------------------------
 
 describe('High Temperature Alarm: Sustained High Temp', () => {
@@ -129,8 +129,8 @@ describe('High Temperature Alarm: Sustained High Temp', () => {
   it('should trigger HIGH alarm after sustained high temperature', async () => {
     const script = await setupController(runtime, {
       config: {
-        alarm_highDeg: 10,
-        alarm_highDelaySec: 300, // 5 minutes
+        alm_highDeg: 10,
+        alm_highDelaySec: 300, // 5 minutes
       },
       state: {
         sys_isRelayOn: true,
@@ -155,8 +155,8 @@ describe('High Temperature Alarm: Sustained High Temp', () => {
   it('should NOT trigger HIGH alarm during scheduled defrost', async () => {
     const script = await setupController(runtime, {
       config: {
-        alarm_highDeg: 10,
-        alarm_highDelaySec: 300,
+        alm_highDeg: 10,
+        alm_highDelaySec: 300,
       },
     })
 
@@ -176,15 +176,15 @@ describe('High Temperature Alarm: Sustained High Temp', () => {
   it('should clear HIGH alarm when temperature drops', async () => {
     const script = await setupController(runtime, {
       config: {
-        alarm_highDeg: 10,
-        alarm_highDelaySec: 60,
+        alm_highDeg: 10,
+        alm_highDelaySec: 60,
       },
     })
 
     script.V.sns_airSmoothDeg = 12.0
 
-    // ? Timer is now module-local - accumulate naturally
-    // ? alarm_highDelaySec = 60, sys_loopSec = 5, need 60/5 = 12 calls to trigger
+    // Timer is now module-local - accumulate naturally
+    // alm_highDelaySec = 60, sys_loopSec = 5, need 60/5 = 12 calls to trigger
     for (let i = 0; i < 15; i++) {
       simulateLoopTick(script, runtime, { air: 12.0, evap: -10 })
       script.alarms.checkHighTempAlarm(script.V.sns_airSmoothDeg, false)
@@ -203,7 +203,7 @@ describe('High Temperature Alarm: Sustained High Temp', () => {
 })
 
 // ----------------------------------------------------------
-// * POWER MONITORING FAULT SCENARIOS
+// POWER MONITORING FAULT SCENARIOS
 // ----------------------------------------------------------
 
 describe('Power Monitoring: Ghost Run Detection', () => {
@@ -353,7 +353,7 @@ describe('Power Monitoring: Locked Rotor Detection', () => {
 })
 
 // ----------------------------------------------------------
-// * MULTI-DAY STABILITY SIMULATIONS
+// MULTI-DAY STABILITY SIMULATIONS
 // ----------------------------------------------------------
 
 describe('Multi-Day Stability: 24-Hour Duty Cycle', () => {
@@ -367,11 +367,11 @@ describe('Multi-Day Stability: 24-Hour Duty Cycle', () => {
   it('should maintain stable duty cycle over 1 hour simulation', async () => {
     const script = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
-        ctrl_hystDeg: 1.0,
+        ctl_targetDeg: 4.0,
+        ctl_hystDeg: 1.0,
         sys_loopSec: 5,
-        comp_minOnSec: 60,
-        comp_minOffSec: 60,
+        cmp_minOnSec: 60,
+        cmp_minOffSec: 60,
       },
       state: {
         sys_isRelayOn: false,
@@ -428,7 +428,7 @@ describe('Multi-Day Stability: 24-Hour Duty Cycle', () => {
 })
 
 // ----------------------------------------------------------
-// * STATS RECOVERY ACROSS REBOOTS
+// STATS RECOVERY ACROSS REBOOTS
 // ----------------------------------------------------------
 
 describe('Stats Recovery: Duty Cycle Accuracy', () => {
@@ -505,7 +505,7 @@ describe('Stats Recovery: Duty Cycle Accuracy', () => {
 })
 
 // ----------------------------------------------------------
-// * COMBINED FAILURE SCENARIOS
+// COMBINED FAILURE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Combined Failures: Sensor Failure During Cooling', () => {
@@ -520,8 +520,8 @@ describe('Combined Failures: Sensor Failure During Cooling', () => {
     const script = await setupController(runtime, {
       config: {
         sys_sensFailLimit: 3,
-        limp_onSec: 300,
-        limp_offSec: 600,
+        lmp_onSec: 300,
+        lmp_offSec: 600,
       },
       state: {
         sys_isRelayOn: true, // Cooling in progress
@@ -597,10 +597,10 @@ describe('Combined Failures: Door Open + High Temp', () => {
   it('should handle prolonged door open causing high temp alarm', async () => {
     const script = await setupController(runtime, {
       config: {
-        door_rateDegMin: 0.5,
-        door_pauseSec: 60,
-        alarm_highDeg: 12,
-        alarm_highDelaySec: 120,
+        dor_rateDegMin: 0.5,
+        dor_pauseSec: 60,
+        alm_highDeg: 12,
+        alm_highDelaySec: 120,
       },
       state: {
         sys_isRelayOn: false,
@@ -632,7 +632,7 @@ describe('Combined Failures: Door Open + High Temp', () => {
 })
 
 // ----------------------------------------------------------
-// * EXTENDED DOOR OPEN SCENARIOS
+// EXTENDED DOOR OPEN SCENARIOS
 // ----------------------------------------------------------
 
 describe('Door Open: Extended Duration', () => {
@@ -646,11 +646,11 @@ describe('Door Open: Extended Duration', () => {
   it('should pause cooling during door detection period', async () => {
     const script = await setupController(runtime, {
       config: {
-        door_enable: true,
-        door_rateDegMin: 0.5, // Rate threshold for door detection
-        door_pauseSec: 60,
-        ctrl_targetDeg: 4.0,
-        ctrl_hystDeg: 1.0,
+        dor_enable: true,
+        dor_rateDegMin: 0.5, // Rate threshold for door detection
+        dor_pauseSec: 60,
+        ctl_targetDeg: 4.0,
+        ctl_hystDeg: 1.0,
         sys_loopSec: 5,
       },
       state: {
@@ -687,14 +687,14 @@ describe('Door Open: Extended Duration', () => {
   it('should resume cooling after door closes and pause expires', async () => {
     const script = await setupController(runtime, {
       config: {
-        door_rateDegMin: 0.5,
-        door_pauseSec: 30,
-        ctrl_targetDeg: 4.0,
-        ctrl_hystDeg: 1.0,
-        adapt_enable: false,      // Use fixed hysteresis for predictable test
-        comp_minOffSec: 0,        // Disable min-off guard for this test
-        defr_schedEnable: false,  // Disable scheduled defrost
-        defr_dynEnable: false,    // Disable dynamic defrost
+        dor_rateDegMin: 0.5,
+        dor_pauseSec: 30,
+        ctl_targetDeg: 4.0,
+        ctl_hystDeg: 1.0,
+        adt_enable: false,      // Use fixed hysteresis for predictable test
+        cmp_minOffSec: 0,        // Disable min-off guard for this test
+        dfr_schedEnable: false,  // Disable scheduled defrost
+        dfr_dynEnable: false,    // Disable dynamic defrost
       },
       state: {
         sys_isRelayOn: false,
@@ -721,7 +721,7 @@ describe('Door Open: Extended Duration', () => {
 })
 
 // ----------------------------------------------------------
-// * FREEZE PROTECTION EDGE CASES
+// FREEZE PROTECTION EDGE CASES
 // ----------------------------------------------------------
 
 describe('Freeze Protection: Edge Cases', () => {
@@ -735,9 +735,9 @@ describe('Freeze Protection: Edge Cases', () => {
   it('should stop cooling when approaching freeze limit', async () => {
     const script = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
-        ctrl_hystDeg: 1.0,
-        comp_freezeCutDeg: 0.0,
+        ctl_targetDeg: 4.0,
+        ctl_hystDeg: 1.0,
+        cmp_freezeCutDeg: 0.0,
       },
       state: {
         sys_isRelayOn: true, // Cooling
@@ -759,12 +759,12 @@ describe('Freeze Protection: Edge Cases', () => {
 
     const script = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
-        ctrl_hystDeg: 1.0,
-        adapt_enable: false,      // Use fixed hysteresis for predictable test
-        comp_minOffSec: 180,      // 3 minutes minimum off time
-        defr_schedEnable: false,  // Disable scheduled defrost
-        defr_dynEnable: false,    // Disable dynamic defrost
+        ctl_targetDeg: 4.0,
+        ctl_hystDeg: 1.0,
+        adt_enable: false,      // Use fixed hysteresis for predictable test
+        cmp_minOffSec: 180,      // 3 minutes minimum off time
+        dfr_schedEnable: false,  // Disable scheduled defrost
+        dfr_dynEnable: false,    // Disable dynamic defrost
       },
       state: {
         sys_isRelayOn: false,
@@ -794,7 +794,7 @@ describe('Freeze Protection: Edge Cases', () => {
 })
 
 // ----------------------------------------------------------
-// * WELD DETECTION EDGE CASES
+// WELD DETECTION EDGE CASES
 // ----------------------------------------------------------
 
 describe('Weld Detection: Temperature Drift Scenarios', () => {
@@ -808,10 +808,10 @@ describe('Weld Detection: Temperature Drift Scenarios', () => {
   it('should detect weld when temp drops while relay supposedly OFF', async () => {
     const script = await setupController(runtime, {
       config: {
-        weld_enable: true,
-        weld_waitSec: 60,      // Start checking 1 min after OFF (shortened for test)
-        weld_winSec: 300,      // Stop checking 5 min after OFF
-        weld_dropDeg: 0.5,     // Alarm if temp drops 0.5C while OFF
+        wld_enable: true,
+        wld_waitSec: 60,      // Start checking 1 min after OFF (shortened for test)
+        wld_winSec: 300,      // Stop checking 5 min after OFF
+        wld_dropDeg: 0.5,     // Alarm if temp drops 0.5C while OFF
       },
       state: {
         sys_isRelayOn: false, // Software says OFF
@@ -824,7 +824,7 @@ describe('Weld Detection: Temperature Drift Scenarios', () => {
     advanceTime(runtime, 120) // 2 minutes - within window (60s < 120s < 300s)
 
     // Temp has dropped significantly (weld - compressor still running despite relay "off")
-    // Drop must be greater than weld_dropDeg (0.5)
+    // Drop must be greater than wld_dropDeg (0.5)
     const droppedTemp = 4.0 // Dropped 1.0°C from snapshot of 5.0°C
 
     script.protection.checkWeldDetection(droppedTemp, runtime.uptimeMs / 1000)
@@ -835,9 +835,9 @@ describe('Weld Detection: Temperature Drift Scenarios', () => {
   it('should NOT trigger weld if temp stable after relay off', async () => {
     const script = await setupController(runtime, {
       config: {
-        weld_dropDeg: 0.5,
-        weld_waitSec: 60,
-        weld_winSec: 300,
+        wld_dropDeg: 0.5,
+        wld_waitSec: 60,
+        wld_winSec: 300,
       },
       state: {
         sys_isRelayOn: false,
@@ -858,7 +858,7 @@ describe('Weld Detection: Temperature Drift Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * DEFROST CYCLE EDGE CASES
+// DEFROST CYCLE EDGE CASES
 // ----------------------------------------------------------
 
 describe('Defrost: Manual and Automatic Triggers', () => {
@@ -872,9 +872,9 @@ describe('Defrost: Manual and Automatic Triggers', () => {
   it('should trigger defrost when evap temp drops too low', async () => {
     const script = await setupController(runtime, {
       config: {
-        defr_dynEnable: true,
-        defr_dynTrigDeg: -20,
-        defr_dynDwellSec: 300,
+        dfr_dynEnable: true,
+        dfr_dynTrigDeg: -20,
+        dfr_dynDwellSec: 300,
       },
       state: {
         sys_isRelayOn: true,
@@ -891,9 +891,9 @@ describe('Defrost: Manual and Automatic Triggers', () => {
   it('should exit defrost when evap temp rises', async () => {
     const script = await setupController(runtime, {
       config: {
-        defr_dynEnable: true,
-        defr_dynEndDeg: 0, // Exit when evap >= 0
-        defr_dynDwellSec: 30,
+        dfr_dynEnable: true,
+        dfr_dynEndDeg: 0, // Exit when evap >= 0
+        dfr_dynDwellSec: 30,
         sys_loopSec: 5,
       },
       state: {
@@ -901,9 +901,9 @@ describe('Defrost: Manual and Automatic Triggers', () => {
       },
     })
 
-    // ? defr_dwellTimer is now module-local - accumulate naturally
-    // ? defr_dynDwellSec = 30, sys_loopSec = 5, need 30/5 = 6 calls to complete
-    const tEvap = 1.0 // Above exit threshold (defr_dynEndDeg = 0)
+    // defr_dwellTimer is now module-local - accumulate naturally
+    // dfr_dynDwellSec = 30, sys_loopSec = 5, need 30/5 = 6 calls to complete
+    const tEvap = 1.0 // Above exit threshold (dfr_dynEndDeg = 0)
 
     // Accumulate dwell time with warm evap
     for (let i = 0; i < 7; i++) {
@@ -915,7 +915,7 @@ describe('Defrost: Manual and Automatic Triggers', () => {
 })
 
 // ----------------------------------------------------------
-// * TURBO MODE INTERACTIONS
+// TURBO MODE INTERACTIONS
 // ----------------------------------------------------------
 
 describe('Turbo Mode: Override Behavior', () => {
@@ -929,17 +929,17 @@ describe('Turbo Mode: Override Behavior', () => {
   it('should force cooling during turbo mode regardless of temp', async () => {
     const script = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
-        ctrl_hystDeg: 1.0,
-        adapt_enable: false,      // Use fixed hysteresis for predictable test
-        turbo_enable: true,
-        turbo_maxTimeSec: 1800,
-        turbo_targetDeg: 2.0,
+        ctl_targetDeg: 4.0,
+        ctl_hystDeg: 1.0,
+        adt_enable: false,      // Use fixed hysteresis for predictable test
+        trb_enable: true,
+        trb_maxTimeSec: 1800,
+        trb_targetDeg: 2.0,
         turbo_hystDeg: 0.5,
-        comp_minOffSec: 0,        // Disable min-off guard for this test
+        cmp_minOffSec: 0,        // Disable min-off guard for this test
         sys_loopSec: 5,
-        defr_schedEnable: false,  // Disable scheduled defrost
-        defr_dynEnable: false,    // Disable dynamic defrost
+        dfr_schedEnable: false,  // Disable scheduled defrost
+        dfr_dynEnable: false,    // Disable dynamic defrost
       },
       state: {
         sys_isRelayOn: false,
@@ -964,9 +964,9 @@ describe('Turbo Mode: Override Behavior', () => {
   it('should respect min-on protection even in turbo mode', async () => {
     const script = await setupController(runtime, {
       config: {
-        comp_minOnSec: 120,
-        turbo_enable: true,
-        turbo_targetDeg: 2.0,
+        cmp_minOnSec: 120,
+        trb_enable: true,
+        trb_targetDeg: 2.0,
         turbo_hystDeg: 0.5,
       },
       state: {

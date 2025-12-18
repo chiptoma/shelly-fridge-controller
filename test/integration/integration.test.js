@@ -1,15 +1,15 @@
 // ==============================================================================
-// * INTEGRATION TESTS
-// ? End-to-end scenarios testing the fridge controller behavior.
-// ? Uses the Shelly simulator to run complete operational scenarios.
+// INTEGRATION TESTS
+// End-to-end scenarios testing the fridge controller behavior.
+// Uses the Shelly simulator to run complete operational scenarios.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * TEST SETUP
-// ? Loads the fridge controller into the simulator.
+// TEST SETUP
+// Loads the fridge controller into the simulator.
 // ----------------------------------------------------------
 
 /**
@@ -50,8 +50,8 @@ async function setupFridgeController(runtime) {
 }
 
 // ----------------------------------------------------------
-// * SHELLY RUNTIME TESTS
-// ? Basic tests for the simulator itself.
+// SHELLY RUNTIME TESTS
+// Basic tests for the simulator itself.
 // ----------------------------------------------------------
 
 describe('ShellyRuntime', () => {
@@ -206,8 +206,8 @@ describe('ShellyRuntime', () => {
 })
 
 // ----------------------------------------------------------
-// * FRIDGE CONTROLLER INTEGRATION SCENARIOS
-// ? These test the actual fridge controller behavior.
+// FRIDGE CONTROLLER INTEGRATION SCENARIOS
+// These test the actual fridge controller behavior.
 // ----------------------------------------------------------
 
 describe('Fridge Controller Integration', () => {
@@ -234,9 +234,9 @@ describe('Fridge Controller Integration', () => {
 
   describe('Config Module', () => {
     it('should have default config values', () => {
-      expect(script.C.ctrl_targetDeg).toBe(4.0)
-      expect(script.C.comp_minOnSec).toBe(180)
-      expect(script.C.comp_minOffSec).toBe(300)
+      expect(script.C.ctl_targetDeg).toBe(4.0)
+      expect(script.C.cmp_minOnSec).toBe(180)
+      expect(script.C.cmp_minOffSec).toBe(300)
     })
 
     it('should validate config bounds', async () => {
@@ -267,7 +267,7 @@ describe('Fridge Controller Integration', () => {
 })
 
 // ----------------------------------------------------------
-// * PROTECTION MODULE INTEGRATION
+// PROTECTION MODULE INTEGRATION
 // ----------------------------------------------------------
 
 describe('Protection Integration', () => {
@@ -296,7 +296,7 @@ describe('Protection Integration', () => {
     expect(canTurnOn(now)).toBe(false)
 
     // Should be able to turn on after minOffSec
-    expect(canTurnOn(now + C.comp_minOffSec)).toBe(true)
+    expect(canTurnOn(now + C.cmp_minOffSec)).toBe(true)
   })
 
   it('should check weld detection correctly', async () => {
@@ -311,9 +311,9 @@ describe('Protection Integration', () => {
     S.sys_isRelayOn = false
     S.sys_relayOffTs = 0
     S.wld_airSnapDeg = 10.0
-    C.weld_waitSec = 60
-    C.weld_winSec = 300
-    C.weld_dropDeg = 1.0
+    C.wld_waitSec = 60
+    C.wld_winSec = 300
+    C.wld_dropDeg = 1.0
 
     // Check within detection window (60-300s after off)
     // now=100, offDur=100, inWindow = (100 > 60 && 100 < 300) = true
@@ -326,7 +326,7 @@ describe('Protection Integration', () => {
 })
 
 // ----------------------------------------------------------
-// * SENSOR MODULE INTEGRATION
+// SENSOR MODULE INTEGRATION
 // ----------------------------------------------------------
 
 describe('Sensor Integration', () => {
@@ -379,7 +379,7 @@ describe('Sensor Integration', () => {
 })
 
 // ----------------------------------------------------------
-// * CONTROL MODULE INTEGRATION
+// CONTROL MODULE INTEGRATION
 // ----------------------------------------------------------
 
 describe('Control Integration', () => {
@@ -424,7 +424,7 @@ describe('Control Integration', () => {
 })
 
 // ----------------------------------------------------------
-// * FEATURES MODULE INTEGRATION
+// FEATURES MODULE INTEGRATION
 // ----------------------------------------------------------
 
 describe('Features Integration', () => {
@@ -465,11 +465,11 @@ describe('Features Integration', () => {
     checkTurboSwitch(true)
 
     expect(V.trb_isActive).toBe(true)
-    expect(V.trb_remSec).toBe(C.turbo_maxTimeSec)
+    expect(V.trb_remSec).toBe(C.trb_maxTimeSec)
 
     // Handle turbo should return override params
     const turbo = handleTurboMode(5)
-    expect(turbo.target).toBe(C.turbo_targetDeg)
+    expect(turbo.target).toBe(C.trb_targetDeg)
   })
 
   it('should detect door open events', async () => {
@@ -490,12 +490,12 @@ describe('Features Integration', () => {
 
     expect(detected).toBe(true)
     // Timer is set to pauseSec then immediately decremented by loopSec
-    expect(V.dor_pauseRemSec).toBe(C.door_pauseSec - C.sys_loopSec)
+    expect(V.dor_pauseRemSec).toBe(C.dor_pauseSec - C.sys_loopSec)
   })
 })
 
 // ----------------------------------------------------------
-// * METRICS MODULE INTEGRATION
+// METRICS MODULE INTEGRATION
 // ----------------------------------------------------------
 
 describe('Metrics Integration', () => {
@@ -523,7 +523,7 @@ describe('Metrics Integration', () => {
     }
 
     expect(S.sts_lifeRunSec).toBe(3600)
-    // ? getLifetimeRunHours is internal to metrics.js, verify via S.sts_lifeRunSec
+    // getLifetimeRunHours is internal to metrics.js, verify via S.sts_lifeRunSec
     expect(S.sts_lifeRunSec / 3600).toBeCloseTo(1.0, 1)
   })
 
@@ -552,7 +552,7 @@ describe('Metrics Integration', () => {
 })
 
 // ----------------------------------------------------------
-// * ALARM MODULE INTEGRATION
+// ALARM MODULE INTEGRATION
 // ----------------------------------------------------------
 
 describe('Alarm Integration', () => {
@@ -601,8 +601,8 @@ describe('Alarm Integration', () => {
     const { ALM } = await import('../../src/constants.js')
 
     Object.assign(C, DEFAULT)
-    // ? Use shorter delay for testing
-    C.alarm_highDelaySec = 30
+    // Use shorter delay for testing
+    C.alm_highDelaySec = 30
     C.sys_loopSec = 10
     V.sys_alarm = ALM.NONE
     V.trb_isActive = false
@@ -617,19 +617,19 @@ describe('Alarm Integration', () => {
     checkHighTempAlarm(12.0, false) // 30s
     expect(V.sys_alarm).not.toBe(ALM.HIGH)
 
-    // ? Fourth call exceeds 30s delay threshold
+    // Fourth call exceeds 30s delay threshold
     checkHighTempAlarm(12.0, false) // 40s > 30s
     expect(V.sys_alarm).toBe(ALM.HIGH)
   })
 })
 
 // ==============================================================================
-// * COMPREHENSIVE SCENARIO TESTS
-// ? End-to-end tests covering every logical path and edge case.
+// COMPREHENSIVE SCENARIO TESTS
+// End-to-end tests covering every logical path and edge case.
 // ==============================================================================
 
 // ----------------------------------------------------------
-// * FREEZE PROTECTION SCENARIOS
+// FREEZE PROTECTION SCENARIOS
 // ----------------------------------------------------------
 
 describe('Freeze Protection Scenarios', () => {
@@ -694,7 +694,7 @@ describe('Freeze Protection Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * MAX RUN AND TIMING GUARD SCENARIOS
+// MAX RUN AND TIMING GUARD SCENARIOS
 // ----------------------------------------------------------
 
 describe('Max Run and Timing Guard Scenarios', () => {
@@ -717,7 +717,7 @@ describe('Max Run and Timing Guard Scenarios', () => {
     V.trb_isActive = false
 
     const now = Date.now() / 1000
-    S.sys_relayOnTs = now - C.comp_maxRunSec - 1 // Just past max run
+    S.sys_relayOnTs = now - C.cmp_maxRunSec - 1 // Just past max run
 
     expect(isMaxRunExceeded(now)).toBe(true)
   })
@@ -733,7 +733,7 @@ describe('Max Run and Timing Guard Scenarios', () => {
     V.trb_isActive = true // Turbo exempts max run
 
     const now = Date.now() / 1000
-    S.sys_relayOnTs = now - C.comp_maxRunSec - 1000
+    S.sys_relayOnTs = now - C.cmp_maxRunSec - 1000
 
     expect(isMaxRunExceeded(now)).toBe(false)
   })
@@ -750,7 +750,7 @@ describe('Max Run and Timing Guard Scenarios', () => {
     S.sys_relayOffTs = now - 100 // 100 seconds ago
 
     const remaining = getTimeUntilOnAllowed(now)
-    expect(remaining).toBe(C.comp_minOffSec - 100)
+    expect(remaining).toBe(C.cmp_minOffSec - 100)
   })
 
   it('should calculate time until turn-off allowed', async () => {
@@ -765,7 +765,7 @@ describe('Max Run and Timing Guard Scenarios', () => {
     S.sys_relayOnTs = now - 60 // 60 seconds ago
 
     const remaining = getTimeUntilOffAllowed(now)
-    expect(remaining).toBe(C.comp_minOnSec - 60)
+    expect(remaining).toBe(C.cmp_minOnSec - 60)
   })
 
   it('should return 0 when timing already satisfied', async () => {
@@ -777,8 +777,8 @@ describe('Max Run and Timing Guard Scenarios', () => {
     Object.assign(C, DEFAULT)
 
     const now = Date.now() / 1000
-    S.sys_relayOffTs = now - C.comp_minOffSec - 100
-    S.sys_relayOnTs = now - C.comp_minOnSec - 100
+    S.sys_relayOffTs = now - C.cmp_minOffSec - 100
+    S.sys_relayOnTs = now - C.cmp_minOnSec - 100
 
     expect(getTimeUntilOnAllowed(now)).toBe(0)
     expect(getTimeUntilOffAllowed(now)).toBe(0)
@@ -786,7 +786,7 @@ describe('Max Run and Timing Guard Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * SENSOR FAILURE CASCADE SCENARIOS
+// SENSOR FAILURE CASCADE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Sensor Failure Cascade Scenarios', () => {
@@ -830,7 +830,7 @@ describe('Sensor Failure Cascade Scenarios', () => {
     checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', startTime)
 
     // Sensor reads same value for longer than threshold
-    const stuckTime = startTime + C.sens_stuckTimeSec + 1
+    const stuckTime = startTime + C.sns_stuckTimeSec + 1
     const result = checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', stuckTime)
 
     expect(result).toBe(true)
@@ -902,7 +902,7 @@ describe('Sensor Failure Cascade Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * FULL COOLING CYCLE SCENARIOS
+// FULL COOLING CYCLE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Full Cooling Cycle Scenarios', () => {
@@ -968,7 +968,7 @@ describe('Full Cooling Cycle Scenarios', () => {
     V.sys_alarm = 'NONE'
 
     const now = Date.now() / 1000
-    S.sys_relayOffTs = now - C.comp_minOffSec - 10 // Timing satisfied
+    S.sys_relayOffTs = now - C.cmp_minOffSec - 10 // Timing satisfied
 
     // Should be able to turn on
     const result = executeSwitchDecision(true, now, 5.0, -10.0, false)
@@ -1020,7 +1020,7 @@ describe('Full Cooling Cycle Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * DEFROST CYCLE SCENARIOS
+// DEFROST CYCLE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Defrost Cycle Scenarios', () => {
@@ -1091,11 +1091,11 @@ describe('Defrost Cycle Scenarios', () => {
 
     // Evap has warmed up to end temp
     // Call multiple times to accumulate dwell timer
-    for (let i = 0; i <= C.defr_dynDwellSec / C.sys_loopSec; i++) {
-      handleDynamicDefrost(C.defr_dynEndDeg)
+    for (let i = 0; i <= C.dfr_dynDwellSec / C.sys_loopSec; i++) {
+      handleDynamicDefrost(C.dfr_dynEndDeg)
     }
 
-    // ? Verify behavior: defrost should be complete
+    // Verify behavior: defrost should be complete
     expect(S.dfr_isActive).toBe(false)
   })
 
@@ -1106,29 +1106,29 @@ describe('Defrost Cycle Scenarios', () => {
     const { DEFAULT } = await import('../../src/config.js')
 
     Object.assign(C, DEFAULT)
-    // ? Use short dwell for testing
-    C.defr_dynDwellSec = 30
+    // Use short dwell for testing
+    C.dfr_dynDwellSec = 30
     C.sys_loopSec = 10
     S.dfr_isActive = true
     V.trb_isActive = false
 
-    // ? Accumulate some dwell time with warm evap
-    handleDynamicDefrost(C.defr_dynEndDeg) // 10s
-    handleDynamicDefrost(C.defr_dynEndDeg) // 20s
+    // Accumulate some dwell time with warm evap
+    handleDynamicDefrost(C.dfr_dynEndDeg) // 10s
+    handleDynamicDefrost(C.dfr_dynEndDeg) // 20s
 
-    // ? Evap drops below end threshold - timer should reset
-    handleDynamicDefrost(C.defr_dynEndDeg - 1)
+    // Evap drops below end threshold - timer should reset
+    handleDynamicDefrost(C.dfr_dynEndDeg - 1)
 
-    // ? Continue with warm evap - should need full dwell again
-    // ? If timer didn't reset, defrost would complete after just 1 more call
-    // ? defr_dynDwellSec = 30, sys_loopSec = 10, need >= 30s (3 calls) to complete
-    handleDynamicDefrost(C.defr_dynEndDeg) // 10s (after reset)
+    // Continue with warm evap - should need full dwell again
+    // If timer didn't reset, defrost would complete after just 1 more call
+    // dfr_dynDwellSec = 30, sys_loopSec = 10, need >= 30s (3 calls) to complete
+    handleDynamicDefrost(C.dfr_dynEndDeg) // 10s (after reset)
     expect(S.dfr_isActive).toBe(true) // Still in defrost
 
-    handleDynamicDefrost(C.defr_dynEndDeg) // 20s
+    handleDynamicDefrost(C.dfr_dynEndDeg) // 20s
     expect(S.dfr_isActive).toBe(true) // Still in defrost
 
-    handleDynamicDefrost(C.defr_dynEndDeg) // 30s = threshold, defrost completes
+    handleDynamicDefrost(C.dfr_dynEndDeg) // 30s = threshold, defrost completes
     expect(S.dfr_isActive).toBe(false) // Now complete (>= threshold)
   })
 
@@ -1153,7 +1153,7 @@ describe('Defrost Cycle Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * POWER MONITORING FAULT SCENARIOS
+// POWER MONITORING FAULT SCENARIOS
 // ----------------------------------------------------------
 
 describe('Power Monitoring Fault Scenarios', () => {
@@ -1252,7 +1252,7 @@ describe('Power Monitoring Fault Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * ADAPTIVE HYSTERESIS EDGE CASES
+// ADAPTIVE HYSTERESIS EDGE CASES
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis Edge Cases', () => {
@@ -1274,8 +1274,8 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     S.adt_hystDeg = 1.0
     V.trb_isActive = false
 
-    // ? New algorithm uses TOTAL cycle time
-    // ? totalCycle = 200 + 200 = 400s = 6.7 min < 10 min (adapt_targetMinSec) → WIDEN
+    // New algorithm uses TOTAL cycle time
+    // totalCycle = 200 + 200 = 400s = 6.7 min < 10 min (adapt_targetMinSec) → WIDEN
     const result = adaptHysteresis(200, 200, 5)
 
     expect(result).toBe('widen')
@@ -1294,9 +1294,9 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     V.adt_lastDir = null
     V.adt_consecCnt = 0
 
-    // ? New algorithm requires trend confirmation (2 consecutive triggers)
-    // ? totalCycle = 2300s = 38 min > maxCycle (28 min)
-    // ? avgOff (1500) > avgOn (800) → system has idle headroom → can tighten
+    // New algorithm requires trend confirmation (2 consecutive triggers)
+    // totalCycle = 2300s = 38 min > maxCycle (28 min)
+    // avgOff (1500) > avgOn (800) → system has idle headroom → can tighten
 
     // First call - starts tracking
     let result = adaptHysteresis(800, 1500, 3) // 35% duty, idle headroom
@@ -1322,7 +1322,7 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     S.adt_hystDeg = 3.5
     V.trb_isActive = false
 
-    // ? New algorithm: totalCycle = 200 + 200 = 400s < 600s → would widen, but freeze guard blocks
+    // New algorithm: totalCycle = 200 + 200 = 400s < 600s → would widen, but freeze guard blocks
     const result = adaptHysteresis(200, 200, 5)
 
     expect(result).toBe('blocked')
@@ -1362,7 +1362,7 @@ describe('Adaptive Hysteresis Edge Cases', () => {
     expect(result0).toBe(null)
 
     // 1 cycle with short cycle time - should widen (danger zone)
-    // ? totalCycle = 600s < dangerZone (720s) → immediate widen
+    // totalCycle = 600s < dangerZone (720s) → immediate widen
     const result1 = adaptHysteresis(300, 300, 1)
     expect(result1).toBe('widen')
   })
@@ -1377,11 +1377,11 @@ describe('Adaptive Hysteresis Edge Cases', () => {
 
     // Below minimum
     S.adt_hystDeg = 0.1
-    expect(getEffectiveHysteresis()).toBe(C.adapt_hystMinDeg)
+    expect(getEffectiveHysteresis()).toBe(C.adt_hystMinDeg)
 
     // Above maximum
     S.adt_hystDeg = 10.0
-    expect(getEffectiveHysteresis()).toBe(C.adapt_hystMaxDeg)
+    expect(getEffectiveHysteresis()).toBe(C.adt_hystMaxDeg)
 
     // Within bounds
     S.adt_hystDeg = 1.5
@@ -1390,7 +1390,7 @@ describe('Adaptive Hysteresis Edge Cases', () => {
 })
 
 // ----------------------------------------------------------
-// * ALARM STATE MACHINE SCENARIOS
+// ALARM STATE MACHINE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Alarm State Machine Scenarios', () => {
@@ -1503,7 +1503,7 @@ describe('Alarm State Machine Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * WELD DETECTION SCENARIOS
+// WELD DETECTION SCENARIOS
 // ----------------------------------------------------------
 
 describe('Weld Detection Scenarios', () => {
@@ -1527,7 +1527,7 @@ describe('Weld Detection Scenarios', () => {
     S.wld_airSnapDeg = 10.0
 
     // Check before window starts (< waitSec)
-    const result = checkWeldDetection(5.0, C.weld_waitSec - 10)
+    const result = checkWeldDetection(5.0, C.wld_waitSec - 10)
 
     expect(result).toBe(false)
   })
@@ -1544,7 +1544,7 @@ describe('Weld Detection Scenarios', () => {
     S.wld_airSnapDeg = 10.0
 
     // Check after window ends (> winSec)
-    const result = checkWeldDetection(5.0, C.weld_winSec + 10)
+    const result = checkWeldDetection(5.0, C.wld_winSec + 10)
 
     expect(result).toBe(false)
   })
@@ -1560,7 +1560,7 @@ describe('Weld Detection Scenarios', () => {
     S.sys_relayOffTs = 0
     S.wld_airSnapDeg = 10.0
 
-    const result = checkWeldDetection(5.0, C.weld_waitSec + 10)
+    const result = checkWeldDetection(5.0, C.wld_waitSec + 10)
 
     expect(result).toBe(false)
   })
@@ -1577,14 +1577,14 @@ describe('Weld Detection Scenarios', () => {
     S.wld_airSnapDeg = 10.0
 
     // Temp has NOT dropped significantly
-    const result = checkWeldDetection(10.0, C.weld_waitSec + 10)
+    const result = checkWeldDetection(10.0, C.wld_waitSec + 10)
 
     expect(result).toBe(false)
   })
 })
 
 // ----------------------------------------------------------
-// * COOLING HEALTH SCENARIOS
+// COOLING HEALTH SCENARIOS
 // ----------------------------------------------------------
 
 describe('Cooling Health Scenarios', () => {
@@ -1659,7 +1659,7 @@ describe('Cooling Health Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * TURBO MODE SCENARIOS
+// TURBO MODE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Turbo Mode Scenarios', () => {
@@ -1685,7 +1685,7 @@ describe('Turbo Mode Scenarios', () => {
 
     expect(result).toBe(true)
     expect(V.trb_isActive).toBe(true)
-    expect(V.trb_remSec).toBe(C.turbo_maxTimeSec)
+    expect(V.trb_remSec).toBe(C.trb_maxTimeSec)
   })
 
   it('should not reactivate turbo on sustained switch', async () => {
@@ -1749,8 +1749,8 @@ describe('Turbo Mode Scenarios', () => {
     const turbo = handleTurboMode(5)
 
     expect(turbo).not.toBeNull()
-    expect(turbo.target).toBe(C.turbo_targetDeg)
-    expect(turbo.hyst).toBe(C.turbo_hystDeg)
+    expect(turbo.target).toBe(C.trb_targetDeg)
+    expect(turbo.hyst).toBe(C.trb_hystDeg)
     expect(turbo.detail).toContain('TURBO')
   })
 
@@ -1767,7 +1767,7 @@ describe('Turbo Mode Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * DOOR PAUSE SCENARIOS
+// DOOR PAUSE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Door Pause Scenarios', () => {
@@ -1848,7 +1848,7 @@ describe('Door Pause Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * LIMP MODE SCENARIOS
+// LIMP MODE SCENARIOS
 // ----------------------------------------------------------
 
 describe('Limp Mode Scenarios', () => {
@@ -1869,7 +1869,7 @@ describe('Limp Mode Scenarios', () => {
     Object.assign(C, DEFAULT)
 
     // Mock uptime to be in ON portion
-    const uptimeMs = (C.limp_onSec / 2) * 1000 // Middle of ON period
+    const uptimeMs = (C.lmp_onSec / 2) * 1000 // Middle of ON period
     global.Shelly.getUptimeMs = () => uptimeMs
 
     const limp = handleLimpMode()
@@ -1887,7 +1887,7 @@ describe('Limp Mode Scenarios', () => {
     Object.assign(C, DEFAULT)
 
     // Mock uptime to be in OFF portion
-    const uptimeMs = (C.limp_onSec + C.limp_offSec / 2) * 1000
+    const uptimeMs = (C.lmp_onSec + C.lmp_offSec / 2) * 1000
     global.Shelly.getUptimeMs = () => uptimeMs
 
     const limp = handleLimpMode()

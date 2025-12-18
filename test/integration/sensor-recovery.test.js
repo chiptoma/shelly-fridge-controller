@@ -1,14 +1,14 @@
 // ==============================================================================
-// * SENSOR RECOVERY INTEGRATION TESTS
-// ? Tests sensor failure detection, LIMP mode entry, and recovery scenarios.
-// ? Validates the complete lifecycle: normal → failure → LIMP → recovery.
+// SENSOR RECOVERY INTEGRATION TESTS
+// Tests sensor failure detection, LIMP mode entry, and recovery scenarios.
+// Validates the complete lifecycle: normal → failure → LIMP → recovery.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * TEST SETUP
+// TEST SETUP
 // ----------------------------------------------------------
 
 async function setupSensorTest(runtime, options = {}) {
@@ -33,7 +33,7 @@ async function setupSensorTest(runtime, options = {}) {
     state.V.sns_airBuf = [options.airTemp, options.airTemp, options.airTemp]
   }
   if (options.evapTemp !== undefined) {
-    runtime.setTemperature(config.C.sys_sensEvapId, options.evapTemp)
+    runtime.setTemperature(config.C.sys_sensEvpId, options.evapTemp)
   }
 
   runtime.script = {
@@ -55,7 +55,7 @@ async function setupSensorTest(runtime, options = {}) {
 }
 
 // ----------------------------------------------------------
-// * SENSOR FAILURE DETECTION
+// SENSOR FAILURE DETECTION
 // ----------------------------------------------------------
 
 describe('Sensor Recovery: Failure Detection', () => {
@@ -128,7 +128,7 @@ describe('Sensor Recovery: Failure Detection', () => {
 })
 
 // ----------------------------------------------------------
-// * STUCK SENSOR DETECTION
+// STUCK SENSOR DETECTION
 // ----------------------------------------------------------
 
 describe('Sensor Recovery: Stuck Detection', () => {
@@ -161,7 +161,7 @@ describe('Sensor Recovery: Stuck Detection', () => {
     script.V.sns_airStuckTs = 1000
 
     // Check after threshold exceeded
-    const stuckTime = 1000 + script.C.sens_stuckTimeSec + 1
+    const stuckTime = 1000 + script.C.sns_stuckTimeSec + 1
     const stuck = script.sensors.checkSensorStuck(5.0, 'sns_airStuckRefDeg', 'sns_airStuckTs', stuckTime)
 
     expect(stuck).toBe(true)
@@ -197,7 +197,7 @@ describe('Sensor Recovery: Stuck Detection', () => {
 })
 
 // ----------------------------------------------------------
-// * LIMP MODE ENTRY
+// LIMP MODE ENTRY
 // ----------------------------------------------------------
 
 describe('Sensor Recovery: LIMP Mode Entry', () => {
@@ -251,7 +251,7 @@ describe('Sensor Recovery: LIMP Mode Entry', () => {
 })
 
 // ----------------------------------------------------------
-// * LIMP MODE OPERATION
+// LIMP MODE OPERATION
 // ----------------------------------------------------------
 
 describe('Sensor Recovery: LIMP Mode Operation', () => {
@@ -267,7 +267,7 @@ describe('Sensor Recovery: LIMP Mode Operation', () => {
     script = await setupSensorTest(runtime, {})
 
     // Test ON portion of cycle
-    const onTime = (script.C.limp_onSec / 2) * 1000
+    const onTime = (script.C.lmp_onSec / 2) * 1000
     global.Shelly.getUptimeMs = () => onTime
 
     const limpOn = script.features.handleLimpMode()
@@ -275,7 +275,7 @@ describe('Sensor Recovery: LIMP Mode Operation', () => {
     expect(limpOn.status).toBe(script.ST.LIMP_COOL)
 
     // Test OFF portion of cycle
-    const offTime = (script.C.limp_onSec + script.C.limp_offSec / 2) * 1000
+    const offTime = (script.C.lmp_onSec + script.C.lmp_offSec / 2) * 1000
     global.Shelly.getUptimeMs = () => offTime
 
     const limpOff = script.features.handleLimpMode()
@@ -311,7 +311,7 @@ describe('Sensor Recovery: LIMP Mode Operation', () => {
 })
 
 // ----------------------------------------------------------
-// * SENSOR RECOVERY
+// SENSOR RECOVERY
 // ----------------------------------------------------------
 
 describe('Sensor Recovery: Recovery Process', () => {
@@ -384,7 +384,7 @@ describe('Sensor Recovery: Recovery Process', () => {
 })
 
 // ----------------------------------------------------------
-// * FULL RECOVERY LIFECYCLE
+// FULL RECOVERY LIFECYCLE
 // ----------------------------------------------------------
 
 describe('Sensor Recovery: Full Lifecycle', () => {
@@ -471,7 +471,7 @@ describe('Sensor Recovery: Full Lifecycle', () => {
 })
 
 // ----------------------------------------------------------
-// * EDGE CASES
+// EDGE CASES
 // ----------------------------------------------------------
 
 describe('Sensor Recovery: Edge Cases', () => {
@@ -531,7 +531,7 @@ describe('Sensor Recovery: Edge Cases', () => {
     script.V.sns_airStuckTs = 1000
 
     // Value below epsilon - should NOT reset (condition is > epsilon)
-    const halfEpsilon = script.C.sens_stuckEpsDeg / 2
+    const halfEpsilon = script.C.sns_stuckEpsDeg / 2
     const belowEpsilon = script.sensors.checkSensorStuck(
       5.0 + halfEpsilon,
       'sns_airStuckRefDeg',

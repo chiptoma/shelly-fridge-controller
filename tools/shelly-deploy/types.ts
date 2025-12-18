@@ -1,12 +1,12 @@
 // ==============================================================================
-// * SHELLY DEPLOY TYPES
-// ? Type definitions for the deployment tools.
-// ? These types describe Shelly RPC API responses.
+// SHELLY DEPLOY TYPES
+// Type definitions for the deployment tools.
+// These types describe Shelly RPC API responses.
 // ==============================================================================
 
 // ----------------------------------------------------------
-// * JSON TYPES
-// ? Internal types for JSON-RPC communication
+// JSON TYPES
+// Internal types for JSON-RPC communication
 // ----------------------------------------------------------
 
 type JSONPrimitive = string | number | boolean | null
@@ -17,7 +17,7 @@ interface JSONObject { [key: string]: JSONValue }
 export type JSONValue = JSONPrimitive | JSONArray | JSONObject
 
 // ----------------------------------------------------------
-// * SCRIPT API TYPES
+// SCRIPT API TYPES
 // ----------------------------------------------------------
 
 /**

@@ -1,14 +1,14 @@
 // ==============================================================================
-// * ADAPTIVE HYSTERESIS SIMULATION TESTS
-// ? Simulates multi-day operation to verify adaptive hysteresis behavior.
-// ? Tests widening, tightening, and freeze guard under various temp patterns.
+// ADAPTIVE HYSTERESIS SIMULATION TESTS
+// Simulates multi-day operation to verify adaptive hysteresis behavior.
+// Tests widening, tightening, and freeze guard under various temp patterns.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * SIMULATION CONFIGURATION
+// SIMULATION CONFIGURATION
 // ----------------------------------------------------------
 
 const HOUR_SEC = 3600
@@ -17,10 +17,10 @@ const LOOP_SEC = 5
 
 // Temperature patterns (rates are °C per 5-second loop iteration)
 const PATTERNS = {
-  // ? Calibrated from real device cycle times (Dec 2024)
-  // ? HYS ±1.1 band (2.2°C total), cycles: ~12m ON, ~9m OFF
-  // ? Cooling: 2.2°C / 12min = 0.183°C/min ≈ 0.015°C/5s
-  // ? Warming: 2.2°C / 9min  = 0.244°C/min ≈ 0.020°C/5s
+  // Calibrated from real device cycle times (Dec 2024)
+  // HYS ±1.1 band (2.2°C total), cycles: ~12m ON, ~9m OFF
+  // Cooling: 2.2°C / 12min = 0.183°C/min ≈ 0.015°C/5s
+  // Warming: 2.2°C / 9min  = 0.244°C/min ≈ 0.020°C/5s
   REAL_DEVICE: { coolRate: 0.015, warmRate: 0.020 },
   // Fridge holds temp well - long cycles
   WELL_INSULATED: { coolRate: 0.05, warmRate: 0.02 },
@@ -33,7 +33,7 @@ const PATTERNS = {
 }
 
 // ----------------------------------------------------------
-// * SETUP FUNCTIONS
+// SETUP FUNCTIONS
 // ----------------------------------------------------------
 
 async function setupSimulation(runtime, options = {}) {
@@ -66,9 +66,9 @@ async function setupSimulation(runtime, options = {}) {
   }
 
   if (options.evapTemp !== undefined) {
-    runtime.setTemperature(config.C.sys_sensEvapId, options.evapTemp)
+    runtime.setTemperature(config.C.sys_sensEvpId, options.evapTemp)
   } else {
-    runtime.setTemperature(config.C.sys_sensEvapId, -5.0)
+    runtime.setTemperature(config.C.sys_sensEvpId, -5.0)
   }
 
   // Set initial hysteresis
@@ -101,14 +101,14 @@ async function setupSimulation(runtime, options = {}) {
 }
 
 // ----------------------------------------------------------
-// * THERMAL SIMULATION ENGINE
-// ? Simulates temperature changes based on compressor state
+// THERMAL SIMULATION ENGINE
+// Simulates temperature changes based on compressor state
 // ----------------------------------------------------------
 
 function simulateThermalCycle(runtime, script, pattern, durationSec) {
   const { coolRate, warmRate } = pattern
   const loopSec = script.C.sys_loopSec
-  const target = script.C.ctrl_targetDeg
+  const target = script.C.ctl_targetDeg
   let currentTime = Date.now() / 1000
 
   // Tracking
@@ -124,7 +124,7 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
 
     // Get current temp
     let airTemp = runtime.temperatures[script.C.sys_sensAirId]?.tC || 4.0
-    let evapTemp = runtime.temperatures[script.C.sys_sensEvapId]?.tC || -5.0
+    let evapTemp = runtime.temperatures[script.C.sys_sensEvpId]?.tC || -5.0
 
     // Apply thermal model
     if (script.S.sys_isRelayOn) {
@@ -139,7 +139,7 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
 
     // Update runtime temps
     runtime.setTemperature(script.C.sys_sensAirId, airTemp)
-    runtime.setTemperature(script.C.sys_sensEvapId, evapTemp)
+    runtime.setTemperature(script.C.sys_sensEvpId, evapTemp)
 
     // Update smoothed temp (simplified EMA)
     script.V.sns_airSmoothDeg = script.V.sns_airSmoothDeg * (1 - 0.2) + airTemp * 0.2
@@ -196,7 +196,7 @@ function simulateThermalCycle(runtime, script, pattern, durationSec) {
 }
 
 // ----------------------------------------------------------
-// * SHORT-CYCLE SIMULATION (WIDEN HYSTERESIS)
+// SHORT-CYCLE SIMULATION (WIDEN HYSTERESIS)
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis: Short-Cycle Scenarios', () => {
@@ -229,7 +229,7 @@ describe('Adaptive Hysteresis: Short-Cycle Scenarios', () => {
     expect(result.rolloverCount).toBeGreaterThanOrEqual(2)
 
     // Print debug info
-    // ? Current algorithm uses: "widening hysteresis" or "Widened hysteresis"
+    // Current algorithm uses: "widening hysteresis" or "Widened hysteresis"
     const prints = runtime.getPrintHistory()
     const widenMsgs = prints.filter((p) => p.message.includes('widen') || p.message.includes('Widened'))
     expect(widenMsgs.length).toBeGreaterThan(0)
@@ -260,8 +260,8 @@ describe('Adaptive Hysteresis: Short-Cycle Scenarios', () => {
       evapTemp: -10.0,
       hystCurrent: 1.5,
       config: {
-        ctrl_targetDeg: 2.0,    // Lower target
-        comp_freezeCutDeg: 0.5, // Freeze at 0.5
+        ctl_targetDeg: 2.0,    // Lower target
+        cmp_freezeCutDeg: 0.5, // Freeze at 0.5
       },
     })
 
@@ -285,7 +285,7 @@ describe('Adaptive Hysteresis: Short-Cycle Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * LONG-CYCLE SIMULATION (TIGHTEN HYSTERESIS)
+// LONG-CYCLE SIMULATION (TIGHTEN HYSTERESIS)
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis: Long-Cycle Scenarios', () => {
@@ -349,7 +349,7 @@ describe('Adaptive Hysteresis: Long-Cycle Scenarios', () => {
 })
 
 // ----------------------------------------------------------
-// * MULTI-DAY SIMULATION
+// MULTI-DAY SIMULATION
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis: Multi-Day Simulation', () => {
@@ -421,7 +421,7 @@ describe('Adaptive Hysteresis: Multi-Day Simulation', () => {
 })
 
 // ----------------------------------------------------------
-// * TEMPERATURE PATTERN SCENARIOS
+// TEMPERATURE PATTERN SCENARIOS
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis: Temperature Patterns', () => {
@@ -448,10 +448,10 @@ describe('Adaptive Hysteresis: Temperature Patterns', () => {
       4 * HOUR_SEC,
     )
 
-    // ? New algorithm: Uses total cycle time, not individual phases
-    // ? Very fast thermal changes create short total cycles → widen
-    // ? But simulation may not trigger hourly rollover reliably
-    // ? Check that hysteresis stays within configured bounds
+    // New algorithm: Uses total cycle time, not individual phases
+    // Very fast thermal changes create short total cycles → widen
+    // But simulation may not trigger hourly rollover reliably
+    // Check that hysteresis stays within configured bounds
     expect(result.finalHyst).toBeGreaterThanOrEqual(0.5)
     expect(result.finalHyst).toBeLessThanOrEqual(3.0)
   })
@@ -522,7 +522,7 @@ describe('Adaptive Hysteresis: Temperature Patterns', () => {
 })
 
 // ----------------------------------------------------------
-// * TURBO MODE INTERACTION
+// TURBO MODE INTERACTION
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis: Turbo Mode Interaction', () => {
@@ -592,7 +592,7 @@ describe('Adaptive Hysteresis: Turbo Mode Interaction', () => {
 })
 
 // ----------------------------------------------------------
-// * DISABLED ADAPTATION
+// DISABLED ADAPTATION
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis: Disabled Mode', () => {
@@ -610,7 +610,7 @@ describe('Adaptive Hysteresis: Disabled Mode', () => {
       evapTemp: -5.0,
       hystCurrent: 1.0,
       config: {
-        adapt_enable: false,
+        adt_enable: false,
       },
     })
 
@@ -628,12 +628,12 @@ describe('Adaptive Hysteresis: Disabled Mode', () => {
       evapTemp: -5.0,
       hystCurrent: 5.0, // Above max (3.0) - but ignored when disabled
       config: {
-        adapt_enable: false,
-        ctrl_hystDeg: 1.5, // Custom base hysteresis
+        adt_enable: false,
+        ctl_hystDeg: 1.5, // Custom base hysteresis
       },
     })
 
-    // ? When adaptive is disabled, getEffectiveHysteresis returns ctrl_hystDeg
+    // When adaptive is disabled, getEffectiveHysteresis returns ctl_hystDeg
     const effective = script.features.getEffectiveHysteresis()
     expect(effective).toBe(1.5) // Returns base config, not bounded adaptive
   })
@@ -650,14 +650,14 @@ describe('Adaptive Hysteresis: Disabled Mode', () => {
     expect(result0).toBeNull()
 
     // 1 cycle with short cycle time - should widen (danger zone)
-    // ? totalCycle = 500s < 720s (dangerZone) → immediate widen
+    // totalCycle = 500s < 720s (dangerZone) → immediate widen
     const result1 = script.features.adaptHysteresis(300, 200, 1)
     expect(result1).toBe('widen')
   })
 })
 
 // ----------------------------------------------------------
-// * SUMMARY REPORT
+// SUMMARY REPORT
 // ----------------------------------------------------------
 
 describe('Adaptive Hysteresis: Report Generation', () => {
@@ -685,14 +685,14 @@ describe('Adaptive Hysteresis: Report Generation', () => {
     )
 
     // Check print history has ADAPT messages
-    // ? Current algorithm uses: "ADAPT ⚠️", "ADAPT ℹ️", "ADAPT ✅" prefixes
+    // Current algorithm uses: "ADAPT ⚠️", "ADAPT ℹ️", "ADAPT ✅" prefixes
     const prints = runtime.getPrintHistory()
     const adaptMsgs = prints.filter((p) => p.message.includes('ADAPT '))
 
     // Should have some adaptation messages
     expect(adaptMsgs.length).toBeGreaterThan(0)
 
-    // ? Format: "(cycle Xm, duty X%)"
+    // Format: "(cycle Xm, duty X%)"
     adaptMsgs.forEach((msg) => {
       expect(msg.message).toMatch(/\(cycle [\d]+m/)
       expect(msg.message).toMatch(/duty [\d]+%\)/)

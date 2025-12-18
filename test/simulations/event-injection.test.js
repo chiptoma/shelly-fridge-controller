@@ -1,21 +1,21 @@
 // ==============================================================================
-// * EVENT INJECTION SIMULATIONS
-// ? Realistic multi-loop simulations with events injected mid-operation.
-// ? Tests system response to door opens, sensor failures, weld detection, etc.
-// ? during normal ongoing operation rather than in isolation.
+// EVENT INJECTION SIMULATIONS
+// Realistic multi-loop simulations with events injected mid-operation.
+// Tests system response to door opens, sensor failures, weld detection, etc.
+// during normal ongoing operation rather than in isolation.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * SIMULATION FRAMEWORK
+// SIMULATION FRAMEWORK
 // ----------------------------------------------------------
 
 /**
- * * SimulationRunner
- * ? Runs multi-loop simulations with event injection support.
- * ? Tracks system state, events, and allows assertions at any point.
+ * SimulationRunner
+ * Runs multi-loop simulations with event injection support.
+ * Tracks system state, events, and allows assertions at any point.
  */
 class SimulationRunner {
   constructor(runtime, script) {
@@ -28,16 +28,16 @@ class SimulationRunner {
   }
 
   /**
-   * * scheduleEvent
-   * ? Schedule an event to occur at a specific loop iteration.
+   * scheduleEvent
+   * Schedule an event to occur at a specific loop iteration.
    */
   scheduleEvent(atLoop, eventFn, description) {
     this.injectedEvents.push({ atLoop, eventFn, description, fired: false })
   }
 
   /**
-   * * scheduleRandomEvent
-   * ? Schedule an event to occur at a random loop within range.
+   * scheduleRandomEvent
+   * Schedule an event to occur at a random loop within range.
    */
   scheduleRandomEvent(minLoop, maxLoop, eventFn, description) {
     const atLoop = minLoop + Math.floor(Math.random() * (maxLoop - minLoop))
@@ -46,8 +46,8 @@ class SimulationRunner {
   }
 
   /**
-   * * runLoop
-   * ? Execute a single control loop iteration.
+   * runLoop
+   * Execute a single control loop iteration.
    */
   runLoop(temps = {}) {
     const { script, runtime } = this
@@ -68,8 +68,8 @@ class SimulationRunner {
     }
 
     // Set temperatures - only if explicitly provided (null means disconnected)
-    // ? temps.air === null means sensor disconnected (don't override)
-    // ? temps.air === undefined means use current smoothed value
+    // temps.air === null means sensor disconnected (don't override)
+    // temps.air === undefined means use current smoothed value
     if (temps.air !== null && temps.air !== undefined) {
       runtime.setTemperature(101, temps.air)
     } else if (temps.air === undefined) {
@@ -115,7 +115,7 @@ class SimulationRunner {
     script.alarms.applySensorAlarms(alarmFail, isStuck)
 
     // Door detection
-    if (script.C.door_enable) {
+    if (script.C.dor_enable) {
       script.features.detectDoorOpen(script.V.sns_airSmoothDeg, now)
     }
 
@@ -166,8 +166,8 @@ class SimulationRunner {
   }
 
   /**
-   * * runLoops
-   * ? Execute multiple control loop iterations.
+   * runLoops
+   * Execute multiple control loop iterations.
    */
   runLoops(count, tempFn) {
     for (let i = 0; i < count; i++) {
@@ -177,16 +177,16 @@ class SimulationRunner {
   }
 
   /**
-   * * getStateAt
-   * ? Get state history at a specific loop.
+   * getStateAt
+   * Get state history at a specific loop.
    */
   getStateAt(loop) {
     return this.stateHistory.find((s) => s.loop === loop)
   }
 
   /**
-   * * findEventByType
-   * ? Find first event matching description pattern.
+   * findEventByType
+   * Find first event matching description pattern.
    */
   findEvent(pattern) {
     return this.events.find((e) => e.description.includes(pattern))
@@ -194,7 +194,7 @@ class SimulationRunner {
 }
 
 // ----------------------------------------------------------
-// * SETUP HELPERS
+// SETUP HELPERS
 // ----------------------------------------------------------
 
 async function setupController(runtime, options = {}) {
@@ -248,7 +248,7 @@ async function setupController(runtime, options = {}) {
 }
 
 // ----------------------------------------------------------
-// * DOOR OPEN DURING OPERATION
+// DOOR OPEN DURING OPERATION
 // ----------------------------------------------------------
 
 describe('Event Injection: Door Open During Cooling', () => {
@@ -262,13 +262,13 @@ describe('Event Injection: Door Open During Cooling', () => {
   it('should pause cooling when door opens during active cooling cycle', async () => {
     const sim = await setupController(runtime, {
       config: {
-        door_enable: true,
-        door_rateDegMin: 0.5,
-        door_pauseSec: 60,
-        ctrl_targetDeg: 4.0,
-        ctrl_hystOnDeg: 1.0,
-        comp_minOnSec: 30,
-        comp_minOffSec: 60,
+        dor_enable: true,
+        dor_rateDegMin: 0.5,
+        dor_pauseSec: 60,
+        ctl_targetDeg: 4.0,
+        ctl_hystOnDeg: 1.0,
+        cmp_minOnSec: 30,
+        cmp_minOffSec: 60,
         sys_loopSec: 5,
       },
       state: {
@@ -310,19 +310,19 @@ describe('Event Injection: Door Open During Cooling', () => {
   })
 
   it('should resume cooling after door pause expires', async () => {
-    // ? Start runtime with time > 0 so dor_refTs passes the > 0 check
+    // Start runtime with time > 0 so dor_refTs passes the > 0 check
     runtime.advanceTime(1000)
 
     const sim = await setupController(runtime, {
       config: {
-        door_enable: true,
-        door_rateDegMin: 0.5, // 0.5 deg/min threshold
-        door_pauseSec: 30,    // Short pause for test
-        ctrl_targetDeg: 4.0,
-        ctrl_hystOnDeg: 1.0,
-        ctrl_smoothAlpha: 0.5, // Higher alpha = less smoothing = faster response
-        comp_minOnSec: 10,
-        comp_minOffSec: 30,
+        dor_enable: true,
+        dor_rateDegMin: 0.5, // 0.5 deg/min threshold
+        dor_pauseSec: 30,    // Short pause for test
+        ctl_targetDeg: 4.0,
+        ctl_hystOnDeg: 1.0,
+        ctl_smoothAlpha: 0.5, // Higher alpha = less smoothing = faster response
+        cmp_minOnSec: 10,
+        cmp_minOffSec: 30,
         sys_loopSec: 5,
       },
       state: {
@@ -344,7 +344,7 @@ describe('Event Injection: Door Open During Cooling', () => {
     sim.runLoop({ air: 5.0, evap: -10 })
 
     // Multiple consecutive readings showing rapid rise (door open spike)
-    // ? Each reading builds up in the buffer, eventually moving the median
+    // Each reading builds up in the buffer, eventually moving the median
     sim.runLoop({ air: 6.0, evap: -10 })
     sim.runLoop({ air: 6.5, evap: -10 })
     sim.runLoop({ air: 7.0, evap: -10 })
@@ -370,7 +370,7 @@ describe('Event Injection: Door Open During Cooling', () => {
 })
 
 // ----------------------------------------------------------
-// * SENSOR FAILURE DURING OPERATION
+// SENSOR FAILURE DURING OPERATION
 // ----------------------------------------------------------
 
 describe('Event Injection: Sensor Failure During Cooling', () => {
@@ -384,12 +384,12 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
   it('should enter LIMP mode when sensor fails during cooling', async () => {
     const sim = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
+        ctl_targetDeg: 4.0,
         sys_sensFailLimit: 3,
-        limp_enable: true,
-        limp_onSec: 300,
-        limp_offSec: 600,
-        comp_minOnSec: 30,
+        lmp_enable: true,
+        lmp_onSec: 300,
+        lmp_offSec: 600,
+        cmp_minOnSec: 30,
         sys_loopSec: 5,
       },
       state: {
@@ -416,7 +416,7 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
     runtime.setTemperature(101, null)
 
     // Run loops with disconnected sensor - error count should increase
-    // ? Pass air: null explicitly to keep sensor disconnected (not undefined!)
+    // Pass air: null explicitly to keep sensor disconnected (not undefined!)
     for (let i = 0; i < 5; i++) {
       sim.runLoop({ air: null, evap: -10 })
     }
@@ -433,11 +433,11 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
   it('should recover from sensor failure when sensor reconnects', async () => {
     const sim = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
+        ctl_targetDeg: 4.0,
         sys_sensFailLimit: 3,
-        limp_enable: true,
-        limp_onSec: 300,
-        limp_offSec: 600,
+        lmp_enable: true,
+        lmp_onSec: 300,
+        lmp_offSec: 600,
         sys_loopSec: 5,
       },
       state: {
@@ -461,7 +461,7 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
     runtime.setTemperature(101, null)
 
     // Fail sensor for enough loops to trigger alarm
-    // ? Pass air: null explicitly to keep sensor disconnected
+    // Pass air: null explicitly to keep sensor disconnected
     for (let i = 0; i < 5; i++) {
       sim.runLoop({ air: null, evap: -10 })
     }
@@ -486,7 +486,7 @@ describe('Event Injection: Sensor Failure During Cooling', () => {
 })
 
 // ----------------------------------------------------------
-// * SENSOR STUCK DURING OPERATION
+// SENSOR STUCK DURING OPERATION
 // ----------------------------------------------------------
 
 describe('Event Injection: Sensor Stuck During Operation', () => {
@@ -500,10 +500,10 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
   it('should detect sensor stuck after continuous same readings', async () => {
     const sim = await setupController(runtime, {
       config: {
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 30, // Short for test
-        sens_stuckEpsDeg: 0.05, // Very tight tolerance
-        ctrl_targetDeg: 4.0,
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 30, // Short for test
+        sns_stuckEpsDeg: 0.05, // Very tight tolerance
+        ctl_targetDeg: 4.0,
         sys_loopSec: 5,
       },
       state: {
@@ -512,7 +512,7 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
       },
       volatile: {
         sns_airSmoothDeg: 4.0,
-        sns_airBuf: [4.0, 4.0, 4.0], // ? Properly seed buffer for stable smoothing
+        sns_airBuf: [4.0, 4.0, 4.0], // Properly seed buffer for stable smoothing
         sns_bufIdx: 0,
         sns_airStuckRefDeg: null, // Will be initialized on first call
         sns_airStuckTs: 0,
@@ -521,7 +521,7 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
     })
 
     // Run loops with exact same temperature (sensor stuck)
-    // Need > sens_stuckTimeSec (30s) / sys_loopSec (5s) = 6 loops, plus initial
+    // Need > sns_stuckTimeSec (30s) / sys_loopSec (5s) = 6 loops, plus initial
     const stuckLoops = Math.ceil(40 / 5) // 8 loops to exceed 30s
     sim.runLoops(stuckLoops, () => ({ air: 4.0, evap: -10 }))
 
@@ -532,10 +532,10 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
   it('should NOT trigger stuck if temperature varies normally', async () => {
     const sim = await setupController(runtime, {
       config: {
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 60,
-        sens_stuckEpsDeg: 0.1,
-        ctrl_targetDeg: 4.0,
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 60,
+        sns_stuckEpsDeg: 0.1,
+        ctl_targetDeg: 4.0,
         sys_loopSec: 5,
       },
       state: {
@@ -561,10 +561,10 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
   it('should enter LIMP mode when sensor stuck detected during cooling', async () => {
     const sim = await setupController(runtime, {
       config: {
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 30, // ? Short for test (matches passing test)
-        sens_stuckEpsDeg: 0.05,
-        ctrl_targetDeg: 4.0,
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 30, // Short for test (matches passing test)
+        sns_stuckEpsDeg: 0.05,
+        ctl_targetDeg: 4.0,
         sys_loopSec: 5,
       },
       state: {
@@ -573,16 +573,16 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
       },
       volatile: {
         sns_airSmoothDeg: 5.0,
-        sns_airBuf: [5.0, 5.0, 5.0], // ? Properly seed buffer for stable smoothing
+        sns_airBuf: [5.0, 5.0, 5.0], // Properly seed buffer for stable smoothing
         sns_bufIdx: 0,
-        sns_airStuckRefDeg: null, // ? Explicitly initialize (matches passing test)
+        sns_airStuckRefDeg: null, // Explicitly initialize (matches passing test)
         sns_airStuckTs: 0,
         sys_alarm: 'NONE',
       },
     })
 
     // Run with stuck sensor (exact same reading)
-    // ? Need > sens_stuckTimeSec (30s) / sys_loopSec (5s) = 6 loops, plus margin
+    // Need > sns_stuckTimeSec (30s) / sys_loopSec (5s) = 6 loops, plus margin
     const stuckLoops = Math.ceil(40 / 5) // 8 loops to exceed 30s
     sim.runLoops(stuckLoops, () => ({ air: 5.0, evap: -10 }))
 
@@ -595,7 +595,7 @@ describe('Event Injection: Sensor Stuck During Operation', () => {
 })
 
 // ----------------------------------------------------------
-// * WELD DETECTION DURING OPERATION
+// WELD DETECTION DURING OPERATION
 // ----------------------------------------------------------
 
 describe('Event Injection: Weld Detection During Operation', () => {
@@ -607,20 +607,20 @@ describe('Event Injection: Weld Detection During Operation', () => {
   })
 
   it('should detect weld when relay turns off but temp keeps dropping', async () => {
-    // ? Start runtime at 15s so we're already in the detection window
-    // ? (past weld_waitSec=10 but within weld_winSec=60)
+    // Start runtime at 15s so we're already in the detection window
+    // (past wld_waitSec=10 but within wld_winSec=60)
     runtime.advanceTime(15000)
 
     const sim = await setupController(runtime, {
       config: {
-        weld_enable: true,
-        weld_waitSec: 10,  // Wait 10s before checking
-        weld_winSec: 60,   // Detection window
-        weld_dropDeg: 0.5, // 0.5C drop triggers alarm
-        ctrl_targetDeg: 4.0,
-        ctrl_hystOffDeg: 0.5,
-        ctrl_smoothAlpha: 0.8, // High alpha = fast response to temp changes
-        comp_minOnSec: 10,
+        wld_enable: true,
+        wld_waitSec: 10,  // Wait 10s before checking
+        wld_winSec: 60,   // Detection window
+        wld_dropDeg: 0.5, // 0.5C drop triggers alarm
+        ctl_targetDeg: 4.0,
+        ctl_hystOffDeg: 0.5,
+        ctl_smoothAlpha: 0.8, // High alpha = fast response to temp changes
+        cmp_minOnSec: 10,
         sys_loopSec: 5,
       },
       state: {
@@ -638,11 +638,11 @@ describe('Event Injection: Weld Detection During Operation', () => {
     })
 
     // We're now at 15s, in detection window (10-60s)
-    // offDur = 15 > 10 (weld_waitSec), so detection is active
+    // offDur = 15 > 10 (wld_waitSec), so detection is active
     // Run with dropping temp - if relay is actually welded ON, temp drops
 
     // Run loops with temperature dropping significantly (simulating welded relay)
-    // snap = 5.0, weld_dropDeg = 0.5, need smooth_temp < 4.5 to trigger
+    // snap = 5.0, wld_dropDeg = 0.5, need smooth_temp < 4.5 to trigger
     // With alpha=0.8, smoothing responds quickly to changes
     sim.runLoops(5, (i) => ({
       air: 5.0 - ((i + 1) * 0.3), // Dropping: 4.7, 4.4, 4.1, 3.8, 3.5
@@ -656,11 +656,11 @@ describe('Event Injection: Weld Detection During Operation', () => {
   it('should NOT trigger weld if temp stabilizes after relay off', async () => {
     const sim = await setupController(runtime, {
       config: {
-        weld_enable: true,
-        weld_waitSec: 10,
-        weld_winSec: 60,
-        weld_dropDeg: 0.5,
-        ctrl_targetDeg: 4.0,
+        wld_enable: true,
+        wld_waitSec: 10,
+        wld_winSec: 60,
+        wld_dropDeg: 0.5,
+        ctl_targetDeg: 4.0,
         sys_loopSec: 5,
       },
       state: {
@@ -687,7 +687,7 @@ describe('Event Injection: Weld Detection During Operation', () => {
 })
 
 // ----------------------------------------------------------
-// * POWER ANOMALIES DURING OPERATION
+// POWER ANOMALIES DURING OPERATION
 // ----------------------------------------------------------
 
 describe('Event Injection: Power Anomalies During Cooling', () => {
@@ -704,7 +704,7 @@ describe('Event Injection: Power Anomalies During Cooling', () => {
         pwr_enable: true,
         pwr_runMinW: 10,
         pwr_ghostTripSec: 15, // Short for test
-        pwr_ghostMaxCount: 10, // ? Prevent escalation during test
+        pwr_ghostMaxCnt: 10, // Prevent escalation during test
         pwr_startMaskSec: 5,
         sys_loopSec: 5,
       },
@@ -715,7 +715,7 @@ describe('Event Injection: Power Anomalies During Cooling', () => {
       volatile: {
         hw_hasPM: true,
         pwr_ghostSec: 0,
-        pwr_ghostCnt: 0, // ? Start with fresh count
+        pwr_ghostCnt: 0, // Start with fresh count
         sys_alarm: 'NONE',
       },
     })
@@ -772,7 +772,7 @@ describe('Event Injection: Power Anomalies During Cooling', () => {
 })
 
 // ----------------------------------------------------------
-// * MULTI-EVENT CHAOS SIMULATION
+// MULTI-EVENT CHAOS SIMULATION
 // ----------------------------------------------------------
 
 describe('Event Injection: Multi-Event Chaos Simulation', () => {
@@ -784,20 +784,20 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
   })
 
   it('should handle door open followed by sensor failure', async () => {
-    // ? Start runtime with time > 0 for door detection
+    // Start runtime with time > 0 for door detection
     runtime.advanceTime(1000)
 
     const sim = await setupController(runtime, {
       config: {
-        door_enable: true,
-        door_rateDegMin: 0.5,
-        door_pauseSec: 30,
+        dor_enable: true,
+        dor_rateDegMin: 0.5,
+        dor_pauseSec: 30,
         sys_sensFailLimit: 3,
-        ctrl_targetDeg: 4.0,
-        ctrl_smoothAlpha: 0.5, // Higher alpha = less smoothing = faster response
-        limp_enable: true,
-        limp_onSec: 300,
-        limp_offSec: 600,
+        ctl_targetDeg: 4.0,
+        ctl_smoothAlpha: 0.5, // Higher alpha = less smoothing = faster response
+        lmp_enable: true,
+        lmp_onSec: 300,
+        lmp_offSec: 600,
         sys_loopSec: 5,
       },
       state: {
@@ -841,7 +841,7 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
       config: {
         gas_checkSec: 30, // Short for test
         gas_failDiff: 5.0,
-        comp_maxRunSec: 3600,
+        cmp_maxRunSec: 3600,
         sys_loopSec: 5,
       },
       state: {
@@ -871,15 +871,15 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
   it('should maintain safety through random event sequence', async () => {
     const sim = await setupController(runtime, {
       config: {
-        door_enable: true,
-        door_rateDegMin: 0.5,
-        door_pauseSec: 20,
-        ctrl_targetDeg: 4.0,
-        ctrl_hystOnDeg: 1.0,
-        ctrl_hystOffDeg: 0.5,
-        comp_minOnSec: 15,
-        comp_minOffSec: 30,
-        comp_freezeCutDeg: 0.5,
+        dor_enable: true,
+        dor_rateDegMin: 0.5,
+        dor_pauseSec: 20,
+        ctl_targetDeg: 4.0,
+        ctl_hystOnDeg: 1.0,
+        ctl_hystOffDeg: 0.5,
+        cmp_minOnSec: 15,
+        cmp_minOffSec: 30,
+        cmp_freezeCutDeg: 0.5,
         sys_loopSec: 5,
       },
       state: {
@@ -926,7 +926,7 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
       const result = sim.runLoop({ air: temp, evap: cooling ? -12 : -5 })
 
       // Check for safety violations
-      if (temp < sim.script.C.comp_freezeCutDeg && sim.script.S.sys_isRelayOn) {
+      if (temp < sim.script.C.cmp_freezeCutDeg && sim.script.S.sys_isRelayOn) {
         // Should have freeze protection
         if (result.mode.wantOn === true) {
           violations.push({ loop: i, issue: 'Cooling below freeze point' })
@@ -943,7 +943,7 @@ describe('Event Injection: Multi-Event Chaos Simulation', () => {
 })
 
 // ----------------------------------------------------------
-// * LONG DURATION STABILITY
+// LONG DURATION STABILITY
 // ----------------------------------------------------------
 
 describe('Event Injection: Long Duration Stability', () => {
@@ -957,20 +957,20 @@ describe('Event Injection: Long Duration Stability', () => {
   it('should maintain stable operation over 500 cycles with random events', async () => {
     const sim = await setupController(runtime, {
       config: {
-        door_enable: true,
-        door_rateDegMin: 0.5,
-        door_pauseSec: 60,
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 600,
-        sens_stuckEpsDeg: 0.1,
-        ctrl_targetDeg: 4.0,
-        ctrl_hystDeg: 1.0,          // Fixed: use actual config key
-        adapt_enable: false,         // Use fixed hysteresis
-        comp_minOnSec: 60,
-        comp_minOffSec: 180,
+        dor_enable: true,
+        dor_rateDegMin: 0.5,
+        dor_pauseSec: 60,
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 600,
+        sns_stuckEpsDeg: 0.1,
+        ctl_targetDeg: 4.0,
+        ctl_hystDeg: 1.0,          // Fixed: use actual config key
+        adt_enable: false,         // Use fixed hysteresis
+        cmp_minOnSec: 60,
+        cmp_minOffSec: 180,
         sys_loopSec: 5,
-        defr_schedEnable: false,     // Disable scheduled defrost for predictable test
-        defr_dynEnable: false,
+        dfr_schedEnable: false,     // Disable scheduled defrost for predictable test
+        dfr_dynEnable: false,
       },
       state: {
         sys_isRelayOn: false,
@@ -1022,9 +1022,9 @@ describe('Event Injection: Long Duration Stability', () => {
     }
 
     // Should have completed multiple cycles
-    // ? With minOnSec=60s, minOffSec=180s and 500 loops of 5s (2500s total),
-    // ? realistic cycle count is 2-6 depending on temperature dynamics and random events
-    // ? Using >= 2 to account for edge cases with door pause interruptions
+    // With minOnSec=60s, minOffSec=180s and 500 loops of 5s (2500s total),
+    // realistic cycle count is 2-6 depending on temperature dynamics and random events
+    // Using >= 2 to account for edge cases with door pause interruptions
     expect(onCount).toBeGreaterThanOrEqual(2)
     expect(offCount).toBeGreaterThanOrEqual(2)
 

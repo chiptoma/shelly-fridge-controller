@@ -1,6 +1,6 @@
 // ==============================================================================
-// * REPORTING TESTS
-// ? Validates console formatting and MQTT payload generation.
+// REPORTING TESTS
+// Validates console formatting and MQTT payload generation.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -43,7 +43,7 @@ describe('Reporting', () => {
     }
 
     mockC = {
-      ctrl_targetDeg: 4.0,
+      ctl_targetDeg: 4.0,
       sys_mqttTopic: 'fridge/status',
     }
 
@@ -92,7 +92,7 @@ describe('Reporting', () => {
   })
 
   // ----------------------------------------------------------
-  // * GET SCRIPT UPTIME TESTS
+  // GET SCRIPT UPTIME TESTS
   // ----------------------------------------------------------
 
   describe('getScriptUptime', () => {
@@ -119,7 +119,7 @@ describe('Reporting', () => {
   })
 
   // ----------------------------------------------------------
-  // * FORMAT CONSOLE MESSAGE TESTS
+  // FORMAT CONSOLE MESSAGE TESTS
   // ----------------------------------------------------------
 
   describe('formatConsoleMessage', () => {
@@ -131,8 +131,8 @@ describe('Reporting', () => {
     it('should include temperatures', () => {
       const msg = formatConsoleMessage(4.5, -10.0, 4.52)
       expect(msg).toContain('4.52R/')
-      expect(msg).toContain('4.50S')  // ? toFixed(2) keeps trailing zeros
-      expect(msg).toContain('-10.00') // ? toFixed(2) keeps trailing zeros
+      expect(msg).toContain('4.50S')  // toFixed(2) keeps trailing zeros
+      expect(msg).toContain('-10.00') // toFixed(2) keeps trailing zeros
     })
 
     it('should handle null temperatures', () => {
@@ -164,7 +164,7 @@ describe('Reporting', () => {
   })
 
   // ----------------------------------------------------------
-  // * BUILD MQTT PAYLOAD TESTS
+  // BUILD MQTT PAYLOAD TESTS
   // ----------------------------------------------------------
 
   describe('buildMqttPayload', () => {
@@ -240,7 +240,7 @@ describe('Reporting', () => {
   })
 
   // ----------------------------------------------------------
-  // * PUBLISH STATUS TESTS
+  // PUBLISH STATUS TESTS
   // ----------------------------------------------------------
 
   describe('publishStatus', () => {

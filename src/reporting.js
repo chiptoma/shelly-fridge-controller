@@ -1,7 +1,7 @@
 // ==============================================================================
-// * REPORTING
-// ? Console output and MQTT publishing for status, metrics, and alarms.
-// ? Formats human-readable console messages and structured MQTT JSON.
+// REPORTING
+// Console output and MQTT publishing for status, metrics, and alarms.
+// Formats human-readable console messages and structured MQTT JSON.
 // ==============================================================================
 
 import { ALM, RSN, ICO } from './constants.js'
@@ -12,11 +12,11 @@ import { getEffectiveHysteresis } from './features.js'
 import { getAvgDuty24h, getCurrentHourDuty, getLifetimeDuty, getLifetimeRunHours, getCurrentHourAverages } from './metrics.js'
 
 // ----------------------------------------------------------
-// * CONSOLE FORMATTING
+// CONSOLE FORMATTING
 // ----------------------------------------------------------
 
 /**
- * * getScriptUptime - Get formatted script uptime
+ * getScriptUptime - Get formatted script uptime
  *
  * @returns {string} - Formatted uptime string (HH:MM)
  */
@@ -28,8 +28,8 @@ function getScriptUptime() {
 }
 
 /**
- * * formatConsoleMessage - Build console output string
- * ? Includes status, temps, duty cycles, and cycle times.
+ * formatConsoleMessage - Build console output string
+ * Includes status, temps, duty cycles, and cycle times.
  *
  * @param {number|null} tSmooth - Smoothed air temperature
  * @param {number|null} tEvap - Evaporator temperature
@@ -48,7 +48,7 @@ function formatConsoleMessage(tSmooth, tEvap, tRaw) {
 
   // Format temperature strings with fixed width (e.g. +04.90, -09.40)
   /**
-   * * fmtT - Format temperature for fixed-width display
+   * fmtT - Format temperature for fixed-width display
    * @param {number|null} v - Temperature value
    * @returns {string} Formatted string (e.g., +04.90, -09.40, ------)
    * @internal
@@ -79,7 +79,7 @@ function formatConsoleMessage(tSmooth, tEvap, tRaw) {
   let effHyst = getEffectiveHysteresis()
   msg += ' | UP: ' + getScriptUptime()
          + ' | AIR: ' + aRaw + 'R/' + aEma + 'S EVP: ' + evap
-         + ' | SP: ' + C.ctrl_targetDeg + ' HYS: ±' + r1(effHyst)
+         + ' | SP: ' + C.ctl_targetDeg + ' HYS: ±' + r1(effHyst)
          + ' (CYC: ' + formatXmYs(avgCycleSec) + ')'
          + ' | DUTY: ' + ri(dHour) + 'H/' + ri(d24) + 'D/' + ri(dLife) + 'L %'
 
@@ -93,14 +93,14 @@ function formatConsoleMessage(tSmooth, tEvap, tRaw) {
 }
 
 // ----------------------------------------------------------
-// * MQTT PAYLOAD
-// ? Builds payload on-demand. Pre-allocation was reverted because
-// ? it increased initial heap usage beyond Shelly's ~25KB limit.
+// MQTT PAYLOAD
+// Builds payload on-demand. Pre-allocation was reverted because
+// it increased initial heap usage beyond Shelly's ~25KB limit.
 // ----------------------------------------------------------
 
 /**
- * * buildMqttPayload - Create MQTT status payload object
- * ? Flat structure minimizes object allocation overhead.
+ * buildMqttPayload - Create MQTT status payload object
+ * Flat structure minimizes object allocation overhead.
  *
  * @param {number|null} tSmooth - Smoothed air temperature
  * @param {number|null} tEvap - Evaporator temperature
@@ -146,12 +146,12 @@ function buildMqttPayload(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
 }
 
 // ----------------------------------------------------------
-// * PUBLISH STATUS
-// ? Main entry point - prints console and publishes MQTT.
+// PUBLISH STATUS
+// Main entry point - prints console and publishes MQTT.
 // ----------------------------------------------------------
 
 /**
- * * publishStatus - Output status to console and MQTT
+ * publishStatus - Output status to console and MQTT
  *
  * @param {number|null} tSmooth - Smoothed air temperature
  * @param {number|null} tEvap - Evaporator temperature
@@ -171,7 +171,7 @@ function publishStatus(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export {

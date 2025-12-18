@@ -1,7 +1,7 @@
 // ==============================================================================
-// * MINIFICATION SAFETY TESTS
-// ? Tests that catch minification bugs in the production bundle.
-// ? These tests run against dist/main.js, NOT source code.
+// MINIFICATION SAFETY TESTS
+// Tests that catch minification bugs in the production bundle.
+// These tests run against dist/main.js, NOT source code.
 // ==============================================================================
 
 import { describe, it, expect, beforeAll } from 'vitest'
@@ -9,7 +9,7 @@ import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
 // ----------------------------------------------------------
-// * SETUP
+// SETUP
 // ----------------------------------------------------------
 
 const BUNDLE_PATH = join(process.cwd(), 'dist', 'main.js')
@@ -23,8 +23,8 @@ beforeAll(() => {
 })
 
 // ----------------------------------------------------------
-// * STATUS CONSTANT TESTS
-// ? Ensures status constants aren't extracted to collision-prone names.
+// STATUS CONSTANT TESTS
+// Ensures status constants aren't extracted to collision-prone names.
 // ----------------------------------------------------------
 
 describe.skipIf(!BUNDLE_EXISTS)('Status Constants: Not Extracted to Single Letters', () => {
@@ -84,8 +84,8 @@ describe.skipIf(!BUNDLE_EXISTS)('Status Constants: Not Extracted to Single Lette
 })
 
 // ----------------------------------------------------------
-// * ICON OBJECT TESTS
-// ? Ensures ICO object has proper string keys with emoji values.
+// ICON OBJECT TESTS
+// Ensures ICO object has proper string keys with emoji values.
 // ----------------------------------------------------------
 
 describe.skipIf(!BUNDLE_EXISTS)('Icon Mappings: Preserved Correctly', () => {
@@ -118,8 +118,8 @@ describe.skipIf(!BUNDLE_EXISTS)('Icon Mappings: Preserved Correctly', () => {
 })
 
 // ----------------------------------------------------------
-// * ALARM CONSTANT TESTS
-// ? Ensures alarm constants are preserved correctly.
+// ALARM CONSTANT TESTS
+// Ensures alarm constants are preserved correctly.
 // ----------------------------------------------------------
 
 describe.skipIf(!BUNDLE_EXISTS)('Alarm Constants: Preserved Correctly', () => {
@@ -145,8 +145,8 @@ describe.skipIf(!BUNDLE_EXISTS)('Alarm Constants: Preserved Correctly', () => {
 })
 
 // ----------------------------------------------------------
-// * REASON CONSTANT TESTS
-// ? Ensures reason constants are preserved correctly.
+// REASON CONSTANT TESTS
+// Ensures reason constants are preserved correctly.
 // ----------------------------------------------------------
 
 describe.skipIf(!BUNDLE_EXISTS)('Reason Constants: Preserved Correctly', () => {
@@ -164,8 +164,8 @@ describe.skipIf(!BUNDLE_EXISTS)('Reason Constants: Preserved Correctly', () => {
 })
 
 // ----------------------------------------------------------
-// * CRITICAL FUNCTION TESTS
-// ? Ensures critical functions exist in the bundle.
+// CRITICAL FUNCTION TESTS
+// Ensures critical functions exist in the bundle.
 // ----------------------------------------------------------
 
 describe.skipIf(!BUNDLE_EXISTS)('Critical Functions: Present in Bundle', () => {
@@ -194,16 +194,16 @@ describe.skipIf(!BUNDLE_EXISTS)('Critical Functions: Present in Bundle', () => {
 })
 
 // ----------------------------------------------------------
-// * BUNDLE SIZE TESTS
-// ? The actual OOM limit is peak RUNTIME memory, not script size.
-// ? Script size doesn't directly correlate to runtime memory.
-// ? These are sanity checks, not hard limits.
+// BUNDLE SIZE TESTS
+// The actual OOM limit is peak RUNTIME memory, not script size.
+// Script size doesn't directly correlate to runtime memory.
+// These are sanity checks, not hard limits.
 // ----------------------------------------------------------
 
 describe.skipIf(!BUNDLE_EXISTS)('Bundle Size: Sanity Checks', () => {
   it('should be reasonably sized', () => {
-    // ? Sanity check: bundle should be under 50KB
-    // ? Note: 30KB bundle tested successfully with 23KB peak runtime memory
+    // Sanity check: bundle should be under 50KB
+    // Note: 30KB bundle tested successfully with 23KB peak runtime memory
     const size = Buffer.byteLength(bundleCode, 'utf8')
     expect(size).toBeLessThan(50000)
   })
@@ -218,8 +218,8 @@ describe.skipIf(!BUNDLE_EXISTS)('Bundle Size: Sanity Checks', () => {
 })
 
 // ----------------------------------------------------------
-// * DANGEROUS PATTERN TESTS
-// ? Ensures no dangerous minification patterns exist.
+// DANGEROUS PATTERN TESTS
+// Ensures no dangerous minification patterns exist.
 // ----------------------------------------------------------
 
 describe.skipIf(!BUNDLE_EXISTS)('Dangerous Patterns: None Present', () => {

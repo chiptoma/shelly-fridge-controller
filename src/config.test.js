@@ -1,6 +1,6 @@
 // ==============================================================================
-// * CONFIGURATION TESTS
-// ? Validates DEFAULT values, KVS keys, and config validation logic.
+// CONFIGURATION TESTS
+// Validates DEFAULT values, KVS keys, and config validation logic.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -20,7 +20,7 @@ describe('Configuration', () => {
 
     mockSyncToKvs = vi.fn((m, s, c, cb, name) => { if (cb) cb() })
     mockSaveAllToKvs = vi.fn((m, s, cb) => { if (cb) cb() })
-    // ? loadChunksSeq captures callback for test control
+    // loadChunksSeq captures callback for test control
     mockLoadChunksSeq = vi.fn((mapping, target, cb) => {
       loadChunksSeqCallback = cb
     })
@@ -44,7 +44,7 @@ describe('Configuration', () => {
   })
 
   // ----------------------------------------------------------
-  // * DEFAULT VALUES TESTS
+  // DEFAULT VALUES TESTS
   // ----------------------------------------------------------
 
   describe('DEFAULT', () => {
@@ -53,33 +53,33 @@ describe('Configuration', () => {
       expect(DEFAULT.sys_loopSec).toBeLessThanOrEqual(60)
     })
 
-    it('should have ctrl_targetDeg between -5 and 15', () => {
-      expect(DEFAULT.ctrl_targetDeg).toBeGreaterThanOrEqual(-5)
-      expect(DEFAULT.ctrl_targetDeg).toBeLessThanOrEqual(15)
+    it('should have ctl_targetDeg between -5 and 15', () => {
+      expect(DEFAULT.ctl_targetDeg).toBeGreaterThanOrEqual(-5)
+      expect(DEFAULT.ctl_targetDeg).toBeLessThanOrEqual(15)
     })
 
-    it('should have ctrl_hystDeg between 0.1 and 5', () => {
-      expect(DEFAULT.ctrl_hystDeg).toBeGreaterThanOrEqual(0.1)
-      expect(DEFAULT.ctrl_hystDeg).toBeLessThanOrEqual(5)
+    it('should have ctl_hystDeg between 0.1 and 5', () => {
+      expect(DEFAULT.ctl_hystDeg).toBeGreaterThanOrEqual(0.1)
+      expect(DEFAULT.ctl_hystDeg).toBeLessThanOrEqual(5)
     })
 
-    it('should have comp_minOnSec between 60 and 600', () => {
-      expect(DEFAULT.comp_minOnSec).toBeGreaterThanOrEqual(60)
-      expect(DEFAULT.comp_minOnSec).toBeLessThanOrEqual(600)
+    it('should have cmp_minOnSec between 60 and 600', () => {
+      expect(DEFAULT.cmp_minOnSec).toBeGreaterThanOrEqual(60)
+      expect(DEFAULT.cmp_minOnSec).toBeLessThanOrEqual(600)
     })
 
-    it('should have comp_minOffSec between 60 and 900', () => {
-      expect(DEFAULT.comp_minOffSec).toBeGreaterThanOrEqual(60)
-      expect(DEFAULT.comp_minOffSec).toBeLessThanOrEqual(900)
+    it('should have cmp_minOffSec between 60 and 900', () => {
+      expect(DEFAULT.cmp_minOffSec).toBeGreaterThanOrEqual(60)
+      expect(DEFAULT.cmp_minOffSec).toBeLessThanOrEqual(900)
     })
 
-    it('should have comp_maxRunSec between 1800 and 14400', () => {
-      expect(DEFAULT.comp_maxRunSec).toBeGreaterThanOrEqual(1800)
-      expect(DEFAULT.comp_maxRunSec).toBeLessThanOrEqual(14400)
+    it('should have cmp_maxRunSec between 1800 and 14400', () => {
+      expect(DEFAULT.cmp_maxRunSec).toBeGreaterThanOrEqual(1800)
+      expect(DEFAULT.cmp_maxRunSec).toBeLessThanOrEqual(14400)
     })
 
-    it('should have adapt_hystMinDeg < adapt_hystMaxDeg', () => {
-      expect(DEFAULT.adapt_hystMinDeg).toBeLessThan(DEFAULT.adapt_hystMaxDeg)
+    it('should have adt_hystMinDeg < adt_hystMaxDeg', () => {
+      expect(DEFAULT.adt_hystMinDeg).toBeLessThan(DEFAULT.adt_hystMaxDeg)
     })
 
     it('should define all MQTT topics', () => {
@@ -89,15 +89,15 @@ describe('Configuration', () => {
 
     it('should have all expected config keys', () => {
       const expectedKeys = [
-        'sys_loopSec', 'sys_sensAirId', 'sys_sensEvapId', 'sys_sensFailLimit',
-        'ctrl_targetDeg', 'ctrl_hystDeg', 'ctrl_smoothAlpha',
-        'adapt_enable', 'adapt_hystMinDeg', 'adapt_hystMaxDeg',
-        'comp_minOnSec', 'comp_minOffSec', 'comp_maxRunSec', 'comp_freezeCutDeg',
-        'limp_enable', 'limp_onSec', 'limp_offSec',
-        'door_enable', 'door_rateDegMin', 'door_pauseSec',
-        'defr_dynEnable', 'defr_dynTrigDeg', 'defr_dynEndDeg', 'defr_dynDwellSec',
-        'weld_enable', 'weld_waitSec', 'weld_winSec', 'weld_dropDeg',
-        'turbo_enable', 'turbo_targetDeg', 'turbo_hystDeg', 'turbo_maxTimeSec',
+        'sys_loopSec', 'sys_sensAirId', 'sys_sensEvpId', 'sys_sensFailLimit',
+        'ctl_targetDeg', 'ctl_hystDeg', 'ctl_smoothAlpha',
+        'adt_enable', 'adt_hystMinDeg', 'adt_hystMaxDeg',
+        'cmp_minOnSec', 'cmp_minOffSec', 'cmp_maxRunSec', 'cmp_freezeCutDeg',
+        'lmp_enable', 'lmp_onSec', 'lmp_offSec',
+        'dor_enable', 'dor_rateDegMin', 'dor_pauseSec',
+        'dfr_dynEnable', 'dfr_dynTrigDeg', 'dfr_dynEndDeg', 'dfr_dynDwellSec',
+        'wld_enable', 'wld_waitSec', 'wld_winSec', 'wld_dropDeg',
+        'trb_enable', 'trb_targetDeg', 'trb_hystDeg', 'trb_maxTimeSec',
       ]
 
       expectedKeys.forEach((key) => {
@@ -107,24 +107,24 @@ describe('Configuration', () => {
   })
 
   // ----------------------------------------------------------
-  // * CFG_KEYS TESTS
+  // CFG_KEYS TESTS
   // ----------------------------------------------------------
 
   describe('CFG_KEYS', () => {
     it('should map all config categories', () => {
       expect(CFG_KEYS['fridge_cfg_sys']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_ctrl']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_adapt']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_comp']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_limp']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_door']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_defr']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_weld']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_sens']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_alarm']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_ctl']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_adt']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_cmp']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_lmp']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_dor']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_dfr']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_wld']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_sns']).toBeDefined()
+      expect(CFG_KEYS['fridge_cfg_alm']).toBeDefined()
       expect(CFG_KEYS['fridge_cfg_pwr']).toBeDefined()
-      expect(CFG_KEYS['fridge_cfg_turbo']).toBeDefined()
-      // Note: gas keys were merged into fridge_cfg_weld to reduce chunk count
+      expect(CFG_KEYS['fridge_cfg_trb']).toBeDefined()
+      // Note: gas keys were merged into fridge_cfg_wld to reduce chunk count
     })
 
     it('should have arrays as values', () => {
@@ -142,7 +142,7 @@ describe('Configuration', () => {
   })
 
   // ----------------------------------------------------------
-  // * VALIDATE CONFIG TESTS
+  // VALIDATE CONFIG TESTS
   // ----------------------------------------------------------
 
   describe('validateConfig', () => {
@@ -172,55 +172,55 @@ describe('Configuration', () => {
       expect(C.sys_loopSec).toBe(DEFAULT.sys_loopSec)
     })
 
-    it('should revert ctrl_targetDeg if out of range', () => {
-      C.ctrl_targetDeg = 20
+    it('should revert ctl_targetDeg if out of range', () => {
+      C.ctl_targetDeg = 20
       const bad = validateConfig()
-      expect(bad).toContain('ctrl_targetDeg')
-      expect(C.ctrl_targetDeg).toBe(DEFAULT.ctrl_targetDeg)
+      expect(bad).toContain('ctl_targetDeg')
+      expect(C.ctl_targetDeg).toBe(DEFAULT.ctl_targetDeg)
     })
 
-    it('should revert ctrl_hystDeg if out of range', () => {
-      C.ctrl_hystDeg = 0.01
+    it('should revert ctl_hystDeg if out of range', () => {
+      C.ctl_hystDeg = 0.01
       const bad = validateConfig()
-      expect(bad).toContain('ctrl_hystDeg')
-      expect(C.ctrl_hystDeg).toBe(DEFAULT.ctrl_hystDeg)
+      expect(bad).toContain('ctl_hystDeg')
+      expect(C.ctl_hystDeg).toBe(DEFAULT.ctl_hystDeg)
     })
 
-    it('should revert comp_minOnSec if too low', () => {
-      C.comp_minOnSec = 30
+    it('should revert cmp_minOnSec if too low', () => {
+      C.cmp_minOnSec = 30
       const bad = validateConfig()
-      expect(bad).toContain('comp_minOnSec')
-      expect(C.comp_minOnSec).toBe(DEFAULT.comp_minOnSec)
+      expect(bad).toContain('cmp_minOnSec')
+      expect(C.cmp_minOnSec).toBe(DEFAULT.cmp_minOnSec)
     })
 
-    it('should revert comp_minOffSec if too high', () => {
-      C.comp_minOffSec = 1000
+    it('should revert cmp_minOffSec if too high', () => {
+      C.cmp_minOffSec = 1000
       const bad = validateConfig()
-      expect(bad).toContain('comp_minOffSec')
-      expect(C.comp_minOffSec).toBe(DEFAULT.comp_minOffSec)
+      expect(bad).toContain('cmp_minOffSec')
+      expect(C.cmp_minOffSec).toBe(DEFAULT.cmp_minOffSec)
     })
 
-    it('should revert comp_maxRunSec if out of range', () => {
-      C.comp_maxRunSec = 1000
+    it('should revert cmp_maxRunSec if out of range', () => {
+      C.cmp_maxRunSec = 1000
       const bad = validateConfig()
-      expect(bad).toContain('comp_maxRunSec')
-      expect(C.comp_maxRunSec).toBe(DEFAULT.comp_maxRunSec)
+      expect(bad).toContain('cmp_maxRunSec')
+      expect(C.cmp_maxRunSec).toBe(DEFAULT.cmp_maxRunSec)
     })
 
-    it('should revert comp_freezeCutDeg if out of range', () => {
-      C.comp_freezeCutDeg = 5
+    it('should revert cmp_freezeCutDeg if out of range', () => {
+      C.cmp_freezeCutDeg = 5
       const bad = validateConfig()
-      expect(bad).toContain('comp_freezeCutDeg')
-      expect(C.comp_freezeCutDeg).toBe(DEFAULT.comp_freezeCutDeg)
+      expect(bad).toContain('cmp_freezeCutDeg')
+      expect(C.cmp_freezeCutDeg).toBe(DEFAULT.cmp_freezeCutDeg)
     })
 
     it('should revert both hyst bounds if min >= max', () => {
-      C.adapt_hystMinDeg = 3.0
-      C.adapt_hystMaxDeg = 2.0
+      C.adt_hystMinDeg = 3.0
+      C.adt_hystMaxDeg = 2.0
       const bad = validateConfig()
-      expect(bad).toContain('adapt_hyst_range')
-      expect(C.adapt_hystMinDeg).toBe(DEFAULT.adapt_hystMinDeg)
-      expect(C.adapt_hystMaxDeg).toBe(DEFAULT.adapt_hystMaxDeg)
+      expect(bad).toContain('adt_hyst_range')
+      expect(C.adt_hystMinDeg).toBe(DEFAULT.adt_hystMinDeg)
+      expect(C.adt_hystMaxDeg).toBe(DEFAULT.adt_hystMaxDeg)
     })
 
     it('should print warning when values are reverted', () => {
@@ -236,22 +236,22 @@ describe('Configuration', () => {
 
     it('should handle multiple invalid values', () => {
       C.sys_loopSec = 0
-      C.ctrl_targetDeg = 100
-      C.comp_minOnSec = 10
+      C.ctl_targetDeg = 100
+      C.cmp_minOnSec = 10
       const bad = validateConfig()
       expect(bad.length).toBe(3)
       expect(bad).toContain('sys_loopSec')
-      expect(bad).toContain('ctrl_targetDeg')
-      expect(bad).toContain('comp_minOnSec')
+      expect(bad).toContain('ctl_targetDeg')
+      expect(bad).toContain('cmp_minOnSec')
     })
   })
 
   // ----------------------------------------------------------
-  // * LOAD CONFIG TESTS
+  // LOAD CONFIG TESTS
   // ----------------------------------------------------------
 
   describe('loadConfig', () => {
-    // ? loadChunksSeq loads KVS chunks sequentially for reduced peak memory
+    // loadChunksSeq loads KVS chunks sequentially for reduced peak memory
     it('should call loadChunksSeq with CFG_KEYS', () => {
       loadConfig(() => {})
 
@@ -266,7 +266,7 @@ describe('Configuration', () => {
       let completed = false
       loadConfig(() => { completed = true })
 
-      // ? loadChunksSeq callback receives parsed chunks object
+      // loadChunksSeq callback receives parsed chunks object
       loadChunksSeqCallback({})
 
       expect(completed).toBe(true)
@@ -302,7 +302,7 @@ describe('Configuration', () => {
     })
 
     it('should call validateConfig after loading', () => {
-      // ? loadChunksSeq merges into C directly, so set invalid value before callback
+      // loadChunksSeq merges into C directly, so set invalid value before callback
       C.sys_loopSec = 999 // Invalid value
 
       loadConfig(() => {})
