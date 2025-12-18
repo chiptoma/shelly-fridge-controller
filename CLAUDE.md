@@ -29,7 +29,7 @@ Key points for this project:
 ```
 fridge/
 ├── src/                        # Source files (JavaScript)
-│   ├── constants.js            # Compile-time constants (ALM, RSN, ICO, etc.)
+│   ├── constants.js            # Compile-time constants (ST, RSN, ALM, ICO, ADAPT)
 │   ├── config.js               # User configuration with KVS persistence
 │   ├── state.js                # Runtime state (S=persisted, V=volatile)
 │   ├── sensors.js              # Temperature sensor reading and smoothing
@@ -99,7 +99,7 @@ All imports use relative paths within `src/`:
 
 ```javascript
 // Good - relative imports
-import { ALM, RSN } from './constants.js'
+import { ST, RSN, ALM } from './constants.js'
 import { C } from './config.js'
 import { S, V } from './state.js'
 import { r1, ri } from './utils/math.js'
@@ -121,9 +121,9 @@ CONSTANTS (constants.js)          CONFIG (config.js)           STATE (state.js)
 ━━━━━━━━━━━━━━━━━━━━━━━           ━━━━━━━━━━━━━━━━━━━          ━━━━━━━━━━━━━━━━━
 Compile-time, never change         User-configurable            Runtime values
 
-ALM = { NONE, TEMP, SENSOR }      C.ctrl_targetDeg = 4         S.sys_isRelayOn = false
-RSN = { NONE, TEMP, TIMER }       C.ctrl_hystDeg = 1.0         S.sts_lifeRunSec = 0
-ICO = { IDLE: '', RUN: '' }       C.turbo_enable = true        V.sys_status = 'IDLE'
+ST = { BOOT, IDLE, RUN, ... }     C.ctl_targetDeg = 4          S.sys_isRelayOn = false
+RSN = { NONE, TEMP, TIMER }       C.ctl_hystDeg = 1.0          S.sts_lifeRunSec = 0
+ALM = { NONE, TEMP, SENSOR }      C.trb_enable = true          V.sys_status = 'IDLE'
                                   ...                           V.trb_isActive = false
 
 Never modified                    Loaded from KVS at boot       S = persisted to KVS
@@ -158,18 +158,18 @@ let V = {
 State and config are chunked for efficient KVS storage:
 
 ```javascript
-// config.js - Config chunks
+// config.js - Config chunks (3-letter prefixes: ctl_, trb_, adt_, cmp_, etc.)
 let CFG_KEYS = {
-  'fridge_cfg_ctrl': ['ctrl_targetDeg', 'ctrl_hystDeg', 'ctrl_smoothAlpha'],
-  'fridge_cfg_turbo': ['turbo_enable', 'turbo_targetDeg', ...],
-  // ...
+  'fridge_cfg_ctl': ['ctl_targetDeg', 'ctl_hystDeg', 'ctl_smoothAlpha'],
+  'fridge_cfg_trb': ['trb_enable', 'trb_targetDeg', 'trb_hystDeg', 'trb_maxTimeSec'],
+  // ... adt_, cmp_, lmp_, dor_, dfr_, wld_, sns_, alm_, pwr_, gas_
 }
 
 // state.js - State chunks
 let ST_KEYS = {
-  'fridge_st_core': ['sys_relayOnTs', 'sys_isRelayOn', ...],
-  'fridge_st_stats': ['sts_lifeTotalSec', 'sts_lifeRunSec', ...],
-  // ...
+  'fridge_st_core': ['sys_relayOnTs', 'sys_relayOffTs', 'sys_isRelayOn', ...],
+  'fridge_st_stats': ['sts_lifeTotalSec', 'sts_lifeRunSec', 'sts_dutyHistArr', ...],
+  'fridge_st_faults': ['flt_fatalArr', 'flt_critArr', 'flt_errorArr', 'flt_warnArr'],
 }
 ```
 
@@ -368,7 +368,7 @@ describe('Module Name', () => {
 npm test
 
 # Run with coverage
-npm test:coverage
+npm run test:coverage
 
 # Run specific file
 npm test src/sensors.test.js
@@ -428,104 +428,6 @@ AUTO_START=true
 
 ## Code Style
 
-### Comment Conventions
-
-Use semantic comment prefixes for visual scanning:
-
-```javascript
-// ==============================================================================
-// FILE TITLE (UPPERCASE)
-// Purpose: High-level intent of this module.
-// ==============================================================================
-
-// ----------------------------------------------------------
-// SECTION TITLE
-// Context note explaining this section.
-// ----------------------------------------------------------
-
-/**
- * functionName - Brief description (imperative verb)
- * Extended explanation if behavior is non-obvious.
- *
- * @param {number} value - Parameter description
- * @returns {boolean} Return description
- *
- * @mutates V.someField - When and why
- * @sideeffect Calls Shelly.call() to control relay
- */
-function doSomething(value) { }
-```
-
-### Prefix Meanings
-
-| Prefix | Color | Usage |
-|--------|-------|-------|
-| `*` | Green | Identifiers (titles, function names) |
-| `?` | Blue | Context (descriptions, explanations) |
-| `!` | Red | Critical (warnings, deprecations) |
-| `TODO` | Orange | Action items |
-
-### JSDoc Title Format
-
-Function titles use camelCase matching the function name:
-
-```javascript
-// Good - camelCase title with description
-* functionName - Brief description
-
-// Avoid - UPPERCASE titles
-* FUNCTION NAME
-```
-
-### JSDoc Description Lines
-
-Limit `?` prefix to 1-2 lines maximum. For complex logic, use inline comments instead:
-
-```javascript
-// Good: Concise description
-/**
- * adaptHysteresis - Adjust hysteresis based on cycle times
- * Uses trend confirmation to prevent oscillation.
- */
-
-// Avoid: Multi-line ? prose
-/**
- * adaptHysteresis - Adjust hysteresis
- * Uses trend confirmation.
- * Uses cycle count as secondary signal.
- * Design philosophy: ...
- * Zone 1: ...
- * Zone 2: ...
- */
-```
-
-### Custom JSDoc Tags
-
-| Tag | When to Use | Format |
-|-----|-------------|--------|
-| `@mutates` | Function modifies S, V, or C | `@mutates S.field - description` |
-| `@sideeffect` | External calls (Shelly, MQTT, KVS) | `@sideeffect Calls X` |
-| `@internal` | Nested helper functions | `@internal` |
-
-**@mutates is required when:**
-- Modifying any field in S (persisted state)
-- Modifying any field in V (volatile state)
-- Modifying any field in C (config)
-- Modifying function parameters passed by reference
-
-```javascript
-// Example with multiple mutations
-/**
- * setRelay - Switch relay and update timestamps
- *
- * @mutates S.sys_isRelayOn - Set to requested state
- * @mutates S.sys_relayOnTs - Updated when turning on
- * @mutates S.sys_relayOffTs - Updated when turning off
- * @sideeffect Calls Shelly.call('Switch.Set')
- * @sideeffect Calls persistState() on state change
- */
-```
-
 ### Variable Naming
 
 ```javascript
@@ -543,7 +445,7 @@ function($_r, $_e, $_m) {
 for (let i = 0; i < n; i++) { }
 
 // Descriptive names for clarity
-let targetTemp = C.ctrl_targetDeg
+let targetTemp = C.ctl_targetDeg
 let currentTemp = V.sns_airSmoothDeg
 ```
 
@@ -584,12 +486,10 @@ npm run deploy:monitor
 ### Review Checklist
 
 - [ ] Tests pass (`npm test`)
-- [ ] Coverage maintained (`npm test:coverage`)
+- [ ] Coverage maintained (`npm run test:coverage`)
 - [ ] Lint clean (`npm run lint`)
 - [ ] Bundle under 32KB (`npm run build`)
 - [ ] Memory patterns followed (no classes, no spread)
-- [ ] State mutations documented with `@mutates`
-- [ ] Side effects documented with `@sideeffect`
 
 ---
 
@@ -620,9 +520,9 @@ npm run deploy:monitor
 | Script | Description |
 |--------|-------------|
 | `npm test` | Run all tests |
-| `npm test:coverage` | Run tests with coverage |
-| `npm test:integration` | Run integration tests only |
-| `npm test:simulations` | Run simulation tests only |
+| `npm run test:coverage` | Run tests with coverage |
+| `npm run test:integration` | Run integration tests only |
+| `npm run test:simulations` | Run simulation tests only |
 | `npm run build` | Full build (concat + minify + validate) |
 | `npm run build:concat` | Concatenate source files only |
 | `npm run build:minify` | Minify + validate only |
@@ -671,5 +571,5 @@ Current production build:
 - **Bundle size**: ~30KB (under 32KB limit)
 - **Runtime memory**: ~14KB (56% of 25KB limit)
 - **Peak memory**: ~22KB (88% of limit)
-- **Test count**: 820+ tests
-- **Coverage**: 97.92%
+- **Test count**: 818 tests
+- **Coverage**: ~98%
