@@ -594,5 +594,5 @@ Current production build:
 - **Bundle size**: ~30KB (under 32KB limit)
 - **Runtime memory**: ~14KB (56% of 25KB limit)
 - **Peak memory**: ~22KB (88% of limit)
-- **Test count**: 843 tests
+- **Test count**: 866 tests
 - **Coverage**: ~98%

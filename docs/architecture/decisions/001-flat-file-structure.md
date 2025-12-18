@@ -81,7 +81,7 @@ src/
 
 - ESLint with strict rules for code quality
 - JSDoc for documentation (not type checking)
-- Comprehensive test suite (843 tests, 98% coverage)
+- Comprehensive test suite (866 tests, 98% coverage)
 - `FILE_ORDER` tier system prevents circular deps
 
 ## Related
