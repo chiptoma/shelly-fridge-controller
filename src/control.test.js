@@ -775,4 +775,114 @@ describe('Control', () => {
       expect(mockV.sys_detail).toBe('30s')
     })
   })
+
+  // ----------------------------------------------------------
+  // MUTATION KILLING TESTS
+  // Target: LogicalOperator, EqualityOperator, ConditionalExpression
+  // ----------------------------------------------------------
+
+  describe('setRelay mutation killers', () => {
+    it('should NOT print ON message when already ON (kills && to || mutation)', () => {
+      // If mutation changes `state && !S.sys_isRelayOn` to `state || !S.sys_isRelayOn`
+      // then this would print even when already on
+      mockS.sys_isRelayOn = true  // Already ON
+      mockS.sys_relayOnTs = 500
+      global.print.mockClear()
+
+      setRelay(true, 1000, 5.0, -10.0, false)
+
+      // Should NOT print "RELAY ON" since we're already on
+      expect(global.print).not.toHaveBeenCalledWith(expect.stringContaining('RELAY ON'))
+    })
+
+    it('should NOT print OFF message when already OFF (kills && to || mutation)', () => {
+      // If mutation changes `!state && S.sys_isRelayOn` to `!state || S.sys_isRelayOn`
+      // then this would print even when already off
+      mockS.sys_isRelayOn = false  // Already OFF
+      global.print.mockClear()
+
+      setRelay(false, 1000, 5.0, -10.0, false)
+
+      // Should NOT print "RELAY OFF" since we're already off
+      expect(global.print).not.toHaveBeenCalledWith(expect.stringContaining('RELAY OFF'))
+    })
+
+    it('should handle relayOffTs = 0 correctly (kills >= to > mutation)', () => {
+      // If mutation changes `S.sys_relayOffTs > 0` to `>= 0`
+      // then offSec calculation would be wrong when relayOffTs is 0
+      mockS.sys_isRelayOn = false
+      mockS.sys_relayOffTs = 0  // Never set (initial state)
+      global.print.mockClear()
+
+      setRelay(true, 1000, 5.0, -10.0, false)
+
+      // Should print ON without duration since relayOffTs is 0
+      expect(global.print).toHaveBeenCalledWith('⚡ RELAY ON')
+    })
+
+    it('should handle relayOnTs = 0 correctly (kills >= to > mutation)', () => {
+      // If mutation changes `S.sys_relayOnTs > 0` to `>= 0`
+      // then onSec calculation would be wrong when relayOnTs is 0
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 0  // Never set (initial state)
+      global.print.mockClear()
+
+      setRelay(false, 1000, 5.0, -10.0, false)
+
+      // Should print OFF without valid duration since relayOnTs is 0
+      expect(global.print).toHaveBeenCalledWith('⏹️ RELAY OFF (after 00m00s on)')
+    })
+
+    it('should NOT be emergency when skipSnap=false even with state=false (kills || mutation)', () => {
+      // If mutation changes `skipSnap && !state` to `skipSnap || !state`
+      // then any turn-off would be treated as emergency
+      global.Shelly.call = vi.fn((method, params, callback) => {
+        if (callback) callback(null, 1, 'Switch error')  // Simulate failure
+      })
+      mockS.sys_isRelayOn = true
+
+      setRelay(false, 1000, 5.0, -10.0, false)  // skipSnap=false
+
+      // Should NOT retry since this is not an emergency
+      expect(global.print).not.toHaveBeenCalledWith(expect.stringContaining('EMERGENCY RETRY'))
+    })
+
+    it('should skip health start capture when skipSnap=true even with valid tAir (kills || mutation)', () => {
+      // If mutation changes `!skipSnap && tAir !== null` to `!skipSnap || tAir !== null`
+      // then it would capture even when skipSnap is true
+      mockV.hlt_startDeg = 0
+
+      setRelay(true, 1000, 8.5, -10.0, true)  // skipSnap=true with valid tAir
+
+      expect(mockV.hlt_startDeg).toBe(0)  // Should NOT be captured
+    })
+
+    it('should NOT calculate health score when hlt_startDeg is exactly 0 (kills >= mutation)', () => {
+      // If mutation changes `V.hlt_startDeg > 0` to `>= 0`
+      // then it would calculate score with invalid start
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 100
+      mockV.hlt_startDeg = 0  // Exactly 0
+      mockV.hlt_lastScore = 0
+
+      setRelay(false, 700, 5.0, -10.0, false)
+
+      expect(mockV.hlt_lastScore).toBe(0)  // Should NOT calculate
+    })
+
+    it('should NOT calculate health score when delta is exactly 0 (kills >= mutation)', () => {
+      // If mutation changes `delta > 0` to `>= 0`
+      // then it would set score to 0 instead of skipping
+      mockS.sys_isRelayOn = true
+      mockS.sys_relayOnTs = 100
+      mockV.hlt_startDeg = 5.0
+      mockV.hlt_lastScore = 0.5  // Previous value
+
+      // Turn off with same temp (delta = 0)
+      setRelay(false, 700, 5.0, -10.0, false)
+
+      // Should NOT update score (keep previous value)
+      expect(mockV.hlt_lastScore).toBe(0.5)
+    })
+  })
 })
