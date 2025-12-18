@@ -277,7 +277,7 @@ binary_sensor:
 | **[ALGORITHM.md](docs/ALGORITHM.md)** | Control loop, defrost logic, state machines |
 | **[CONFIGURATION.md](docs/CONFIGURATION.md)** | All 50+ settings |
 | **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Build and deploy tools |
-| **[TESTING.md](docs/TESTING.md)** | 849 tests |
+| **[TESTING.md](docs/TESTING.md)** | 866 tests |
 
 ---
 
@@ -288,7 +288,7 @@ binary_sensor:
 | **Runtime** | Shelly mJS (ES5) |
 | **Memory** | ~25KB heap |
 | **Bundle** | <32KB |
-| **Tests** | 849 |
+| **Tests** | 866 |
 
 ---
 
