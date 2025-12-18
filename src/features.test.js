@@ -590,6 +590,34 @@ describe('Features', () => {
       expect(result).toBe(true)
       expect(mockV.dor_pauseRemSec).toBe(175) // 180 - 5 (sys_loopSec)
     })
+
+    // Mutation killers for V.dor_refTs > 0 && V.dor_refDeg !== 0
+    it('should skip rate calc when refTs = 0 (kills && to || mutation)', () => {
+      // If mutation changes && to ||, this would proceed when only refDeg is set
+      mockV.dor_refTs = 0  // Not set
+      mockV.dor_refDeg = 4.0  // Set
+      mockV.dor_pauseRemSec = 0
+
+      // With refTs=0, rate calculation should be skipped (division by ~0 would error)
+      const result = detectDoorOpen(10.0, 100)
+
+      // Should only update refs, not detect door (no rate calc possible)
+      expect(result).toBe(false)
+      expect(mockV.dor_refTs).toBe(100) // Updated
+    })
+
+    it('should skip rate calc when refDeg = 0 (kills && to || mutation)', () => {
+      // If mutation changes && to ||, this would proceed when only refTs is set
+      mockV.dor_refTs = 100  // Set
+      mockV.dor_refDeg = 0  // Not set (or exactly 0°C which is invalid baseline)
+      mockV.dor_pauseRemSec = 0
+
+      // With refDeg=0, we don't have a valid baseline
+      const result = detectDoorOpen(10.0, 160)
+
+      // Should update refs but not detect (invalid baseline)
+      expect(result).toBe(false)
+    })
   })
 
   describe('isDoorPauseActive', () => {
@@ -768,6 +796,87 @@ describe('Features', () => {
       const result = handleLimpMode()
 
       expect(result.wantOn).toBe(true)
+    })
+  })
+
+  // ----------------------------------------------------------
+  // MUTATION KILLING TESTS
+  // Target: EqualityOperator, ArithmeticOperator boundaries
+  // ----------------------------------------------------------
+
+  describe('adaptHysteresis mutation killers', () => {
+    it('should trigger high cycle path at exactly 5 cycles (kills > to >= mutation)', () => {
+      // HIGH_CYCLE_COUNT = 5, test exactly at boundary
+      // If mutation changes >= to >, this would NOT trigger
+      mockS.adt_hystDeg = 0.5
+      // cycleCount = 5 (exactly at threshold), totalCycle = 1000s < 1200s
+      const result = adaptHysteresis(500, 500, 5)
+      expect(result).toBe('widen')
+      expect(mockS.adt_hystDeg).toBe(0.8) // Danger zone step
+    })
+
+    it('should NOT trigger high cycle path at 4 cycles (boundary test)', () => {
+      // cycleCount = 4 < 5, should NOT use high cycle logic
+      mockS.adt_hystDeg = 0.5
+      // totalCycle = 1000s is in stable zone (540-2400s) without high cycle signal
+      const result = adaptHysteresis(500, 500, 4)
+      expect(result).toBeNull() // Stable zone, no action
+    })
+
+    it('should trigger low cycle path at exactly 3 cycles (kills < to <= mutation)', () => {
+      // LOW_CYCLE_COUNT = 3, test exactly at boundary
+      // Long cycle with headroom should use lowered maxCycle threshold
+      mockS.adt_hystDeg = 1.0
+      mockV.adt_lastDir = 'tighten'
+      mockV.adt_consecCnt = 1
+      // cycleCount = 3, totalCycle = 1600s, avgOff > avgOn
+      const result = adaptHysteresis(600, 1000, 3)
+      expect(result).toBe('tighten')
+    })
+
+    it('should NOT trigger low cycle path at 4 cycles (boundary test)', () => {
+      // cycleCount = 4 > 3, should NOT use low cycle logic
+      mockS.adt_hystDeg = 1.0
+      mockV.adt_lastDir = 'tighten'
+      mockV.adt_consecCnt = 1
+      // Same timing, but 4 cycles uses normal maxCycle (2400s)
+      // totalCycle = 1600s < 2400s, so it's in stable zone
+      const result = adaptHysteresis(600, 1000, 4)
+      expect(result).toBeNull() // Stable zone with normal threshold
+    })
+
+    it('should use correct totalCycle calculation (kills * to / mutation)', () => {
+      // totalCycle = avgOn + avgOff, not avgOn * avgOff
+      mockS.adt_hystDeg = 0.5
+      // avgOn=200, avgOff=200 → totalCycle should be 400s (danger zone)
+      // If mutation changes + to *, would be 40000s (way over)
+      const result = adaptHysteresis(200, 200, 3)
+      expect(result).toBe('widen')
+      // This only triggers if totalCycle=400s < dangerZone(450s)
+    })
+
+    it('should calculate duty correctly with division (kills / to * mutation)', () => {
+      // avgOn / totalCycle gives duty ratio
+      // avgOn=800, avgOff=200, totalCycle=1000, duty=80%
+      // If mutation changes / to *, duty would be 800000 (nonsense)
+      mockS.adt_hystDeg = 1.0
+      // High duty (80%) should block tightening even with long cycle
+      const result = adaptHysteresis(800, 200, 3)
+      // With 80% duty, avgOff (200) < avgOn (800), so no tighten
+      expect(result).toBeNull()
+    })
+
+    it('should decrement hysteresis correctly (kills - to + mutation)', () => {
+      // Tighten should subtract 0.1 step, not add
+      mockS.adt_hystDeg = 1.0
+      mockV.adt_lastDir = 'tighten'
+      mockV.adt_consecCnt = 1
+      // Long cycle with idle headroom
+      const result = adaptHysteresis(900, 1100, 2)
+      expect(result).toBe('tighten')
+      // Should be 1.0 - 0.2 = 0.8, not 1.0 + 0.2 = 1.2
+      expect(mockS.adt_hystDeg).toBe(0.8)
+      expect(mockS.adt_hystDeg).toBeLessThan(1.0)
     })
   })
 })
