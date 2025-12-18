@@ -1,6 +1,10 @@
 # Shelly Fridge Controller
 
 [![CI](https://github.com/chiptoma/shelly-fridge-controller/actions/workflows/ci.yml/badge.svg)](https://github.com/chiptoma/shelly-fridge-controller/actions/workflows/ci.yml)
+[![Security](https://github.com/chiptoma/shelly-fridge-controller/actions/workflows/security.yml/badge.svg)](https://github.com/chiptoma/shelly-fridge-controller/actions/workflows/security.yml)
+[![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen)](https://github.com/chiptoma/shelly-fridge-controller)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/chiptoma/shelly-fridge-controller)](https://github.com/chiptoma/shelly-fridge-controller/releases/latest)
 
 **Stop defrosting your fridge manually. Get precise temperature control.**
 
