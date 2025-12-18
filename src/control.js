@@ -22,8 +22,6 @@ import { incrementCycleCount } from './metrics.js'
  * Uses WANT_IDLE if relay is currently on.
  *
  * @param {string} reason - Reason code from RSN
- * @mutates V.sys_status - Set to ST.IDLE or ST.WANT_IDLE
- * @mutates V.sys_statusReason - Set to provided reason
  */
 function setIdleState(reason) {
   V.sys_status = S.sys_isRelayOn ? ST.WANT_IDLE : ST.IDLE
@@ -64,10 +62,6 @@ function evaluateThermostat(tCtrl, target, hyst) {
  * @param {number} tAir - Current air temperature
  * @param {number} tEvap - Current evap temperature
  * @param {boolean} skipSnap - Skip snapshot capture
- * @mutates S.sys_isRelayOn, S.sys_relayOnTs, S.sys_relayOffTs
- * @mutates S.wld_airSnapDeg, V.hlt_startDeg, V.hlt_lastScore
- * @sideeffect Calls Shelly.call('Switch.Set')
- * @sideeffect Calls persistState() on state change
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Inherent control logic complexity
 function setRelay(state, now, tAir, tEvap, skipSnap) {
@@ -159,8 +153,6 @@ function setRelay(state, now, tAir, tEvap, skipSnap) {
  * @param {number} tEvap - Evaporator temperature
  * @param {number} now - Current timestamp (seconds)
  * @returns {object} { wantOn, status, reason, detail }
- * @mutates V.sns_wasErr - Set true when entering limp mode
- * @mutates S.dfr_isActive - Cleared during scheduled defrost
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- State machine with many transitions
 function determineMode(tCtrl, tEvap, now) {
@@ -246,8 +238,6 @@ function determineMode(tCtrl, tEvap, now) {
  * @param {number} tEvap - Evap temperature
  * @param {boolean} isLimp - True if in limp mode
  * @returns {object} { switched, blocked, reason, detail }
- * @mutates V.sys_status, V.sys_statusReason, V.sys_detail
- * @sideeffect Calls setRelay() on state change
  */
 // eslint-disable-next-line sonarjs/cognitive-complexity -- Control orchestration with timing guards
 function executeSwitchDecision(wantOn, now, tAir, tEvap, isLimp) {

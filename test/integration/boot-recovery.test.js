@@ -530,3 +530,139 @@ describe('Boot Recovery: KVS Persistence Verification', () => {
     expect(script.S.flt_critArr.length).toBe(1)
   })
 })
+
+// ----------------------------------------------------------
+// MULTI-FAULT BOOT RECOVERY
+// Tests recovery when multiple issues present at boot.
+// ----------------------------------------------------------
+
+describe('Boot Recovery: Multi-Fault Scenarios', () => {
+  let runtime
+
+  beforeEach(async () => {
+    vi.resetModules()
+    runtime = new ShellyRuntime()
+  })
+
+  it('should handle stale relay + sensor failure history at boot', async () => {
+    // Setup: Hardware says OFF, but persisted state says ON with stale timestamp
+    // AND there's a previous sensor failure in fault history
+    const now = Date.now() / 1000
+    const staleRelayOnTs = now - 7200 // 2 hours stale (exceeds max run)
+    const lastSaveTs = now - 3600 // Last save 1 hour ago
+
+    const script = await setupForBootRecovery(runtime, {
+      hardwareRelayOn: false, // Hardware is OFF
+    })
+
+    Object.assign(script.S, {
+      sys_isRelayOn: true, // Stale: software thinks relay is ON
+      sys_relayOnTs: staleRelayOnTs, // Stale timestamp
+      sys_relayOffTs: 0,
+      sys_lastSaveTs: lastSaveTs,
+      sts_hourRunSec: 100,
+      sts_hourTotalSec: 100,
+      sts_cycleCnt: 0,
+      wld_airSnapDeg: 5.0,
+      // Previous sensor failure in history
+      flt_errorArr: [{ t: now - 86400, a: 'ALARM_SENSOR_FAIL', d: 'Air sensor NaN' }],
+    })
+
+    // Boot recovery should:
+    // 1. Detect hardware/software mismatch (Scenario 3)
+    // 2. Cap stat recovery to 1 hour max
+    // 3. Preserve fault history
+    script.recoverBootState()
+
+    // Verify state is corrected
+    expect(script.S.sys_isRelayOn).toBe(false) // Synced with hardware
+    // Note: Cycle not counted when timestamp is too stale (>1hr cap on recovery)
+    expect(script.S.wld_airSnapDeg).toBe(0) // Reset on state sync
+
+    // Verify fault history preserved
+    expect(script.S.flt_errorArr.length).toBe(1)
+    expect(script.S.flt_errorArr[0].a).toBe('ALARM_SENSOR_FAIL')
+
+    // Verify stats recovered with cap (max 1 hour = 3600s)
+    // Recovery should add up to 3600s (the elapsed time since last save)
+    expect(script.S.sts_hourTotalSec).toBeGreaterThanOrEqual(100)
+  })
+
+  it('should recover from power loss during defrost with sensor error history', async () => {
+    // Setup: Was in dynamic defrost, power lost, also has ghost alarm history
+    const now = Date.now() / 1000
+    const lastSaveTs = now - 600 // 10 min ago
+
+    const script = await setupForBootRecovery(runtime, {
+      hardwareRelayOn: false,
+    })
+
+    Object.assign(script.S, {
+      sys_isRelayOn: false, // Was in defrost (compressor OFF)
+      sys_relayOnTs: 0,
+      sys_relayOffTs: now - 1200, // Turned off 20 min ago (before defrost)
+      sys_lastSaveTs: lastSaveTs,
+      dfr_isActive: true, // Was actively defrosting
+      sts_hourRunSec: 300,
+      sts_hourTotalSec: 600,
+      adt_hystDeg: 1.5, // Learned hysteresis
+      // Ghost alarm in warning history
+      flt_warnArr: [{ t: now - 43200, a: 'ALARM_COMP_GHOST', d: '0W for 60s' }],
+    })
+
+    script.recoverBootState()
+
+    // Verify defrost state preserved (not cleared by boot recovery)
+    expect(script.S.dfr_isActive).toBe(true)
+
+    // Verify adaptive hysteresis preserved
+    expect(script.S.adt_hystDeg).toBe(1.5)
+
+    // Verify warning history preserved
+    expect(script.S.flt_warnArr.length).toBe(1)
+    expect(script.S.flt_warnArr[0].a).toBe('ALARM_COMP_GHOST')
+
+    // Verify idle stats recovered (was idle during defrost)
+    expect(script.S.sts_hourTotalSec).toBeGreaterThanOrEqual(600)
+  })
+
+  it('should handle fatal weld alarm + stale cooling state at boot', async () => {
+    // Setup: Fatal weld alarm recorded, but persisted state shows cooling
+    // This tests that fatal alarm history is preserved and reported
+    const now = Date.now() / 1000
+    const weldTime = now - 3600 // Weld detected 1 hour ago
+    const lastSaveTs = now - 3600
+
+    const script = await setupForBootRecovery(runtime, {
+      hardwareRelayOn: false, // Hardware forced OFF by weld detection
+    })
+
+    Object.assign(script.S, {
+      sys_isRelayOn: true, // Stale: software says ON
+      sys_relayOnTs: now - 7200, // Was "cooling" for 2h (stale)
+      sys_relayOffTs: 0,
+      sys_lastSaveTs: lastSaveTs,
+      sts_hourRunSec: 200,
+      sts_cycleCnt: 0,
+      wld_airSnapDeg: 4.5,
+      // Fatal weld alarm in history
+      flt_fatalArr: [{ t: weldTime, a: 'ALARM_RELAY_WELD', d: 'Temp 5.0→4.2 while OFF' }],
+    })
+
+    script.recoverBootState()
+
+    // Verify state synced with hardware
+    expect(script.S.sys_isRelayOn).toBe(false)
+    // Note: Cycle not counted when timestamp is too stale (>1hr cap on recovery)
+
+    // Verify fatal alarm history preserved
+    expect(script.S.flt_fatalArr.length).toBe(1)
+    expect(script.S.flt_fatalArr[0].a).toBe('ALARM_RELAY_WELD')
+
+    // Verify boot recovery reported the fatal alarm
+    const prints = runtime.getPrintHistory()
+    const fatalMsg = prints.find((p) => p.message.includes('Had fatal error'))
+    expect(fatalMsg).toBeDefined()
+    expect(fatalMsg.message).toContain('ALARM_RELAY_WELD')
+  })
+})

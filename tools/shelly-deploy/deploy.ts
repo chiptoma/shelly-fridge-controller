@@ -97,6 +97,9 @@ class ShellyDeployer {
       const status = await this.client.getStatus(result.id)
       this.actions.started = true
       this.actions.memUsed = status.mem_used
+
+      // Post-deploy health check: verify script is still running after brief delay
+      await this.verifyScriptHealth(result.id)
     }
 
     // Enable debug websocket if needed
@@ -137,6 +140,7 @@ class ShellyDeployer {
 
     if (this.actions.started) {
       actions.push(`Started script${this.actions.memUsed ? ` (memory: ${this.actions.memUsed} bytes)` : ''}`)
+      actions.push('Health check passed (script running after 2s)')
     } else {
       actions.push('Script not started (--no-start)')
     }
@@ -171,6 +175,28 @@ class ShellyDeployer {
     console.log(`Memory Used: ${status.mem_used} bytes`)
     console.log(`Memory Peak: ${status.mem_peak} bytes`)
     console.log(`Memory Free: ${status.mem_free} bytes`)
+  }
+
+  /**
+   * Verify script is healthy after startup
+   * Waits briefly then checks if script is still running
+   */
+  private async verifyScriptHealth(scriptId: number): Promise<void> {
+    // Wait for script to initialize and potentially crash
+    const healthCheckDelay = 2000 // 2 seconds
+    await new Promise((resolve) => setTimeout(resolve, healthCheckDelay))
+
+    const status = await this.client.getStatus(scriptId)
+
+    if (!status.running) {
+      throw new Error(
+        `Health check failed: Script stopped running within ${healthCheckDelay / 1000}s of startup. `
+        + 'Check script logs with: npm run shelly:logs',
+      )
+    }
+
+    // Update memory stats after health check
+    this.actions.memUsed = status.mem_used
   }
 
   /**

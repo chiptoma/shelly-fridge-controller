@@ -168,7 +168,8 @@ let CFG_KEYS = {
 // state.js - State chunks
 let ST_KEYS = {
   'fridge_st_core': ['sys_relayOnTs', 'sys_relayOffTs', 'sys_isRelayOn', ...],
-  'fridge_st_stats': ['sts_lifeTotalSec', 'sts_lifeRunSec', 'sts_dutyHistArr', ...],
+  'fridge_st_stats': ['sts_lifeTotalSec', 'sts_lifeRunSec', 'sts_histIdx', ...],
+  'fridge_st_hist': ['sts_dutyHistArr'],  // Separate chunk: large 24-element array
   'fridge_st_faults': ['flt_fatalArr', 'flt_critArr', 'flt_errorArr', 'flt_warnArr'],
 }
 ```
@@ -426,6 +427,18 @@ AUTO_START=true
 
 ---
 
+## Security Considerations
+
+This is a local IoT controller. Security design decisions:
+
+- **MQTT:** No authentication by design (local network only). For internet-exposed setups, configure TLS and authentication on your MQTT broker.
+- **KVS:** No encryption at rest (Shelly device constraint). Do not store secrets in config.
+- **Commands:** MQTT command parsing uses allowlist validation, no injection vectors.
+
+See README.md for the full security note.
+
+---
+
 ## Code Style
 
 ### Variable Naming
@@ -571,5 +584,5 @@ Current production build:
 - **Bundle size**: ~30KB (under 32KB limit)
 - **Runtime memory**: ~14KB (56% of 25KB limit)
 - **Peak memory**: ~22KB (88% of limit)
-- **Test count**: 818 tests
+- **Test count**: 842 tests
 - **Coverage**: ~98%

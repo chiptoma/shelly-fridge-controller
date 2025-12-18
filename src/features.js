@@ -40,10 +40,6 @@ function getEffectiveHysteresis() {
  * @param {number} avgOff - Average OFF time in seconds
  * @param {number} cycleCount - Number of cycles this hour
  * @returns {string|null} 'widen', 'tighten', 'blocked', or null
- *
- * @mutates S.adt_hystDeg - Updated hysteresis value
- * @mutates V.adt_lastDir - Tracking direction ('widen'|'tighten'|null)
- * @mutates V.adt_consecCnt - Consecutive same-direction count (0-2)
  */
 // eslint-disable-next-line complexity, sonarjs/cognitive-complexity -- Multi-zone adaptive algorithm
 function adaptHysteresis(avgOn, avgOff, cycleCount) {
@@ -176,10 +172,6 @@ function adaptHysteresis(avgOn, avgOff, cycleCount) {
  *
  * @param {boolean} switchState - Current switch state
  * @returns {boolean} True if turbo just activated
- *
- * @mutates V.trb_prevSw - Previous switch state for edge detection
- * @mutates V.trb_isActive - Set true on rising edge (if enabled)
- * @mutates V.trb_remSec - Reset to turbo_maxTimeSec on activation
  */
 function checkTurboSwitch(switchState) {
   // Always track switch state (even when disabled) to detect edge correctly
@@ -205,9 +197,6 @@ function checkTurboSwitch(switchState) {
  *
  * @param {number} dt - Time delta (seconds)
  * @returns {object|null} { target, hyst, detail } or null if not active
- *
- * @mutates V.trb_remSec - Decremented by dt each call
- * @mutates V.trb_isActive - Set false when timer expires
  */
 function handleTurboMode(dt) {
   if (!V.trb_isActive) return null
@@ -238,10 +227,6 @@ function handleTurboMode(dt) {
  * @param {number} tAirMedian - Current median air temperature
  * @param {number} now - Current timestamp (seconds)
  * @returns {boolean} True if door event detected this call
- *
- * @mutates V.dor_refDeg - Reference temperature for rate calculation
- * @mutates V.dor_refTs - Reference timestamp for rate calculation
- * @mutates V.dor_pauseRemSec - Set to door_pauseSec on detection
  */
 function detectDoorOpen(tAirMedian, now) {
   if (!C.dor_enable) return false
@@ -304,9 +289,6 @@ function isScheduledDefrost() {
  *
  * @param {number} tEvap - Evaporator temperature
  * @returns {boolean} True if defrost should trigger
- *
- * @mutates S.dfr_isActive - Set true when evap <= defr_dynTrigDeg
- * @sideeffect Calls persistState() on defrost trigger
  */
 function checkDefrostTrigger(tEvap) {
   if (!C.dfr_dynEnable) return false
@@ -329,10 +311,6 @@ function checkDefrostTrigger(tEvap) {
  *
  * @param {number} tEvap - Evaporator temperature
  * @returns {boolean} True if defrost is active
- *
- * @mutates S.dfr_isActive - Set false when defrost completes
- * @mutates defr_dwellTimer - Module-local timer incremented/reset
- * @sideeffect Calls persistState() on defrost completion
  */
 function handleDynamicDefrost(tEvap) {
   if (!C.dfr_dynEnable) return false

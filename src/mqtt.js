@@ -18,14 +18,6 @@ let mqttLastCmdMs = -2000
 /**
  * setupMqttCommands - Register MQTT command handler
  * Subscribes to command topic and processes validated commands.
- *
- * @mutates V.trb_isActive  - For turbo commands
- * @mutates V.trb_remSec  - For turbo commands
- * @mutates V.sys_alarm     - For reset_alarms
- * @mutates C.*             - For setpoint (validated)
- *
- * @sideeffect Calls MQTT.subscribe() to register handler
- * @sideeffect Calls persistConfig() after setpoint changes
  */
 function setupMqttCommands() {
   MQTT.subscribe(C.sys_mqttCmd, handleMqttMessage)
@@ -37,7 +29,6 @@ function setupMqttCommands() {
 
 /**
  * handleTurbo - Activate turbo cooling mode via MQTT
- * @mutates V.trb_isActive, V.trb_remSec
  */
 function handleTurbo() {
   if (!C.trb_enable) { print('⚠️ MQTT Turbo disabled: ignoring command (feature disabled)'); return }
@@ -48,7 +39,6 @@ function handleTurbo() {
 
 /**
  * handleTurboOff - Deactivate turbo cooling mode via MQTT
- * @mutates V.trb_isActive, V.trb_remSec
  */
 function handleTurboOff() {
   V.trb_isActive = false
@@ -66,7 +56,6 @@ function handleStatus() {
 
 /**
  * handleResetAlarms - Clear active alarm state via MQTT
- * @mutates V.sys_alarm
  */
 function handleResetAlarms() {
   V.sys_alarm = ALM.NONE
@@ -78,7 +67,6 @@ function handleResetAlarms() {
  * Validates new value and persists to KVS on success.
  *
  * @param {object} cmd - Command object with value field
- * @mutates C.ctl_targetDeg
  */
 function handleSetpoint(cmd) {
   // Type check before any mutation

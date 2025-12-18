@@ -53,7 +53,7 @@ Core temperature control parameters.
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
 | `ctl_targetDeg` | 4.0 | -5 to 15 | °C | Target temperature setpoint |
-| `ctl_hystBase` | 1.0 | 0.1-5.0 | °C | Base hysteresis band (±hyst around target) |
+| `ctl_hystDeg` | 1.0 | 0.1-5.0 | °C | Base hysteresis band (±hyst around target) |
 | `ctl_smoothAlpha` | 0.08 | 0.01-1.0 | - | EMA smoothing factor (lower = smoother, slower response) |
 
 ### How Thermostat Works
@@ -430,7 +430,7 @@ Commands use a `{"cmd": "...", ...}` structure:
 ```json
 {
   "ctl_targetDeg": 4.0,
-  "ctl_hystBase": 1.0,
+  "ctl_hystDeg": 1.0,
   "cmp_minOnSec": 180,
   "cmp_minOffSec": 300
 }
@@ -441,7 +441,7 @@ Commands use a `{"cmd": "...", ...}` structure:
 ```json
 {
   "ctl_targetDeg": 3.0,
-  "ctl_hystBase": 0.5,
+  "ctl_hystDeg": 0.5,
   "adt_enable": false,
   "dor_enable": false
 }
@@ -452,7 +452,7 @@ Commands use a `{"cmd": "...", ...}` structure:
 ```json
 {
   "ctl_targetDeg": -18.0,
-  "ctl_hystBase": 2.0,
+  "ctl_hystDeg": 2.0,
   "cmp_freezeCutDeg": -25.0,
   "alm_highDeg": -10.0
 }

@@ -158,7 +158,6 @@ function buildMqttPayload(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
  * @param {number|null} tRaw - Raw air temperature
  * @param {number} powerW - Current power draw (watts)
  * @param {number|null} deviceTemp - Device internal temperature
- * @sideeffect Calls print() and MQTT.publish()
  */
 function publishStatus(tSmooth, tEvap, tRaw, powerW, deviceTemp) {
   // Console output

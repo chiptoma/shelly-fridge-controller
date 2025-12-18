@@ -153,6 +153,8 @@ N (Neutral) ──────────┤ N    [Add-On]  │
 
 ## MQTT
 
+> **Security Note:** MQTT communication has no authentication by design. This is standard for local IoT deployments where the MQTT broker is on a trusted home network. For internet-exposed setups, configure TLS and authentication on your MQTT broker.
+
 ### Status (every 5s to `fridge/status`)
 
 ```json
@@ -243,7 +245,7 @@ binary_sensor:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `ctrl_targetDeg` | 4.0°C | Target temperature |
+| `ctl_targetDeg` | 4.0°C | Target temperature |
 | `defr_dynTrigDeg` | -16°C | Evap temp that triggers defrost |
 | `defr_dynEndDeg` | -5°C | Evap temp that ends defrost |
 | `defr_schedHour` | 1 | Hour for scheduled defrost (1 AM) |
@@ -271,7 +273,7 @@ binary_sensor:
 | **[ALGORITHM.md](docs/ALGORITHM.md)** | Control loop, defrost logic, state machines |
 | **[CONFIGURATION.md](docs/CONFIGURATION.md)** | All 50+ settings |
 | **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Build and deploy tools |
-| **[TESTING.md](docs/TESTING.md)** | 820+ tests |
+| **[TESTING.md](docs/TESTING.md)** | 840+ tests |
 
 ---
 
@@ -282,7 +284,7 @@ binary_sensor:
 | **Runtime** | Shelly mJS (ES5) |
 | **Memory** | ~25KB heap |
 | **Bundle** | <32KB |
-| **Tests** | 820+ |
+| **Tests** | 840+ |
 
 ---
 

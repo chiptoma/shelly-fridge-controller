@@ -4,8 +4,7 @@
 // Loads config/state from KVS, recovers boot state, and starts main loop.
 // ==============================================================================
 
-import { C } from './config.js'
-import { loadConfig } from './config.js'
+import { C, loadConfig } from './config.js'
 import { S, V, persistState, loadState } from './state.js'
 import { ri, nowSec } from './utils/math.js'
 import { setupMqttCommands } from './mqtt.js'

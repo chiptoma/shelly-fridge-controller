@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 describe('KVS Utilities', () => {
-  let pickKeys, loadChunksSeq, syncToKvs, saveAllToKvs
+  let pickKeys, loadChunksSeq, syncToKvs, saveAllToKvs, chunkNeedsSync
   let mockShelly, mockTimer, timerCallbacks
 
   beforeEach(async () => {
@@ -36,6 +36,7 @@ describe('KVS Utilities', () => {
     loadChunksSeq = module.loadChunksSeq
     syncToKvs = module.syncToKvs
     saveAllToKvs = module.saveAllToKvs
+    chunkNeedsSync = module.chunkNeedsSync
   })
 
   // ----------------------------------------------------------
@@ -189,6 +190,99 @@ describe('KVS Utilities', () => {
       // When onDone is null, no final Timer.set is called (only 2 callbacks)
       expect(timerCallbacks.length).toBe(2)
       expect(target.a).toBe(1)
+    })
+
+    it('should retry on transient KVS error', () => {
+      const mapping = { key1: ['a'] }
+      const target = { a: 'default' }
+      const onDone = vi.fn()
+
+      loadChunksSeq(mapping, target, onDone)
+      timerCallbacks[0]() // Initial kick-off
+
+      // Simulate transient error (not -104)
+      mockShelly.call.mock.calls[0][2](null, -1) // Error code -1
+
+      // Should print retry message
+      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Retry key1 (attempt 1/3)'))
+
+      // Should schedule retry via Timer.set with 100ms delay
+      expect(mockTimer.set).toHaveBeenCalledWith(100, false, expect.any(Function))
+
+      // Trigger retry callback
+      timerCallbacks[1]()
+
+      // Should make another KVS.Get call
+      expect(mockShelly.call).toHaveBeenCalledTimes(2)
+      expect(mockShelly.call).toHaveBeenLastCalledWith(
+        'KVS.Get',
+        { key: 'key1' },
+        expect.any(Function),
+      )
+
+      // Now succeed on retry
+      mockShelly.call.mock.calls[1][2]({ value: '{"a":"fromKvs"}' }, 0)
+      timerCallbacks[2]() // GC pause
+      timerCallbacks[3]() // Completion
+
+      expect(onDone).toHaveBeenCalled()
+      expect(target.a).toBe('fromKvs')
+    })
+
+    it('should call onDone after all retries exhausted (fatal error)', () => {
+      const mapping = { key1: ['a'] }
+      const target = { a: 'default' }
+      const onDone = vi.fn()
+
+      loadChunksSeq(mapping, target, onDone)
+      timerCallbacks[0]() // Initial kick-off
+
+      // Simulate 3 transient errors + 1 final failure (retries=3,2,1,0)
+      mockShelly.call.mock.calls[0][2](null, -1) // Error, retries=3
+      timerCallbacks[1]() // Retry 1
+
+      mockShelly.call.mock.calls[1][2](null, -1) // Error, retries=2
+      timerCallbacks[2]() // Retry 2
+
+      mockShelly.call.mock.calls[2][2](null, -1) // Error, retries=1
+      timerCallbacks[3]() // Retry 3
+
+      mockShelly.call.mock.calls[3][2](null, -1) // Error, retries=0 -> FATAL
+
+      // Should print fatal message
+      expect(global.print).toHaveBeenCalledWith(expect.stringContaining('FATAL - Cannot read key1'))
+
+      // Should schedule onDone callback
+      timerCallbacks[4]()
+      expect(onDone).toHaveBeenCalled()
+
+      // Target should keep default value
+      expect(target.a).toBe('default')
+    })
+
+    it('should succeed on second retry attempt', () => {
+      const mapping = { key1: ['a'] }
+      const target = {}
+      const onDone = vi.fn()
+
+      loadChunksSeq(mapping, target, onDone)
+      timerCallbacks[0]() // Initial kick-off
+
+      // First attempt fails
+      mockShelly.call.mock.calls[0][2](null, -1)
+      timerCallbacks[1]() // Retry 1
+
+      // Second attempt fails
+      mockShelly.call.mock.calls[1][2](null, -1)
+      timerCallbacks[2]() // Retry 2
+
+      // Third attempt succeeds
+      mockShelly.call.mock.calls[2][2]({ value: '{"a":"recovered"}' }, 0)
+      timerCallbacks[3]() // GC pause
+      timerCallbacks[4]() // Completion
+
+      expect(onDone).toHaveBeenCalled()
+      expect(target.a).toBe('recovered')
     })
   })
 
@@ -350,37 +444,45 @@ describe('KVS Utilities', () => {
 
   // ----------------------------------------------------------
   // CHUNK NEEDS SYNC TESTS
-  // Testing via syncToKvs behavior since chunkNeedsSync is not exported
+  // Direct unit tests for chunkNeedsSync
   // ----------------------------------------------------------
 
-  describe('chunkNeedsSync behavior', () => {
-    it('should detect missing key in loaded chunk', () => {
+  describe('chunkNeedsSync', () => {
+    it('should return true for null chunk', () => {
+      expect(chunkNeedsSync(null, ['a', 'b'])).toBe(true)
+    })
+
+    it('should return true for undefined chunk', () => {
+      expect(chunkNeedsSync(undefined, ['a', 'b'])).toBe(true)
+    })
+
+    it('should return true when missing expected key', () => {
+      const chunk = { a: 1, b: 2 }
+      expect(chunkNeedsSync(chunk, ['a', 'b', 'c'])).toBe(true)
+    })
+
+    it('should return true when extra key in loaded chunk', () => {
+      const chunk = { a: 1, b: 2, obsolete: 'old' }
+      expect(chunkNeedsSync(chunk, ['a', 'b'])).toBe(true)
+    })
+
+    it('should return false when schema matches exactly', () => {
+      const chunk = { a: 1, b: 2, c: 3 }
+      expect(chunkNeedsSync(chunk, ['a', 'b', 'c'])).toBe(false)
+    })
+
+    it('should return false for empty chunk with empty expectedKeys', () => {
+      expect(chunkNeedsSync({}, [])).toBe(false)
+    })
+
+    it('should detect schema mismatch via syncToKvs (integration)', () => {
       const mapping = { chunk1: ['a', 'b', 'c'] }
       const source = { a: 1, b: 2, c: 3 }
-      // Missing key 'c' in loaded chunk
       const loadedChunks = { chunk1: { a: 1, b: 2 } }
 
       syncToKvs(mapping, source, loadedChunks, vi.fn(), null)
       timerCallbacks[0]()
 
-      // Should trigger save due to missing key
-      expect(mockShelly.call).toHaveBeenCalledWith(
-        'KVS.Set',
-        expect.objectContaining({ key: 'chunk1' }),
-        expect.any(Function),
-      )
-    })
-
-    it('should detect extra key in loaded chunk', () => {
-      const mapping = { chunk1: ['a'] }
-      const source = { a: 1 }
-      // Extra key 'obsoleteKey' in loaded chunk
-      const loadedChunks = { chunk1: { a: 1, obsoleteKey: 'old' } }
-
-      syncToKvs(mapping, source, loadedChunks, vi.fn(), null)
-      timerCallbacks[0]()
-
-      // Should trigger save due to extra key
       expect(mockShelly.call).toHaveBeenCalledWith(
         'KVS.Set',
         expect.objectContaining({ key: 'chunk1' }),
