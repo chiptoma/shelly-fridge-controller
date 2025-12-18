@@ -1,6 +1,6 @@
 // ==============================================================================
-// * MAIN TESTS
-// ? Validates boot recovery and initialization.
+// MAIN TESTS
+// Validates boot recovery and initialization.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -30,7 +30,7 @@ describe('Main', () => {
     }
 
     mockC = {
-      comp_maxRunSec: 3600,
+      cmp_maxRunSec: 3600,
     }
 
     mockPersistState = vi.fn()
@@ -72,14 +72,14 @@ describe('Main', () => {
   })
 
   // ----------------------------------------------------------
-  // * BOOT RECOVERY TESTS
+  // BOOT RECOVERY TESTS
   // ----------------------------------------------------------
 
   describe('recoverBootState', () => {
     it('should handle clean state (both OFF)', () => {
       global.Shelly.getComponentStatus.mockReturnValue({ output: false })
       mockS.sys_isRelayOn = false
-      // ? Must have elapsed time for "Clean idle" message to print
+      // Must have elapsed time for "Clean idle" message to print
       mockS.sys_lastSaveTs = Date.now() / 1000 - 300
 
       recoverBootState()
@@ -116,7 +116,7 @@ describe('Main', () => {
 
       recoverBootState()
 
-      // ? Elapsed since last save = 500s, all was run time, so sts_hourRunSec += 500
+      // Elapsed since last save = 500s, all was run time, so sts_hourRunSec += 500
       expect(mockS.sts_hourRunSec).toBeCloseTo(1000, 0)
       expect(mockS.sts_hourTotalSec).toBeCloseTo(500, 0)
       expect(mockPersistState).toHaveBeenCalled()
@@ -127,7 +127,7 @@ describe('Main', () => {
       global.Shelly.getComponentStatus.mockReturnValue({ output: true })
       mockS.sys_isRelayOn = true
       mockS.sys_relayOnTs = now - 1000
-      // ? Must have elapsed time for recovery message to print
+      // Must have elapsed time for recovery message to print
       mockS.sys_lastSaveTs = now - 500
       mockS.sts_hourRunSec = 1000
 
@@ -142,7 +142,7 @@ describe('Main', () => {
       global.Shelly.getComponentStatus.mockReturnValue({ output: true })
       mockS.sys_isRelayOn = true
       mockS.sys_relayOnTs = now - 10000
-      mockC.comp_maxRunSec = 3600
+      mockC.cmp_maxRunSec = 3600
 
       recoverBootState()
 
@@ -181,7 +181,7 @@ describe('Main', () => {
       // Format: "Script stopped while cooling → added ~Xm to runtime stats"
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Script stopped while cooling'))
       expect(mockS.sys_isRelayOn).toBe(false)
-      // ? Estimated run = 1000s, elapsed = 500s, so missed run = min(1000, 500) = 500s
+      // Estimated run = 1000s, elapsed = 500s, so missed run = min(1000, 500) = 500s
       expect(mockS.sts_hourRunSec).toBeCloseTo(1000, 0)
       expect(mockS.sts_hourTotalSec).toBeCloseTo(500, 0)
       expect(mockS.sts_cycleCnt).toBe(6)

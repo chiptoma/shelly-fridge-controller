@@ -202,8 +202,8 @@ export class ShellyRPCClient {
     chunkSize = 1024,
   ): Promise<void> {
     // Upload in chunks using byte-aware slicing
-    // ! CRITICAL: Must use Buffer to handle UTF-8 multi-byte characters (emojis)
-    // ! String.slice() operates on characters, but Shelly measures bytes
+    // CRITICAL: Must use Buffer to handle UTF-8 multi-byte characters (emojis)
+    // String.slice() operates on characters, but Shelly measures bytes
     const buffer = Buffer.from(code, 'utf8')
     const totalBytes = buffer.length
 

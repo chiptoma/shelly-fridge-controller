@@ -20,11 +20,11 @@ Configuration can be changed via:
    ```json
    {"cmd": "setpoint", "value": 3.5}
    ```
-   Note: Currently only `ctrl_targetDeg` can be changed via MQTT.
+   Note: Currently only `ctl_targetDeg` can be changed via MQTT.
 
 2. **KVS Direct**: Use Shelly's KVS.Set API (for advanced users)
    ```javascript
-   KVS.Set("fridge_cfg_ctrl", "4.0,1.0,0.08")
+   KVS.Set("fridge_cfg_ctl", "4.0,1.0,0.08")
    ```
 
 3. **Source Code**: Edit `DEFAULT` in `src/config.js` before deploy
@@ -39,22 +39,22 @@ Basic hardware and communication settings.
 |---------|---------|-------|------|-------------|
 | `sys_loopSec` | 5 | 1-60 | seconds | Main loop interval (heartbeat) |
 | `sys_sensAirId` | 101 | 100-102 | ID | Shelly Add-on ID for air temperature sensor |
-| `sys_sensEvapId` | 100 | 100-102 | ID | Shelly Add-on ID for evaporator sensor |
+| `sys_sensEvpId` | 100 | 100-102 | ID | Shelly Add-on ID for evaporator sensor |
 | `sys_sensFailLimit` | 5 | 1-20 | loops | Bad readings before entering Limp Mode |
 | `sys_mqttTopic` | `fridge/status` | string | - | MQTT topic for status publishing |
 | `sys_mqttCmd` | `fridge/command` | string | - | MQTT topic for commands |
 
 ---
 
-## Thermostat Control (CTRL)
+## Thermostat Control (CTL)
 
 Core temperature control parameters.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `ctrl_targetDeg` | 4.0 | -5 to 15 | °C | Target temperature setpoint |
-| `ctrl_hystDeg` | 1.0 | 0.1-5.0 | °C | Base hysteresis band (±hyst around target) |
-| `ctrl_smoothAlpha` | 0.08 | 0.01-1.0 | - | EMA smoothing factor (lower = smoother, slower response) |
+| `ctl_targetDeg` | 4.0 | -5 to 15 | °C | Target temperature setpoint |
+| `ctl_hystBase` | 1.0 | 0.1-5.0 | °C | Base hysteresis band (±hyst around target) |
+| `ctl_smoothAlpha` | 0.08 | 0.01-1.0 | - | EMA smoothing factor (lower = smoother, slower response) |
 
 ### How Thermostat Works
 
@@ -75,17 +75,17 @@ Example (target=4°C, hyst=1°C):
 
 ---
 
-## Adaptive Hysteresis (ADAPT)
+## Adaptive Hysteresis (ADT)
 
 Self-adjusting temperature control based on cycle times.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `adapt_enable` | true | boolean | - | Enable adaptive hysteresis |
-| `adapt_hystMinDeg` | 0.5 | 0.1-5.0 | °C | Minimum allowed hysteresis |
-| `adapt_hystMaxDeg` | 3.0 | 0.1-5.0 | °C | Maximum allowed hysteresis |
-| `adapt_targetMinSec` | 600 | 300-3600 | seconds | Target minimum cycle time (10 min) |
-| `adapt_targetMaxSec` | 1200 | 600-7200 | seconds | Target maximum cycle time (20 min) |
+| `adt_enable` | true | boolean | - | Enable adaptive hysteresis |
+| `adt_hystMinDeg` | 0.5 | 0.1-5.0 | °C | Minimum allowed hysteresis |
+| `adt_hystMaxDeg` | 3.0 | 0.1-5.0 | °C | Maximum allowed hysteresis |
+| `adt_targetMinSec` | 600 | 300-3600 | seconds | Target minimum cycle time (10 min) |
+| `adt_targetMaxSec` | 1200 | 600-7200 | seconds | Target maximum cycle time (20 min) |
 
 ### Why Adaptive Hysteresis?
 
@@ -99,16 +99,16 @@ Self-adjusting temperature control based on cycle times.
 
 ---
 
-## Compressor Protection (COMP)
+## Compressor Protection (CMP)
 
 Prevents compressor damage from improper cycling.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `comp_minOnSec` | 180 | 60-600 | seconds | Minimum run time (3 min) |
-| `comp_minOffSec` | 300 | 60-900 | seconds | Minimum off time (5 min) |
-| `comp_maxRunSec` | 7200 | 1800-14400 | seconds | Maximum continuous run (2 hours) |
-| `comp_freezeCutDeg` | 0.5 | -2 to 2 | °C | Emergency shutoff if air drops below this |
+| `cmp_minOnSec` | 180 | 60-600 | seconds | Minimum run time (3 min) |
+| `cmp_minOffSec` | 300 | 60-900 | seconds | Minimum off time (5 min) |
+| `cmp_maxRunSec` | 7200 | 1800-14400 | seconds | Maximum continuous run (2 hours) |
+| `cmp_freezeCutDeg` | 0.5 | -2 to 2 | °C | Emergency shutoff if air drops below this |
 
 ### Why These Limits?
 
@@ -121,15 +121,15 @@ Prevents compressor damage from improper cycling.
 
 ---
 
-## Limp Mode (LIMP)
+## Limp Mode (LMP)
 
 Failsafe blind-cycling when sensors fail.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `limp_enable` | true | boolean | - | Enable limp mode on sensor failure |
-| `limp_onSec` | 1800 | 600-3600 | seconds | Blind ON duration (30 min) |
-| `limp_offSec` | 900 | 300-1800 | seconds | Blind OFF duration (15 min) |
+| `lmp_enable` | true | boolean | - | Enable limp mode on sensor failure |
+| `lmp_onSec` | 1800 | 600-3600 | seconds | Blind ON duration (30 min) |
+| `lmp_offSec` | 900 | 300-1800 | seconds | Blind OFF duration (15 min) |
 
 ### How Limp Mode Works
 
@@ -141,15 +141,15 @@ When sensors fail, the system enters "limp mode":
 
 ---
 
-## Door Open Detection (DOOR)
+## Door Open Detection (DOR)
 
 Detects door openings via rapid temperature rise.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `door_enable` | true | boolean | - | Enable door detection |
-| `door_rateDegMin` | 5.0 | 0.5-20.0 | °C/min | Temperature rise rate to trigger |
-| `door_pauseSec` | 300 | 30-3600 | seconds | Pause cooling duration (5 min) |
+| `dor_enable` | true | boolean | - | Enable door detection |
+| `dor_rateDegMin` | 5.0 | 0.5-20.0 | °C/min | Temperature rise rate to trigger |
+| `dor_pauseSec` | 300 | 30-3600 | seconds | Pause cooling duration (5 min) |
 
 ### Why Pause on Door Open?
 
@@ -160,7 +160,7 @@ When door opens, warm air rushes in. If compressor keeps running:
 
 ---
 
-## Defrost (DEFR)
+## Defrost (DFR)
 
 Ice removal from evaporator coil.
 
@@ -168,31 +168,31 @@ Ice removal from evaporator coil.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `defr_dynEnable` | true | boolean | - | Enable dynamic defrost |
-| `defr_dynTrigDeg` | -16.0 | -40 to 0 | °C | Evap temp that triggers defrost |
-| `defr_dynEndDeg` | -5.0 | -20 to 5 | °C | Evap temp that ends defrost |
-| `defr_dynDwellSec` | 300 | 60-7200 | seconds | Must hold end temp for this duration |
+| `dfr_dynEnable` | true | boolean | - | Enable dynamic defrost |
+| `dfr_dynTrigDeg` | -16.0 | -40 to 0 | °C | Evap temp that triggers defrost |
+| `dfr_dynEndDeg` | -5.0 | -20 to 5 | °C | Evap temp that ends defrost |
+| `dfr_dynDwellSec` | 300 | 60-7200 | seconds | Must hold end temp for this duration |
 
 ### Scheduled Defrost (Time-Based)
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `defr_schedEnable` | true | boolean | - | Enable scheduled defrost |
-| `defr_schedHour` | 1 | 0-23 | hour | Hour to start defrost (24h format) |
-| `defr_schedDurSec` | 3600 | 300-14400 | seconds | Maximum defrost duration (1 hour) |
+| `dfr_schedEnable` | true | boolean | - | Enable scheduled defrost |
+| `dfr_schedHour` | 1 | 0-23 | hour | Hour to start defrost (24h format) |
+| `dfr_schedDurSec` | 3600 | 300-14400 | seconds | Maximum defrost duration (1 hour) |
 
 ---
 
-## Relay Weld Detection (WELD)
+## Relay Weld Detection (WLD)
 
 Detects if relay contacts have fused together.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `weld_enable` | true | boolean | - | Enable weld detection |
-| `weld_waitSec` | 600 | 60-7200 | seconds | Wait after OFF before checking (10 min) |
-| `weld_winSec` | 1800 | 300-14400 | seconds | Detection window end (30 min) |
-| `weld_dropDeg` | 0.2 | 0.05-5.0 | °C | Temp drop that triggers alarm |
+| `wld_enable` | true | boolean | - | Enable weld detection |
+| `wld_waitSec` | 600 | 60-7200 | seconds | Wait after OFF before checking (10 min) |
+| `wld_winSec` | 1800 | 300-14400 | seconds | Detection window end (30 min) |
+| `wld_dropDeg` | 0.2 | 0.05-5.0 | °C | Temp drop that triggers alarm |
 
 ### How Weld Detection Works
 
@@ -205,27 +205,27 @@ After compressor turns OFF:
 
 ---
 
-## Sensor Health (SENS)
+## Sensor Health (SNS)
 
 Monitors sensor reliability.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `sens_stuckEnable` | true | boolean | - | Enable stuck sensor detection |
-| `sens_stuckTimeSec` | 14400 | 300-86400 | seconds | Time unchanged before alarm (4 hours) |
-| `sens_stuckEpsDeg` | 0.2 | 0.05-5.0 | °C | Minimum change to reset timer |
+| `sns_stuckEnable` | true | boolean | - | Enable stuck sensor detection |
+| `sns_stuckTimeSec` | 14400 | 300-86400 | seconds | Time unchanged before alarm (4 hours) |
+| `sns_stuckEpsDeg` | 0.2 | 0.05-5.0 | °C | Minimum change to reset timer |
 
 ---
 
-## High Temperature Alert (ALARM)
+## High Temperature Alert (ALM)
 
 Warns when fridge is too warm.
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `alarm_highEnable` | true | boolean | - | Enable high temp alerts |
-| `alarm_highDeg` | 10.0 | 0-40 | °C | Temperature threshold |
-| `alarm_highDelaySec` | 600 | 60-7200 | seconds | Must persist before alerting (10 min) |
+| `alm_highEnable` | true | boolean | - | Enable high temp alerts |
+| `alm_highDeg` | 10.0 | 0-40 | °C | Temperature threshold |
+| `alm_highDelaySec` | 600 | 60-7200 | seconds | Must persist before alerting (10 min) |
 
 ---
 
@@ -240,7 +240,7 @@ Monitors compressor power consumption.
 | `pwr_runMinW` | 10 | 1-1000 | watts | Minimum expected running power |
 | `pwr_runMaxW` | 400 | 50-2000 | watts | Maximum expected running power |
 | `pwr_ghostTripSec` | 60 | 5-600 | seconds | Low power duration before alarm |
-| `pwr_ghostMaxCount` | 3 | 1-10 | count | Ghost runs before fatal alarm |
+| `pwr_ghostMaxCnt` | 3 | 1-10 | count | Ghost runs before fatal alarm |
 
 ### Power Alarm Conditions
 
@@ -251,16 +251,16 @@ Monitors compressor power consumption.
 
 ---
 
-## Turbo Mode (TURBO)
+## Turbo Mode (TRB)
 
 Rapid cooldown mode (e.g., after loading groceries).
 
 | Setting | Default | Range | Unit | Description |
 |---------|---------|-------|------|-------------|
-| `turbo_enable` | true | boolean | - | Enable turbo mode |
-| `turbo_targetDeg` | 1.0 | -2 to 3 | °C | Turbo target temperature |
-| `turbo_hystDeg` | 0.5 | 0.3-1.0 | °C | Turbo hysteresis (tighter control) |
-| `turbo_maxTimeSec` | 10800 | 1800-21600 | seconds | Maximum turbo duration (3 hours) |
+| `trb_enable` | true | boolean | - | Enable turbo mode |
+| `trb_targetDeg` | 1.0 | -2 to 3 | °C | Turbo target temperature |
+| `trb_hystDeg` | 0.5 | 0.3-1.0 | °C | Turbo hysteresis (tighter control) |
+| `trb_maxTimeSec` | 10800 | 1800-21600 | seconds | Maximum turbo duration (3 hours) |
 
 ### Activating Turbo Mode
 
@@ -429,10 +429,10 @@ Commands use a `{"cmd": "...", ...}` structure:
 
 ```json
 {
-  "ctrl_targetDeg": 4.0,
-  "ctrl_hystDeg": 1.0,
-  "comp_minOnSec": 180,
-  "comp_minOffSec": 300
+  "ctl_targetDeg": 4.0,
+  "ctl_hystBase": 1.0,
+  "cmp_minOnSec": 180,
+  "cmp_minOffSec": 300
 }
 ```
 
@@ -440,10 +440,10 @@ Commands use a `{"cmd": "...", ...}` structure:
 
 ```json
 {
-  "ctrl_targetDeg": 3.0,
-  "ctrl_hystDeg": 0.5,
-  "adapt_enable": false,
-  "door_enable": false
+  "ctl_targetDeg": 3.0,
+  "ctl_hystBase": 0.5,
+  "adt_enable": false,
+  "dor_enable": false
 }
 ```
 
@@ -451,9 +451,9 @@ Commands use a `{"cmd": "...", ...}` structure:
 
 ```json
 {
-  "ctrl_targetDeg": -18.0,
-  "ctrl_hystDeg": 2.0,
-  "comp_freezeCutDeg": -25.0,
-  "alarm_highDeg": -10.0
+  "ctl_targetDeg": -18.0,
+  "ctl_hystBase": 2.0,
+  "cmp_freezeCutDeg": -25.0,
+  "alm_highDeg": -10.0
 }
 ```

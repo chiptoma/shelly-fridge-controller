@@ -1,14 +1,14 @@
 // ==============================================================================
-// * MAIN LOOP INTEGRATION TESTS
-// ? Tests the mainLoopTick() orchestration function.
-// ? Validates the 18-step control loop execution and coordination.
+// MAIN LOOP INTEGRATION TESTS
+// Tests the mainLoopTick() orchestration function.
+// Validates the 18-step control loop execution and coordination.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * TEST SETUP
+// TEST SETUP
 // ----------------------------------------------------------
 
 async function setupMainLoop(runtime, options = {}) {
@@ -28,7 +28,7 @@ async function setupMainLoop(runtime, options = {}) {
     runtime.setTemperature(config.C.sys_sensAirId, options.airTemp)
   }
   if (options.evapTemp !== undefined) {
-    runtime.setTemperature(config.C.sys_sensEvapId, options.evapTemp)
+    runtime.setTemperature(config.C.sys_sensEvpId, options.evapTemp)
   }
   if (options.power !== undefined) {
     runtime.setPower(0, options.power)
@@ -66,7 +66,7 @@ async function setupMainLoop(runtime, options = {}) {
 }
 
 // ----------------------------------------------------------
-// * LOOP CONTROL
+// LOOP CONTROL
 // ----------------------------------------------------------
 
 describe('Main Loop: Loop Control', () => {
@@ -130,7 +130,7 @@ describe('Main Loop: Loop Control', () => {
 })
 
 // ----------------------------------------------------------
-// * SENSOR PROCESSING
+// SENSOR PROCESSING
 // ----------------------------------------------------------
 
 describe('Main Loop: Sensor Processing', () => {
@@ -177,7 +177,7 @@ describe('Main Loop: Sensor Processing', () => {
     script = await setupMainLoop(runtime, {})
     // Both sensors disconnected
     runtime.disconnectSensor(script.C.sys_sensAirId)
-    runtime.disconnectSensor(script.C.sys_sensEvapId)
+    runtime.disconnectSensor(script.C.sys_sensEvpId)
 
     script.V.sns_errCnt = script.C.sys_sensFailLimit - 1
 
@@ -188,7 +188,7 @@ describe('Main Loop: Sensor Processing', () => {
 })
 
 // ----------------------------------------------------------
-// * POWER MONITORING
+// POWER MONITORING
 // ----------------------------------------------------------
 
 describe('Main Loop: Power Monitoring', () => {
@@ -229,7 +229,7 @@ describe('Main Loop: Power Monitoring', () => {
 })
 
 // ----------------------------------------------------------
-// * MODE DETERMINATION
+// MODE DETERMINATION
 // ----------------------------------------------------------
 
 describe('Main Loop: Mode Determination', () => {
@@ -253,7 +253,7 @@ describe('Main Loop: Mode Determination', () => {
 
     // Set timing to allow turn-on
     const now = Date.now() / 1000
-    script.S.sys_relayOffTs = now - script.C.comp_minOffSec - 10
+    script.S.sys_relayOffTs = now - script.C.cmp_minOffSec - 10
 
     script.mainLoopTick()
 
@@ -274,7 +274,7 @@ describe('Main Loop: Mode Determination', () => {
 
     // Set timing to allow turn-off
     const now = Date.now() / 1000
-    script.S.sys_relayOnTs = now - script.C.comp_minOnSec - 10
+    script.S.sys_relayOnTs = now - script.C.cmp_minOnSec - 10
 
     script.mainLoopTick()
 
@@ -286,7 +286,7 @@ describe('Main Loop: Mode Determination', () => {
     script = await setupMainLoop(runtime, {})
     // Disconnect sensors so failure persists through loop
     runtime.disconnectSensor(script.C.sys_sensAirId)
-    runtime.disconnectSensor(script.C.sys_sensEvapId)
+    runtime.disconnectSensor(script.C.sys_sensEvpId)
 
     // Sensor failure alarm and error count at limit
     script.V.sys_alarm = script.ALM.FAIL
@@ -300,7 +300,7 @@ describe('Main Loop: Mode Determination', () => {
 })
 
 // ----------------------------------------------------------
-// * STATUS REPORTING
+// STATUS REPORTING
 // ----------------------------------------------------------
 
 describe('Main Loop: Status Reporting', () => {
@@ -335,14 +335,14 @@ describe('Main Loop: Status Reporting', () => {
     const statusMsg = runtime.getLastMqttMessage(script.DEFAULT.sys_mqttTopic)
     expect(statusMsg).toBeDefined()
 
-    // ? MQTT payload uses flat structure: tAirRaw, tAirSmt, tEvap (not nested temps object)
+    // MQTT payload uses flat structure: tAirRaw, tAirSmt, tEvap (not nested temps object)
     const payload = JSON.parse(statusMsg.payload)
     expect(payload.tAirRaw).toBeDefined()
   })
 })
 
 // ----------------------------------------------------------
-// * TURBO SWITCH INPUT
+// TURBO SWITCH INPUT
 // ----------------------------------------------------------
 
 describe('Main Loop: Turbo Switch Input', () => {
@@ -384,7 +384,7 @@ describe('Main Loop: Turbo Switch Input', () => {
 })
 
 // ----------------------------------------------------------
-// * ALARM STATE MANAGEMENT
+// ALARM STATE MANAGEMENT
 // ----------------------------------------------------------
 
 describe('Main Loop: Alarm State Management', () => {
@@ -427,7 +427,7 @@ describe('Main Loop: Alarm State Management', () => {
     script = await setupMainLoop(runtime, {})
     // Disconnect sensors so error persists through the loop
     runtime.disconnectSensor(script.C.sys_sensAirId)
-    runtime.disconnectSensor(script.C.sys_sensEvapId)
+    runtime.disconnectSensor(script.C.sys_sensEvpId)
 
     // Set error count at limit
     script.V.sns_errCnt = script.C.sys_sensFailLimit
@@ -440,7 +440,7 @@ describe('Main Loop: Alarm State Management', () => {
 })
 
 // ----------------------------------------------------------
-// * METRICS UPDATE
+// METRICS UPDATE
 // ----------------------------------------------------------
 
 describe('Main Loop: Metrics Update', () => {
@@ -482,7 +482,7 @@ describe('Main Loop: Metrics Update', () => {
 })
 
 // ----------------------------------------------------------
-// * DOOR DETECTION
+// DOOR DETECTION
 // ----------------------------------------------------------
 
 describe('Main Loop: Door Detection', () => {
@@ -519,7 +519,7 @@ describe('Main Loop: Door Detection', () => {
 })
 
 // ----------------------------------------------------------
-// * DEFROST HANDLING
+// DEFROST HANDLING
 // ----------------------------------------------------------
 
 describe('Main Loop: Defrost Handling', () => {
@@ -561,7 +561,7 @@ describe('Main Loop: Defrost Handling', () => {
 })
 
 // ----------------------------------------------------------
-// * HIGH TEMP ALARM
+// HIGH TEMP ALARM
 // ----------------------------------------------------------
 
 describe('Main Loop: High Temp Alarm', () => {
@@ -574,16 +574,16 @@ describe('Main Loop: High Temp Alarm', () => {
     runtime = new ShellyRuntime()
     runtime.installGlobals(global)
 
-    // ? Import alarms module directly for alarm testing
-    // ? alarm_highTimer is module-local, so we test behavior via multiple calls
+    // Import alarms module directly for alarm testing
+    // alarm_highTimer is module-local, so we test behavior via multiple calls
     const config = await import('../../src/config.js')
     const state = await import('../../src/state.js')
     const alarms = await import('../../src/alarms.js')
 
     Object.assign(config.C, config.DEFAULT)
-    config.C.alarm_highEnable = true
-    config.C.alarm_highDeg = 10.0
-    config.C.alarm_highDelaySec = 30
+    config.C.alm_highEnable = true
+    config.C.alm_highDeg = 10.0
+    config.C.alm_highDelaySec = 30
     config.C.sys_loopSec = 10
 
     C = config.C
@@ -594,8 +594,8 @@ describe('Main Loop: High Temp Alarm', () => {
   })
 
   it('should trigger high temp alarm after delay period', () => {
-    // ? 30s delay / 10s loop = 3 calls at threshold
-    // ? Need > 30s, so 4 calls to trigger
+    // 30s delay / 10s loop = 3 calls at threshold
+    // Need > 30s, so 4 calls to trigger
     checkHighTempAlarm(15.0, false) // 10s
     expect(V.sys_alarm).toBe('NONE')
     checkHighTempAlarm(15.0, false) // 20s
@@ -611,7 +611,7 @@ describe('Main Loop: High Temp Alarm', () => {
     checkHighTempAlarm(15.0, false) // 10s
     checkHighTempAlarm(15.0, false) // 20s
 
-    // ? Temp returns to normal - timer should reset
+    // Temp returns to normal - timer should reset
     checkHighTempAlarm(5.0, false) // Below threshold, resets timer
 
     // Continue with high temp - needs full delay again
@@ -623,7 +623,7 @@ describe('Main Loop: High Temp Alarm', () => {
 })
 
 // ----------------------------------------------------------
-// * PERIODIC STATE SAVE
+// PERIODIC STATE SAVE
 // ----------------------------------------------------------
 
 describe('Main Loop: Periodic State Save', () => {
@@ -661,7 +661,7 @@ describe('Main Loop: Periodic State Save', () => {
 })
 
 // ----------------------------------------------------------
-// * FULL LOOP EXECUTION
+// FULL LOOP EXECUTION
 // ----------------------------------------------------------
 
 describe('Main Loop: Full Execution', () => {

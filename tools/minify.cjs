@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ==============================================================================
-// * MINIFICATION TOOL
-// ? Minifies bundle.js using Terser with Shelly-optimized settings.
+// MINIFICATION TOOL
+// Minifies bundle.js using Terser with Shelly-optimized settings.
 // Output: dist/main.js (production-ready)
 // ==============================================================================
 
@@ -10,8 +10,8 @@ const path = require('path');
 const { minify } = require('terser');
 
 // ----------------------------------------------------------
-// * CONFIGURATION
-// ? Paths configurable via environment variables
+// CONFIGURATION
+// Paths configurable via environment variables
 // ----------------------------------------------------------
 const ROOT = path.join(__dirname, '..');
 const BUNDLE_PATH = process.env.BUNDLE_PATH || path.join(ROOT, 'dist', 'bundle.js');
@@ -23,10 +23,10 @@ const TERSER_OPTIONS = {
   compress: {
     passes: 3,
     pure_getters: true,
-    unsafe: false,           // ! Disabled - can break code patterns
-    unsafe_comps: false,     // ! Disabled - comparison optimizations
-    unsafe_math: false,      // ! Disabled - math optimizations
-    unsafe_proto: false,     // ! Disabled - prototype optimizations
+    unsafe: false,           // Disabled - can break code patterns
+    unsafe_comps: false,     // Disabled - comparison optimizations
+    unsafe_math: false,      // Disabled - math optimizations
+    unsafe_proto: false,     // Disabled - prototype optimizations
     booleans_as_integers: false,
     drop_console: false,
     drop_debugger: true,
@@ -34,11 +34,11 @@ const TERSER_OPTIONS = {
     hoist_funs: true,
     hoist_vars: false,
     if_return: true,
-    inline: false,           // ! CRITICAL: Disabled - prevents Terser from reusing module-level
-                             // ! variable names for inline temps, which caused ST_KEYS collision
+    inline: false,           // CRITICAL: Disabled - prevents Terser from reusing module-level
+                             // variable names for inline temps, which caused ST_KEYS collision
     join_vars: true,
     loops: true,
-    negate_iife: false,      // ! Disabled - IIFE negation breaks mJS
+    negate_iife: false,      // Disabled - IIFE negation breaks mJS
     properties: true,
     reduce_vars: true,
     sequences: true,
@@ -49,10 +49,10 @@ const TERSER_OPTIONS = {
   mangle: {
     toplevel: false,
     properties: false
-    // ! CRITICAL: Don't mangle top-level declarations.
-    // ! Shelly mJS has a scoping bug where callback parameters leak and shadow
-    // ! outer-scope variables. By keeping top-level names (like math functions r1, r2, ri)
-    // ! unchanged, minified callback params (a, b, c) can't shadow them.
+    // CRITICAL: Don't mangle top-level declarations.
+    // Shelly mJS has a scoping bug where callback parameters leak and shadow
+    // outer-scope variables. By keeping top-level names (like math functions r1, r2, ri)
+    // unchanged, minified callback params (a, b, c) can't shadow them.
   },
   output: {
     comments: false,
@@ -62,7 +62,7 @@ const TERSER_OPTIONS = {
 };
 
 // ----------------------------------------------------------
-// * MAIN
+// MAIN
 // ----------------------------------------------------------
 async function main() {
   if (!fs.existsSync(BUNDLE_PATH)) {

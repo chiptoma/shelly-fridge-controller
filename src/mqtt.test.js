@@ -1,8 +1,8 @@
 // ==============================================================================
-// * MQTT TESTS
-// ? Validates MQTT command handling.
-// ? Current mqtt.js only exports setupMqttCommands - handles turbo_on, turbo_off,
-// ? status, reset_alarms, and setpoint commands.
+// MQTT TESTS
+// Validates MQTT command handling.
+// Current mqtt.js only exports setupMqttCommands - handles turbo_on, turbo_off,
+// status, reset_alarms, and setpoint commands.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -28,10 +28,10 @@ describe('MQTT Commands', () => {
 
     mockC = {
       sys_mqttCmd: 'fridge/cmd',
-      turbo_enable: true,
-      turbo_maxTimeSec: 3600,
-      ctrl_targetDeg: 4.0,
-      ctrl_hystDeg: 1.0,
+      trb_enable: true,
+      trb_maxTimeSec: 3600,
+      ctl_targetDeg: 4.0,
+      ctl_hystDeg: 1.0,
     }
 
     mockPersistConfig = vi.fn()
@@ -58,7 +58,7 @@ describe('MQTT Commands', () => {
   })
 
   // ----------------------------------------------------------
-  // * setupMqttCommands TESTS
+  // setupMqttCommands TESTS
   // ----------------------------------------------------------
 
   describe('setupMqttCommands', () => {
@@ -126,8 +126,8 @@ describe('MQTT Commands', () => {
       expect(mockV.sys_alarm).toBe('NONE')
     })
 
-    // ? Design decision: MQTT reset_alarms clears ALL alarms including fatal.
-    // ? This allows remote recovery without physical device access.
+    // Design decision: MQTT reset_alarms clears ALL alarms including fatal.
+    // This allows remote recovery without physical device access.
     it('should reset fatal WELD alarm (intentional design)', () => {
       mockV.sys_alarm = 'ALARM_RELAY_WELD'
       setupMqttCommands()
@@ -185,7 +185,7 @@ describe('MQTT Commands', () => {
     })
 
     it('should not activate turbo when disabled', () => {
-      mockC.turbo_enable = false
+      mockC.trb_enable = false
       setupMqttCommands()
       const handler = mockMqttSubscribe.mock.calls[0][1]
 
@@ -196,7 +196,7 @@ describe('MQTT Commands', () => {
     })
 
     // ----------------------------------------------------------
-    // * SETPOINT COMMAND TESTS
+    // SETPOINT COMMAND TESTS
     // ----------------------------------------------------------
 
     it('should handle valid setpoint command', () => {
@@ -205,25 +205,25 @@ describe('MQTT Commands', () => {
 
       handler('fridge/cmd', JSON.stringify({ cmd: 'setpoint', value: 3.5 }))
 
-      expect(mockC.ctrl_targetDeg).toBe(3.5)
+      expect(mockC.ctl_targetDeg).toBe(3.5)
       expect(mockPersistConfig).toHaveBeenCalled()
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Setpoint updated'))
     })
 
     it('should reject setpoint when validation fails', () => {
-      // Mock validateConfig to indicate ctrl_targetDeg was reverted
-      mockValidateConfig.mockReturnValue(['ctrl_targetDeg'])
+      // Mock validateConfig to indicate ctl_targetDeg was reverted
+      mockValidateConfig.mockReturnValue(['ctl_targetDeg'])
       setupMqttCommands()
       const handler = mockMqttSubscribe.mock.calls[0][1]
 
       handler('fridge/cmd', JSON.stringify({ cmd: 'setpoint', value: -10 }))
 
-      expect(mockC.ctrl_targetDeg).toBe(4.0) // unchanged (reverted)
+      expect(mockC.ctl_targetDeg).toBe(4.0) // unchanged (reverted)
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('Setpoint rejected'))
     })
 
     // ----------------------------------------------------------
-    // * RATE LIMITING TESTS
+    // RATE LIMITING TESTS
     // ----------------------------------------------------------
 
     it('should allow first command', () => {

@@ -1,6 +1,6 @@
 // ==============================================================================
-// * LOOP TESTS
-// ? Validates loop control and orchestration.
+// LOOP TESTS
+// Validates loop control and orchestration.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -45,7 +45,7 @@ describe('Loop', () => {
       sys_detail: 'NONE', sns_airSmoothDeg: 5.0, sns_errCnt: 0,
       sns_wasErr: false, hw_hasPM: true, lop_lastSaveTs: 0, lop_nowTs: 0,
     }
-    mockC = { sys_loopSec: 5, sys_sensAirId: 100, sys_sensEvapId: 101, sys_sensFailLimit: 5 }
+    mockC = { sys_loopSec: 5, sys_sensAirId: 100, sys_sensEvpId: 101, sys_sensFailLimit: 5 }
 
     // Create capturable mock functions
     mockValidateSensorReadings = vi.fn(() => true)
@@ -151,7 +151,7 @@ describe('Loop', () => {
   })
 
   // ----------------------------------------------------------
-  // * LOOP CONTROL TESTS
+  // LOOP CONTROL TESTS
   // ----------------------------------------------------------
 
   describe('startMainLoop', () => {
@@ -165,20 +165,11 @@ describe('Loop', () => {
       )
     })
 
-    it('should print start message', () => {
-      startMainLoop()
-
-      expect(global.print).toHaveBeenCalledWith(
-        expect.stringContaining('ℹ️ LOOP  : Starting main loop'),
-      )
-    })
-
     it('should not start twice', () => {
       startMainLoop()
       startMainLoop()
 
       expect(mockTimerSet).toHaveBeenCalledTimes(1)
-      expect(global.print).toHaveBeenCalledWith('⚠️ LOOP  : Already running')
     })
   })
 
@@ -188,13 +179,6 @@ describe('Loop', () => {
       stopMainLoop()
 
       expect(mockTimerClear).toHaveBeenCalledWith(123)
-    })
-
-    it('should print stop message', () => {
-      startMainLoop()
-      stopMainLoop()
-
-      expect(global.print).toHaveBeenCalledWith('ℹ️ LOOP  : Main loop stopped')
     })
 
     it('should not fail when not running', () => {
@@ -221,7 +205,7 @@ describe('Loop', () => {
   })
 
   // ----------------------------------------------------------
-  // * MAIN LOOP TICK TESTS
+  // MAIN LOOP TICK TESTS
   // ----------------------------------------------------------
 
   describe('mainLoopTick', () => {

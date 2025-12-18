@@ -1,14 +1,14 @@
 // ==============================================================================
-// * MQTT COMMAND INTEGRATION TESTS
-// ? Tests all MQTT command handling in setupMqttCommands().
-// ? Validates turbo_on, turbo_off, status, reset_alarms commands.
+// MQTT COMMAND INTEGRATION TESTS
+// Tests all MQTT command handling in setupMqttCommands().
+// Validates turbo_on, turbo_off, status, reset_alarms commands.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * TEST SETUP
+// TEST SETUP
 // ----------------------------------------------------------
 
 async function setupMqttTest(runtime) {
@@ -42,7 +42,7 @@ async function setupMqttTest(runtime) {
 }
 
 // ----------------------------------------------------------
-// * TURBO COMMAND
+// TURBO COMMAND
 // ----------------------------------------------------------
 
 describe('MQTT: Turbo Command', () => {
@@ -58,7 +58,7 @@ describe('MQTT: Turbo Command', () => {
   it('should activate turbo mode with valid command', () => {
     script.V.trb_isActive = false
     script.V.trb_remSec = 0
-    script.C.turbo_enable = true
+    script.C.trb_enable = true
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
@@ -66,15 +66,15 @@ describe('MQTT: Turbo Command', () => {
     )
 
     expect(script.V.trb_isActive).toBe(true)
-    expect(script.V.trb_remSec).toBe(script.C.turbo_maxTimeSec)
+    expect(script.V.trb_remSec).toBe(script.C.trb_maxTimeSec)
 
     const prints = runtime.getPrintHistory()
     expect(prints.some((p) => p.message.includes('Turbo ON'))).toBe(true)
   })
 
-  it('should NOT activate turbo when turbo_enable is false', () => {
+  it('should NOT activate turbo when trb_enable is false', () => {
     script.V.trb_isActive = false
-    script.C.turbo_enable = false // Disabled in config
+    script.C.trb_enable = false // Disabled in config
 
     runtime.mqttReceive(
       script.DEFAULT.sys_mqttCmd,
@@ -86,7 +86,7 @@ describe('MQTT: Turbo Command', () => {
 })
 
 // ----------------------------------------------------------
-// * TURBO_OFF COMMAND
+// TURBO_OFF COMMAND
 // ----------------------------------------------------------
 
 describe('MQTT: Turbo Off Command', () => {
@@ -131,7 +131,7 @@ describe('MQTT: Turbo Off Command', () => {
 })
 
 // ----------------------------------------------------------
-// * STATUS COMMAND
+// STATUS COMMAND
 // ----------------------------------------------------------
 
 describe('MQTT: Status Command', () => {
@@ -156,7 +156,7 @@ describe('MQTT: Status Command', () => {
 })
 
 // ----------------------------------------------------------
-// * RESET_ALARMS COMMAND
+// RESET_ALARMS COMMAND
 // ----------------------------------------------------------
 
 describe('MQTT: Reset Alarms Command', () => {
@@ -184,8 +184,8 @@ describe('MQTT: Reset Alarms Command', () => {
   })
 
   it('should reset WELD alarm (fatal alarms clearable via MQTT)', () => {
-    // ? Design decision: MQTT reset_alarms clears ALL alarms including fatal.
-    // ? This allows remote recovery without physical device access.
+    // Design decision: MQTT reset_alarms clears ALL alarms including fatal.
+    // This allows remote recovery without physical device access.
     script.V.sys_alarm = script.ALM.WELD
 
     runtime.mqttReceive(
@@ -200,7 +200,7 @@ describe('MQTT: Reset Alarms Command', () => {
   })
 
   it('should reset LOCKED alarm (fatal alarms clearable via MQTT)', () => {
-    // ? Design decision: MQTT reset_alarms clears ALL alarms including fatal.
+    // Design decision: MQTT reset_alarms clears ALL alarms including fatal.
     script.V.sys_alarm = script.ALM.LOCKED
 
     runtime.mqttReceive(
@@ -257,7 +257,7 @@ describe('MQTT: Reset Alarms Command', () => {
 })
 
 // ----------------------------------------------------------
-// * MESSAGE VALIDATION
+// MESSAGE VALIDATION
 // ----------------------------------------------------------
 
 describe('MQTT: Message Validation', () => {
@@ -345,7 +345,7 @@ describe('MQTT: Message Validation', () => {
 })
 
 // ----------------------------------------------------------
-// * COMMAND EDGE CASES
+// COMMAND EDGE CASES
 // ----------------------------------------------------------
 
 describe('MQTT: Command Edge Cases', () => {
@@ -359,7 +359,7 @@ describe('MQTT: Command Edge Cases', () => {
   })
 
   it('should handle command with extra fields gracefully', () => {
-    script.C.turbo_enable = true
+    script.C.trb_enable = true
     script.V.trb_isActive = false
 
     runtime.mqttReceive(
@@ -375,7 +375,7 @@ describe('MQTT: Command Edge Cases', () => {
   })
 
   it('should be case-sensitive for commands', () => {
-    script.C.turbo_enable = true
+    script.C.trb_enable = true
     script.V.trb_isActive = false
 
     runtime.mqttReceive(
@@ -391,7 +391,7 @@ describe('MQTT: Command Edge Cases', () => {
   })
 
   it('should rate limit rapid commands (second command ignored)', () => {
-    script.C.turbo_enable = true
+    script.C.trb_enable = true
     script.V.trb_isActive = false
 
     // Send turbo, then turbo_off rapidly - second should be rate limited
@@ -406,7 +406,7 @@ describe('MQTT: Command Edge Cases', () => {
 
     // First command (turbo) executes, second (turbo_off) is rate limited
     expect(script.V.trb_isActive).toBe(true)
-    expect(script.V.trb_remSec).toBe(script.C.turbo_maxTimeSec)
+    expect(script.V.trb_remSec).toBe(script.C.trb_maxTimeSec)
 
     const prints = runtime.getPrintHistory()
     expect(prints.some((p) => p.message.includes('Rate limited'))).toBe(true)

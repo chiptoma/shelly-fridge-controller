@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // ==============================================================================
-// * BUNDLE VALIDATION TOOL
-// ? Validates the minified bundle for correctness after Terser processing.
-// ? Catches minification errors before deployment to device.
+// BUNDLE VALIDATION TOOL
+// Validates the minified bundle for correctness after Terser processing.
+// Catches minification errors before deployment to device.
 // ==============================================================================
 
 const fs = require('fs')
@@ -10,17 +10,17 @@ const path = require('path')
 const vm = require('vm')
 
 // ----------------------------------------------------------
-// * CONFIGURATION
-// ? Paths configurable via environment variables
+// CONFIGURATION
+// Paths configurable via environment variables
 // ----------------------------------------------------------
 
 const ROOT = path.join(__dirname, '..')
 const OUTPUT_PATH = process.env.OUTPUT_PATH || path.join(ROOT, 'dist', 'main.js')
 
 // Size thresholds (bytes)
-// ? The actual OOM limit is peak RUNTIME memory, not script file size.
-// ? These are sanity checks, not hard limits.
-// ? Tested: 30.1KB bundle runs fine with 23KB peak runtime memory.
+// The actual OOM limit is peak RUNTIME memory, not script file size.
+// These are sanity checks, not hard limits.
+// Tested: 30.1KB bundle runs fine with 23KB peak runtime memory.
 const MAX_SIZE = 50000        // 50 KB - Sanity check threshold
 const WARN_SIZE = 35000       // 35 KB - Warning threshold
 
@@ -61,7 +61,7 @@ const DANGEROUS_PATTERNS = [
 ]
 
 // ----------------------------------------------------------
-// * VALIDATION FUNCTIONS
+// VALIDATION FUNCTIONS
 // ----------------------------------------------------------
 
 function validateSyntax(code) {
@@ -158,7 +158,7 @@ function validateInVM(code) {
 }
 
 // ----------------------------------------------------------
-// * MAIN
+// MAIN
 // ----------------------------------------------------------
 
 function main() {

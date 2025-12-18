@@ -1,14 +1,14 @@
 // ==============================================================================
-// * BOOT RECOVERY INTEGRATION TESTS
-// ? Tests the 4 boot recovery scenarios in recoverBootState().
-// ? Validates hardware/software state synchronization on restart.
+// BOOT RECOVERY INTEGRATION TESTS
+// Tests the 4 boot recovery scenarios in recoverBootState().
+// Validates hardware/software state synchronization on restart.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * TEST SETUP
+// TEST SETUP
 // ----------------------------------------------------------
 
 /**
@@ -60,8 +60,8 @@ async function setupForBootRecovery(runtime, options = {}) {
 }
 
 // ----------------------------------------------------------
-// * BOOT RECOVERY SCENARIO 1
-// ? Hardware ON + Software ON = Compressor was running
+// BOOT RECOVERY SCENARIO 1
+// Hardware ON + Software ON = Compressor was running
 // ----------------------------------------------------------
 
 describe('Boot Recovery: Scenario 1 - Compressor Was Running', () => {
@@ -177,9 +177,9 @@ describe('Boot Recovery: Scenario 1 - Compressor Was Running', () => {
     // Should just continue, no stat recovery needed
     expect(script.S.sys_isRelayOn).toBe(true)
 
-    // ? Note: When sys_lastSaveTs is 0 or elapsedTotal is 0, boot recovery
-    // ? may not print a message (no stats to recover). Check for any boot message
-    // ? or verify state is correctly maintained.
+    // Note: When sys_lastSaveTs is 0 or elapsedTotal is 0, boot recovery
+    // may not print a message (no stats to recover). Check for any boot message
+    // or verify state is correctly maintained.
     const prints = runtime.getPrintHistory()
     // If there's a recovery message, great; if not, state should still be valid
     const anyBootMsg = prints.find((p) => p.message.includes('BOOT'))
@@ -189,8 +189,8 @@ describe('Boot Recovery: Scenario 1 - Compressor Was Running', () => {
 })
 
 // ----------------------------------------------------------
-// * BOOT RECOVERY SCENARIO 2
-// ? Hardware ON + Software OFF = Unexpected hardware state
+// BOOT RECOVERY SCENARIO 2
+// Hardware ON + Software OFF = Unexpected hardware state
 // ----------------------------------------------------------
 
 describe('Boot Recovery: Scenario 2 - Hardware ON, No Record', () => {
@@ -230,8 +230,8 @@ describe('Boot Recovery: Scenario 2 - Hardware ON, No Record', () => {
 })
 
 // ----------------------------------------------------------
-// * BOOT RECOVERY SCENARIO 3
-// ? Hardware OFF + Software ON = Crashed while cooling
+// BOOT RECOVERY SCENARIO 3
+// Hardware OFF + Software ON = Crashed while cooling
 // ----------------------------------------------------------
 
 describe('Boot Recovery: Scenario 3 - Crashed While Cooling', () => {
@@ -304,8 +304,8 @@ describe('Boot Recovery: Scenario 3 - Crashed While Cooling', () => {
 })
 
 // ----------------------------------------------------------
-// * BOOT RECOVERY SCENARIO 4
-// ? Hardware OFF + Software OFF = Clean state
+// BOOT RECOVERY SCENARIO 4
+// Hardware OFF + Software OFF = Clean state
 // ----------------------------------------------------------
 
 describe('Boot Recovery: Scenario 4 - Clean State', () => {
@@ -321,8 +321,8 @@ describe('Boot Recovery: Scenario 4 - Clean State', () => {
       hardwareRelayOn: false,
     })
 
-    // ? Must set sys_lastSaveTs for elapsedTotal to be > 0
-    // ? Otherwise "Clean idle" message won't print
+    // Must set sys_lastSaveTs for elapsedTotal to be > 0
+    // Otherwise "Clean idle" message won't print
     Object.assign(script.S, {
       sys_isRelayOn: false,
       sys_relayOnTs: 0,
@@ -343,7 +343,7 @@ describe('Boot Recovery: Scenario 4 - Clean State', () => {
 })
 
 // ----------------------------------------------------------
-// * POWER MONITOR DETECTION
+// POWER MONITOR DETECTION
 // ----------------------------------------------------------
 
 describe('Boot Recovery: Power Monitor Detection', () => {
@@ -367,8 +367,8 @@ describe('Boot Recovery: Power Monitor Detection', () => {
 
     expect(script.V.hw_hasPM).toBe(true)
 
-    // ? Note: hw_hasPM is set silently - no explicit "Power monitoring" message
-    // ? in current code. Just verify the flag is correctly set.
+    // Note: hw_hasPM is set silently - no explicit "Power monitoring" message
+    // in current code. Just verify the flag is correctly set.
     // If we want to verify boot happened, check for any boot message
     const prints = runtime.getPrintHistory()
     const anyBootMsg = prints.find((p) => p.message.includes('BOOT'))
@@ -391,7 +391,7 @@ describe('Boot Recovery: Power Monitor Detection', () => {
 })
 
 // ----------------------------------------------------------
-// * FATAL FAULT REPORTING
+// FATAL FAULT REPORTING
 // ----------------------------------------------------------
 
 describe('Boot Recovery: Fatal Fault History', () => {
@@ -428,7 +428,7 @@ describe('Boot Recovery: Fatal Fault History', () => {
 })
 
 // ----------------------------------------------------------
-// * KVS PERSISTENCE VERIFICATION
+// KVS PERSISTENCE VERIFICATION
 // ----------------------------------------------------------
 
 describe('Boot Recovery: KVS Persistence Verification', () => {

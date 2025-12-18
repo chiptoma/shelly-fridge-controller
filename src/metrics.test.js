@@ -1,6 +1,6 @@
 // ==============================================================================
-// * METRICS TESTS
-// ? Validates runtime stats, duty cycle, and hourly rollover.
+// METRICS TESTS
+// Validates runtime stats, duty cycle, and hourly rollover.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -68,7 +68,7 @@ describe('Metrics', () => {
   })
 
   // ----------------------------------------------------------
-  // * UPDATE RUNTIME STATS TESTS
+  // UPDATE RUNTIME STATS TESTS
   // ----------------------------------------------------------
 
   describe('updateRuntimeStats', () => {
@@ -108,7 +108,7 @@ describe('Metrics', () => {
   })
 
   // ----------------------------------------------------------
-  // * INCREMENT CYCLE COUNT TESTS
+  // INCREMENT CYCLE COUNT TESTS
   // ----------------------------------------------------------
 
   describe('incrementCycleCount', () => {
@@ -120,7 +120,7 @@ describe('Metrics', () => {
   })
 
   // ----------------------------------------------------------
-  // * HOURLY ROLLOVER TESTS
+  // HOURLY ROLLOVER TESTS
   // ----------------------------------------------------------
 
   describe('isHourlyRolloverDue', () => {
@@ -159,7 +159,7 @@ describe('Metrics', () => {
 
       const result = processHourlyRollover()
 
-      // ? Now correctly calculates avgOff for single cycle
+      // Now correctly calculates avgOff for single cycle
       expect(result.avgOn).toBe(1800)
       expect(result.avgOff).toBe(1800)  // (3600 - 1800) / 1 = 1800
     })
@@ -226,7 +226,7 @@ describe('Metrics', () => {
   })
 
   // ----------------------------------------------------------
-  // * DUTY CYCLE QUERY TESTS
+  // DUTY CYCLE QUERY TESTS
   // ----------------------------------------------------------
 
   describe('getAvgDuty24h', () => {
@@ -309,7 +309,7 @@ describe('Metrics', () => {
   })
 
   // ----------------------------------------------------------
-  // * GET LIFETIME RUN HOURS TESTS
+  // GET LIFETIME RUN HOURS TESTS
   // ----------------------------------------------------------
 
   describe('getLifetimeRunHours', () => {
@@ -333,7 +333,7 @@ describe('Metrics', () => {
   })
 
   // ----------------------------------------------------------
-  // * UPDATE METRICS TESTS
+  // UPDATE METRICS TESTS
   // ----------------------------------------------------------
 
   describe('updateMetrics', () => {

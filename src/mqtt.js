@@ -1,7 +1,7 @@
 // ==============================================================================
-// * MQTT COMMAND HANDLER
-// ? Subscribes to command topic for remote control.
-// ? Handles turbo, status, reset, and setpoint commands via MQTT.
+// MQTT COMMAND HANDLER
+// Subscribes to command topic for remote control.
+// Handles turbo, status, reset, and setpoint commands via MQTT.
 // ==============================================================================
 
 import { ALM } from './constants.js'
@@ -12,12 +12,12 @@ import { V } from './state.js'
 let mqttLastCmdMs = -2000
 
 // ----------------------------------------------------------
-// * SETUP MQTT COMMANDS
+// SETUP MQTT COMMANDS
 // ----------------------------------------------------------
 
 /**
- * * setupMqttCommands - Register MQTT command handler
- * ? Subscribes to command topic and processes validated commands.
+ * setupMqttCommands - Register MQTT command handler
+ * Subscribes to command topic and processes validated commands.
  *
  * @mutates V.trb_isActive  - For turbo commands
  * @mutates V.trb_remSec  - For turbo commands
@@ -32,22 +32,22 @@ function setupMqttCommands() {
 }
 
 // ----------------------------------------------------------
-// * INTERNAL HANDLERS (not exported)
+// INTERNAL HANDLERS (not exported)
 // ----------------------------------------------------------
 
 /**
- * * handleTurbo - Activate turbo cooling mode via MQTT
+ * handleTurbo - Activate turbo cooling mode via MQTT
  * @mutates V.trb_isActive, V.trb_remSec
  */
 function handleTurbo() {
-  if (!C.turbo_enable) { print('⚠️ MQTT Turbo disabled: ignoring command (feature disabled)'); return }
+  if (!C.trb_enable) { print('⚠️ MQTT Turbo disabled: ignoring command (feature disabled)'); return }
   V.trb_isActive = true
-  V.trb_remSec = C.turbo_maxTimeSec
+  V.trb_remSec = C.trb_maxTimeSec
   print('✅ MQTT Turbo ON: timer started')
 }
 
 /**
- * * handleTurboOff - Deactivate turbo cooling mode via MQTT
+ * handleTurboOff - Deactivate turbo cooling mode via MQTT
  * @mutates V.trb_isActive, V.trb_remSec
  */
 function handleTurboOff() {
@@ -57,15 +57,15 @@ function handleTurboOff() {
 }
 
 /**
- * * handleStatus - Log status request via MQTT
- * ? Status is published automatically each loop tick.
+ * handleStatus - Log status request via MQTT
+ * Status is published automatically each loop tick.
  */
 function handleStatus() {
   print('ℹ️ MQTT Status requested')
 }
 
 /**
- * * handleResetAlarms - Clear active alarm state via MQTT
+ * handleResetAlarms - Clear active alarm state via MQTT
  * @mutates V.sys_alarm
  */
 function handleResetAlarms() {
@@ -74,20 +74,25 @@ function handleResetAlarms() {
 }
 
 /**
- * * handleSetpoint - Update target temperature via MQTT
- * ? Validates new value and persists to KVS on success.
+ * handleSetpoint - Update target temperature via MQTT
+ * Validates new value and persists to KVS on success.
  *
  * @param {object} cmd - Command object with value field
- * @mutates C.ctrl_targetDeg
+ * @mutates C.ctl_targetDeg
  */
 function handleSetpoint(cmd) {
+  // Type check before any mutation
+  if (typeof cmd.value !== 'number') {
+    print('⚠️ MQTT Setpoint rejected: value must be number')
+    return
+  }
   // Apply setpoint via shared validator, rollback on failure
-  let oldVal = C.ctrl_targetDeg
-  C.ctrl_targetDeg = cmd.value
+  let oldVal = C.ctl_targetDeg
+  C.ctl_targetDeg = cmd.value
   let reverted = validateConfig()
-  let ok = reverted.indexOf('ctrl_targetDeg') === -1
+  let ok = reverted.indexOf('ctl_targetDeg') === -1
   if (!ok) {
-    C.ctrl_targetDeg = oldVal
+    C.ctl_targetDeg = oldVal
     print('⚠️ MQTT Setpoint rejected: validation failed')
     return
   }
@@ -96,8 +101,8 @@ function handleSetpoint(cmd) {
 }
 
 /**
- * * handleMqttMessage - Process incoming MQTT command
- * ? Rate-limited to 1 command per 2 seconds. Parses JSON and routes to handler.
+ * handleMqttMessage - Process incoming MQTT command
+ * Rate-limited to 1 command per 2 seconds. Parses JSON and routes to handler.
  *
  * @param {string} topic   - MQTT topic
  * @param {string} message - JSON command payload
@@ -140,7 +145,7 @@ function handleMqttMessage(topic, message) {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export { setupMqttCommands }

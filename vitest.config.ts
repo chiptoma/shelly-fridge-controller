@@ -10,12 +10,6 @@ export default defineConfig({
     // CRITICAL: Enable proper isolation for mock cleanup
     isolate: true,              // Each test file in separate worker
     pool: 'threads',            // Use worker threads for isolation
-    poolOptions: {
-      threads: {
-        singleThread: false,    // Allow parallelization
-        isolate: true,          // Isolate between test files
-      },
-    },
 
     // Mock cleanup settings
     mockReset: true,
@@ -36,11 +30,11 @@ export default defineConfig({
         '**/*.config.ts',
         '**/*.config.js',
         '**/*.test.js',
-        'test/**',  // ? Exclude test infrastructure from coverage
+        'test/**',
       ],
       thresholds: {
         branches: 90,
-        functions: 97,  // ? 97.54% achievable - remaining gap is unused unexported function
+        functions: 97,
         lines: 95,
         statements: 95,
       },

@@ -1,13 +1,13 @@
 // ==============================================================================
-// * SHELLY RUNTIME SIMULATOR
-// ? Complete virtual Shelly environment for integration testing.
-// ? Simulates all Shelly APIs: KVS, MQTT, Switch, Sensors, Timers, Input.
-// ? Designed to be extracted as a reusable boilerplate for any Shelly project.
+// SHELLY RUNTIME SIMULATOR
+// Complete virtual Shelly environment for integration testing.
+// Simulates all Shelly APIs: KVS, MQTT, Switch, Sensors, Timers, Input.
+// Designed to be extracted as a reusable boilerplate for any Shelly project.
 // ==============================================================================
 
 // ----------------------------------------------------------
-// * SHELLY RUNTIME CLASS
-// ? Core simulator that provides the virtual Shelly environment.
+// SHELLY RUNTIME CLASS
+// Core simulator that provides the virtual Shelly environment.
 // ----------------------------------------------------------
 
 class ShellyRuntime {
@@ -70,7 +70,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * GLOBAL MOCK BUILDERS
+  // GLOBAL MOCK BUILDERS
   // ----------------------------------------------------------
 
   _buildGlobals() {
@@ -144,7 +144,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * SHELLY.CALL HANDLER
+  // SHELLY.CALL HANDLER
   // ----------------------------------------------------------
 
   _handleShellyCall(method, params, callback) {
@@ -220,7 +220,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * COMPONENT STATUS
+  // COMPONENT STATUS
   // ----------------------------------------------------------
 
   _getComponentStatus(type, id) {
@@ -237,7 +237,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * TIMER MANAGEMENT
+  // TIMER MANAGEMENT
   // ----------------------------------------------------------
 
   _setTimer(delayMs, repeat, callback) {
@@ -280,7 +280,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * MQTT HANDLING
+  // MQTT HANDLING
   // ----------------------------------------------------------
 
   _mqttPublish(topic, payload, qos, retain) {
@@ -304,7 +304,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * HISTORY TRACKING
+  // HISTORY TRACKING
   // ----------------------------------------------------------
 
   _recordHistory(type, data) {
@@ -324,7 +324,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * TIME CONTROL
+  // TIME CONTROL
   // ----------------------------------------------------------
 
   /**
@@ -378,7 +378,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * SENSOR CONTROL
+  // SENSOR CONTROL
   // ----------------------------------------------------------
 
   setTemperature(sensorId, tempC) {
@@ -394,7 +394,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * SWITCH/POWER CONTROL
+  // SWITCH/POWER CONTROL
   // ----------------------------------------------------------
 
   setPower(switchId, watts) {
@@ -415,7 +415,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * INPUT CONTROL
+  // INPUT CONTROL
   // ----------------------------------------------------------
 
   setInput(inputId, state) {
@@ -425,7 +425,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * GLOBAL INJECTION
+  // GLOBAL INJECTION
   // ----------------------------------------------------------
 
   /**
@@ -452,7 +452,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * STATE QUERIES
+  // STATE QUERIES
   // ----------------------------------------------------------
 
   getLastMqttMessage(topic = null) {
@@ -481,7 +481,7 @@ class ShellyRuntime {
   }
 
   // ----------------------------------------------------------
-  // * RESET
+  // RESET
   // ----------------------------------------------------------
 
   reset() {
@@ -507,7 +507,7 @@ class ShellyRuntime {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export { ShellyRuntime }

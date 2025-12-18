@@ -94,7 +94,7 @@ The following complexity warnings are expected and acceptable:
 |----------|--------|--------|
 | `setRelay` | control.js | Complex relay logic with safety checks |
 | `determineMode` | control.js | Multiple state transitions |
-| `executeControl` | control.js | Main control orchestration |
+| `executeSwitchDecision` | control.js | Switch decision with timing guards |
 | `adaptHysteresis` | features.js | Multi-condition adaptation logic |
 | `mainLoopTick` | loop.js | Main loop orchestration |
 | `recoverBootState` | main.js | Boot recovery state machine |
@@ -106,11 +106,12 @@ These functions are legitimately complex due to their control logic responsibili
 See [`eslint.config.ts`](../eslint.config.ts) for the full configuration. Key sections:
 
 - `shellyGlobals` - Shelly-specific global variables
-- `shellyLanguageRules` - Forbidden ES6+ features
-- `shellyMemoryRules` - Memory-conscious constraints
-- `stylisticRules` - Formatting preferences
+- `forbiddenSyntax` - Forbidden ES6+ features (arrow functions, classes, etc.)
+- `forbiddenProps` - Forbidden ES6+ methods (Number.isNaN, Object.entries, etc.)
+- `shellyRules` - Memory-conscious constraints and restrictions
+- `stylisticOverrides` - Project-specific formatting overrides
 - `jsdocRules` - JSDoc validation
-- `sonarjsRules` - Code quality checks
+- `qualityRules` - Code quality checks (complexity, SonarJS rules)
 
 ## File-Specific Rules
 

@@ -1,7 +1,7 @@
 // ==============================================================================
-// * ALARM MANAGEMENT
-// ? Detection, severity mapping, fault logging, and edge detection.
-// ? Handles alarm state machine transitions and persistent fault history.
+// ALARM MANAGEMENT
+// Detection, severity mapping, fault logging, and edge detection.
+// Handles alarm state machine transitions and persistent fault history.
 // ==============================================================================
 
 import { ALM } from './constants.js'
@@ -10,26 +10,26 @@ import { S, V, ST_KEYS } from './state.js'
 import { ri } from './utils/math.js'
 import { pickKeys } from './utils/kvs.js'
 
-// ? Module-local timer for high temp alarm delay
+// Module-local timer for high temp alarm delay
 let alarm_highTimer = 0
 
 // ----------------------------------------------------------
-// * ALARM SEVERITY
-// ? Maps alarm codes to severity levels for logging.
+// ALARM SEVERITY
+// Maps alarm codes to severity levels for logging.
 // ----------------------------------------------------------
 
 /**
- * * GET SEVERITY
- * ? Maps alarm type to severity level for fault queue routing.
+ * GET SEVERITY
+ * Maps alarm type to severity level for fault queue routing.
  *
  * @param  {string} alarm - Alarm code from ALM constants
  * @returns {string}       - Severity level: 'fatal', 'critical', 'error', or 'warning'
  *
- * ? Severity mapping:
- * ?   fatal    - WELD, LOCKED (requires reboot)
- * ?   critical - HIGH temp (safety concern)
- * ?   error    - FAIL, STUCK (sensor issues)
- * ?   warning  - All others
+ * Severity mapping:
+ *   fatal    - WELD, LOCKED (requires reboot)
+ *   critical - HIGH temp (safety concern)
+ *   error    - FAIL, STUCK (sensor issues)
+ *   warning  - All others
  */
 function getSeverity(alarm) {
   if (alarm === ALM.WELD || alarm === ALM.LOCKED) return 'fatal'
@@ -39,26 +39,26 @@ function getSeverity(alarm) {
 }
 
 // ----------------------------------------------------------
-// * FAULT DETAIL BUILDER
-// ? Formats alarm-specific detail strings for fault log.
+// FAULT DETAIL BUILDER
+// Formats alarm-specific detail strings for fault log.
 // ----------------------------------------------------------
 
 /**
- * * FORMAT FAULT DETAIL
- * ? Creates human-readable detail string for fault log entries.
- * ? Format varies by alarm type to capture relevant diagnostics.
+ * FORMAT FAULT DETAIL
+ * Creates human-readable detail string for fault log entries.
+ * Format varies by alarm type to capture relevant diagnostics.
  *
  * @param  {string} alarm   - Alarm code that triggered
  * @param  {object} pending - Pending fault context { t, alarm, peak, watts, evap, airRaw, airSmt }
  * @param  {number} durSec  - Duration of alarm condition (seconds)
  * @returns {string}         - Formatted detail string
  *
- * ? Format by alarm type:
- * ?   GHOST - "75W/30s" (watts detected / duration)
- * ?   COOL  - "A:25 R:24 C:23 E:4" (air peak, raw, smooth, evap)
- * ?   HIGH  - "12C/5m" (peak temp / duration minutes)
- * ?   FAIL  - "Null:3" (error count)
- * ?   STUCK - "Air:10m" (stuck duration minutes)
+ * Format by alarm type:
+ *   GHOST - "75W/30s" (watts detected / duration)
+ *   COOL  - "A:25 R:24 C:23 E:4" (air peak, raw, smooth, evap)
+ *   HIGH  - "12C/5m" (peak temp / duration minutes)
+ *   FAIL  - "Null:3" (error count)
+ *   STUCK - "Air:10m" (stuck duration minutes)
  */
 function formatFaultDetail(alarm, pending, durSec) {
   let durMin = ri(durSec / 60)
@@ -74,26 +74,15 @@ function formatFaultDetail(alarm, pending, durSec) {
 }
 
 // ----------------------------------------------------------
-// * FAULT LOGGER
-// ? Records fault to appropriate severity array in S.
-// ? Fatal faults trigger immediate KVS save.
+// FAULT LOGGER
+// Records fault to appropriate severity array in S.
+// Fatal faults trigger immediate KVS save.
 // ----------------------------------------------------------
 
 /**
- * * RECORD FAULT
- * ? Logs fault entry to severity-specific queue in persisted state.
- * ? Maintains FIFO queue of max 3 entries per severity level.
- *
- * @param  {string} severity - Severity level ('fatal', 'critical', 'error', 'warning')
- * @param  {string} alarm    - Alarm code from ALM constants
- * @param  {string} detail   - Human-readable detail string
- *
- * ? Entry format: { a: alarm, t: timestamp, d: detail }
- *
- * ! Fatal faults trigger immediate KVS.Set (bypasses batch save).
- * ! Other severities batch with hourly state persistence.
+ * FAULT_KEYS - Severity to array key mapping
+ * Routes faults to appropriate persistence arrays (flt_XArr).
  */
-// ? Severity to array key mapping (after rename: fault_X → flt_XArr)
 let FAULT_KEYS = {
   fatal: 'flt_fatalArr',
   critical: 'flt_critArr',
@@ -101,6 +90,17 @@ let FAULT_KEYS = {
   warning: 'flt_warnArr',
 }
 
+/**
+ * recordFault - Log fault entry to severity-specific queue
+ * Maintains FIFO queue of max 3 entries per severity level.
+ *
+ * @param  {string} severity - Severity level ('fatal', 'critical', 'error', 'warning')
+ * @param  {string} alarm    - Alarm code from ALM constants
+ * @param  {string} detail   - Human-readable detail string
+ *
+ * Fatal faults trigger immediate KVS.Set (bypasses batch save).
+ * Other severities batch with hourly state persistence.
+ */
 function recordFault(severity, alarm, detail) {
   // Validate severity maps to existing array
   let key = FAULT_KEYS[severity]
@@ -131,15 +131,15 @@ function recordFault(severity, alarm, detail) {
 }
 
 // ----------------------------------------------------------
-// * ALARM EDGE DETECTION
-// ? Detects rising/falling alarm edges and triggers logging.
-// ? Call this AFTER all alarm evaluations for the loop.
+// ALARM EDGE DETECTION
+// Detects rising/falling alarm edges and triggers logging.
+// Call this AFTER all alarm evaluations for the loop.
 // ----------------------------------------------------------
 
 /**
- * * PROCESS ALARM EDGES
- * ? Detects alarm state transitions and manages fault logging lifecycle.
- * ? Rising edge captures context, falling edge logs the fault.
+ * PROCESS ALARM EDGES
+ * Detects alarm state transitions and manages fault logging lifecycle.
+ * Rising edge captures context, falling edge logs the fault.
  *
  * @param  {string} alarmBefore - Previous loop's alarm state
  * @param  {string} alarmAfter  - Current loop's alarm state
@@ -147,11 +147,11 @@ function recordFault(severity, alarm, detail) {
  * @param  {number} tAirRaw     - Current raw air temperature
  * @param  {number} tEvap       - Current evap temperature (for COOL detail)
  *
- * ? State machine:
- * ?   NONE → ALARM = Rising edge (capture pending context)
- * ?   ALARM → NONE = Falling edge (log fault with duration)
+ * State machine:
+ *   NONE → ALARM = Rising edge (capture pending context)
+ *   ALARM → NONE = Falling edge (log fault with duration)
  *
- * ! Must be called AFTER all alarm evaluations in main loop.
+ * Must be called AFTER all alarm evaluations in main loop.
  */
 function processAlarmEdges(alarmBefore, alarmAfter, swWatts, tAirRaw, tEvap) {
   // HANDLE CHANGE/AWAY FROM PREVIOUS (including ALARM -> different ALARM or -> NONE)
@@ -179,17 +179,17 @@ function processAlarmEdges(alarmBefore, alarmAfter, swWatts, tAirRaw, tEvap) {
 }
 
 // ----------------------------------------------------------
-// * CLEAR NON-FATAL ALARMS
-// ? Resets non-sticky alarms for re-evaluation.
-// ? Fatal alarms (WELD, LOCKED) persist until reboot.
+// CLEAR NON-FATAL ALARMS
+// Resets non-sticky alarms for re-evaluation.
+// Fatal alarms (WELD, LOCKED) persist until reboot.
 // ----------------------------------------------------------
 
 /**
- * * CLEAR NON-FATAL ALARMS
- * ? Resets alarm state for re-evaluation each loop iteration.
- * ? Fatal alarms (WELD, LOCKED) are sticky and require reboot.
+ * CLEAR NON-FATAL ALARMS
+ * Resets alarm state for re-evaluation each loop iteration.
+ * Fatal alarms (WELD, LOCKED) are sticky and require reboot.
  *
- * ! WELD and LOCKED alarms persist until device restart.
+ * WELD and LOCKED alarms persist until device restart.
  */
 function clearNonFatalAlarms() {
   if (V.sys_alarm !== ALM.LOCKED && V.sys_alarm !== ALM.WELD) {
@@ -198,14 +198,14 @@ function clearNonFatalAlarms() {
 }
 
 // ----------------------------------------------------------
-// * APPLY SENSOR ALARMS
-// ? Re-applies sensor failure/stuck alarms to V.sys_alarm.
+// APPLY SENSOR ALARMS
+// Re-applies sensor failure/stuck alarms to V.sys_alarm.
 // ----------------------------------------------------------
 
 /**
- * * APPLY SENSOR ALARMS
- * ? Sets V.sys_alarm based on sensor health flags.
- * ? FAIL takes precedence over STUCK.
+ * APPLY SENSOR ALARMS
+ * Sets V.sys_alarm based on sensor health flags.
+ * FAIL takes precedence over STUCK.
  *
  * @param  {boolean} alarmFail  - True if sensor returning null
  * @param  {boolean} alarmStuck - True if sensor value frozen
@@ -219,30 +219,30 @@ function applySensorAlarms(alarmFail, alarmStuck) {
 }
 
 // ----------------------------------------------------------
-// * HIGH TEMP ALARM CHECK
-// ? Triggers alarm if temp exceeds threshold for delay period.
+// HIGH TEMP ALARM CHECK
+// Triggers alarm if temp exceeds threshold for delay period.
 // ----------------------------------------------------------
 
 /**
- * * CHECK HIGH TEMP ALARM
- * ? Triggers HIGH alarm when control temp exceeds threshold.
- * ? Uses configurable delay to prevent false alarms.
+ * CHECK HIGH TEMP ALARM
+ * Triggers HIGH alarm when control temp exceeds threshold.
+ * Uses configurable delay to prevent false alarms.
  *
  * @param  {number}  tCtrl        - Control temperature (smoothed air)
  * @param  {boolean} isDeepDefrost - True if in deep defrost mode (suppresses alarm)
  * @returns {boolean}              - True if alarm triggered this call
  *
- * ? Alarm suppressed during:
- * ?   - Deep defrost (expected high temps)
- * ?   - Turbo mode (intentional cooldown)
- * ?   - Disabled via C.alarm_highEnable
+ * Alarm suppressed during:
+ *   - Deep defrost (expected high temps)
+ *   - Turbo mode (intentional cooldown)
+ *   - Disabled via C.alarm_highEnable
  */
 function checkHighTempAlarm(tCtrl, isDeepDefrost) {
-  if (C.alarm_highEnable && tCtrl > C.alarm_highDeg && !isDeepDefrost && !V.trb_isActive) {
+  if (C.alm_highEnable && tCtrl > C.alm_highDeg && !isDeepDefrost && !V.trb_isActive) {
     alarm_highTimer += C.sys_loopSec
-    if (alarm_highTimer > C.alarm_highDelaySec) {
+    if (alarm_highTimer > C.alm_highDelaySec) {
       V.sys_alarm = ALM.HIGH
-      print('ALARM 🚨 High temp: ' + tCtrl.toFixed(1) + 'C exceeds ' + C.alarm_highDeg + 'C for ' + Math.floor(alarm_highTimer / 60) + 'm')
+      print('ALARM 🚨 High temp: ' + tCtrl.toFixed(1) + 'C exceeds ' + C.alm_highDeg + 'C for ' + Math.floor(alarm_highTimer / 60) + 'm')
       return true
     }
   } else {
@@ -252,7 +252,7 @@ function checkHighTempAlarm(tCtrl, isDeepDefrost) {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export {

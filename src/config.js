@@ -1,78 +1,78 @@
 // ==============================================================================
-// * FRIDGE CONTROLLER CONFIGURATION
-// ? Default values, current config, KVS key mappings, and validation.
-// ? All time values are in SECONDS unless otherwise noted.
+// FRIDGE CONTROLLER CONFIGURATION
+// Default values, current config, KVS key mappings, and validation.
+// All time values are in SECONDS unless otherwise noted.
 // ==============================================================================
 
 import { loadChunksSeq, syncToKvs, saveAllToKvs } from './utils/kvs.js'
 
 // ----------------------------------------------------------
-// * DEFAULT CONFIGURATION
-// ? Factory defaults - used when KVS has no value.
+// DEFAULT CONFIGURATION
+// Factory defaults - used when KVS has no value.
 // ----------------------------------------------------------
 
 let DEFAULT = {
   // SYS - Hardware & Loop
   sys_loopSec: 5,            // Main heartbeat interval
   sys_sensAirId: 101,        // Shelly Add-on ID for Air Sensor
-  sys_sensEvapId: 100,       // Shelly Add-on ID for Coil Sensor
+  sys_sensEvpId: 100,       // Shelly Add-on ID for Coil Sensor
   sys_sensFailLimit: 5,      // Loops of bad data before Limp Mode
   sys_mqttTopic: 'fridge/status',
   sys_mqttCmd: 'fridge/command',
 
-  // CTRL - Thermostat Control
-  ctrl_targetDeg: 4.0,       // Target Temp (C)
-  ctrl_hystDeg: 1.0,         // Base Hysteresis (C)
-  ctrl_smoothAlpha: 0.08,    // EMA Smoothing Factor
+  // CTL - Thermostat Control
+  ctl_targetDeg: 4.0,        // Target Temp (C)
+  ctl_hystDeg: 1.0,          // Base Hysteresis (C)
+  ctl_smoothAlpha: 0.08,     // EMA Smoothing Factor
 
-  // ADAPT - Adaptive Hysteresis (Run-Time Based)
-  adapt_enable: true,
-  adapt_hystMinDeg: 0.5,     // Tightest allowed control
-  adapt_hystMaxDeg: 3.0,     // Loosest allowed control
-  adapt_targetMinSec: 600,   // Target min run: 10 min
-  adapt_targetMaxSec: 1200,  // Target max run: 20 min
+  // ADT - Adaptive Hysteresis (Run-Time Based)
+  adt_enable: true,
+  adt_hystMinDeg: 0.5,       // Tightest allowed control
+  adt_hystMaxDeg: 3.0,       // Loosest allowed control
+  adt_targetMinSec: 600,     // Target min run: 10 min
+  adt_targetMaxSec: 1200,    // Target max run: 20 min
 
-  // COMP - Compressor Protection (Auto-Recovery)
-  comp_minOnSec: 180,        // Anti-short-cycle: Minimum Run Time
-  comp_minOffSec: 300,       // Anti-short-cycle: Minimum Rest Time
-  comp_maxRunSec: 7200,      // Max continuous run (2 Hours)
-  comp_freezeCutDeg: 0.5,    // Emergency cut if Air < 0.5C
+  // CMP - Compressor Protection (Auto-Recovery)
+  cmp_minOnSec: 180,         // Anti-short-cycle: Minimum Run Time
+  cmp_minOffSec: 300,        // Anti-short-cycle: Minimum Rest Time
+  cmp_maxRunSec: 7200,       // Max continuous run (2 Hours)
+  cmp_freezeCutDeg: 0.5,     // Emergency cut if Air < 0.5C
 
-  // LIMP - Failsafe Mode (Blind Cycling)
-  limp_enable: true,
-  limp_onSec: 1800,          // 30 Minutes ON (66% Duty)
-  limp_offSec: 900,          // 15 Minutes OFF
+  // LMP - Failsafe Mode (Blind Cycling)
+  lmp_enable: true,
+  lmp_onSec: 1800,           // 30 Minutes ON (66% Duty)
+  lmp_offSec: 900,           // 15 Minutes OFF
 
-  // DOOR - Door Open Detection (dP/dt)
-  door_enable: true,
-  door_rateDegMin: 5.0,      // Trigger if temp rises > 5C per minute
-  door_pauseSec: 300,        // Stop cooling for 5 mins
+  // DOR - Door Open Detection (dP/dt)
+  dor_enable: true,
+  dor_rateDegMin: 5.0,       // Trigger if temp rises > 5C per minute
+  dor_pauseSec: 300,         // Stop cooling for 5 mins
 
-  // DEFR - Defrost Logic
-  defr_dynEnable: true,
-  defr_dynTrigDeg: -16.0,    // Start defrost if evap hits -16C
-  defr_dynEndDeg: -5.0,      // Stop melting if evap hits -5C
-  defr_dynDwellSec: 300,     // Must hold end temp for 5 mins
+  // DFR - Defrost Logic
+  dfr_dynEnable: true,
+  dfr_dynTrigDeg: -16.0,     // Start defrost if evap hits -16C
+  dfr_dynEndDeg: -5.0,       // Stop melting if evap hits -5C
+  dfr_dynDwellSec: 300,      // Must hold end temp for 5 mins
 
-  defr_schedEnable: true,
-  defr_schedHour: 1,         // 01:00 AM
-  defr_schedDurSec: 3600,    // 1 Hour duration
+  dfr_schedEnable: true,
+  dfr_schedHour: 1,          // 01:00 AM
+  dfr_schedDurSec: 3600,     // 1 Hour duration
 
-  // WELD - Relay Weld Detection (Physics)
-  weld_enable: true,
-  weld_waitSec: 600,         // Start checking 10 mins after OFF
-  weld_winSec: 1800,         // Stop checking 30 mins after OFF
-  weld_dropDeg: 0.2,         // Alarm if temp drops 0.2C while OFF
+  // WLD - Relay Weld Detection (Physics)
+  wld_enable: true,
+  wld_waitSec: 600,          // Start checking 10 mins after OFF
+  wld_winSec: 1800,          // Stop checking 30 mins after OFF
+  wld_dropDeg: 0.2,          // Alarm if temp drops 0.2C while OFF
 
-  // SENS - Sensor Health Monitoring
-  sens_stuckEnable: true,
-  sens_stuckTimeSec: 14400,  // 4 Hours stuck = Alarm
-  sens_stuckEpsDeg: 0.2,     // Reset timer if moves > 0.2C
+  // SNS - Sensor Health Monitoring
+  sns_stuckEnable: true,
+  sns_stuckTimeSec: 14400,   // 4 Hours stuck = Alarm
+  sns_stuckEpsDeg: 0.2,      // Reset timer if moves > 0.2C
 
-  // ALARM - High Temp Alert
-  alarm_highEnable: true,
-  alarm_highDeg: 10.0,       // Critical Alert Threshold
-  alarm_highDelaySec: 600,   // Must persist for 10 Minutes
+  // ALM - High Temp Alert
+  alm_highEnable: true,
+  alm_highDeg: 10.0,         // Critical Alert Threshold
+  alm_highDelaySec: 600,     // Must persist for 10 Minutes
 
   // PWR - Power Monitoring
   pwr_enable: true,
@@ -80,59 +80,59 @@ let DEFAULT = {
   pwr_runMinW: 10,           // Ghost Run (<10W)
   pwr_runMaxW: 400,          // Locked Rotor (>400W)
   pwr_ghostTripSec: 60,      // Confirm Ghost for 60s
-  pwr_ghostMaxCount: 3,      // Escalate to fatal after N ghost runs
+  pwr_ghostMaxCnt: 3,      // Escalate to fatal after N ghost runs
 
-  // TURBO - Turbo Mode
-  turbo_enable: true,
-  turbo_targetDeg: 1.0,
-  turbo_hystDeg: 0.5,
-  turbo_maxTimeSec: 10800,   // 3 Hours
+  // TRB - Turbo Mode
+  trb_enable: true,
+  trb_targetDeg: 1.0,
+  trb_hystDeg: 0.5,
+  trb_maxTimeSec: 10800,     // 3 Hours
 
   // GAS - Gas Leak Detection
   gas_checkSec: 900,         // Gas Leak Check Time
-  gas_failDiff: 5.0,          // Gas Leak Diff (evap must be 5C colder than air)
+  gas_failDiff: 5.0,         // Gas Leak Diff (evap must be 5C colder than air)
 }
 
 // ----------------------------------------------------------
-// * CURRENT CONFIGURATION
-// ? Mutable object loaded from KVS at boot.
+// CURRENT CONFIGURATION
+// Mutable object loaded from KVS at boot.
 // ----------------------------------------------------------
 
 let C = {}
 
 // ----------------------------------------------------------
-// * KVS KEY MAPPINGS - CONFIG
-// ? Maps KVS key names to config field arrays.
+// KVS KEY MAPPINGS - CONFIG
+// Maps KVS key names to config field arrays.
 // ----------------------------------------------------------
 
 let CFG_KEYS = {
-  'fridge_cfg_sys': ['sys_loopSec', 'sys_sensAirId', 'sys_sensEvapId', 'sys_sensFailLimit',
+  'fridge_cfg_sys': ['sys_loopSec', 'sys_sensAirId', 'sys_sensEvpId', 'sys_sensFailLimit',
     'sys_mqttTopic', 'sys_mqttCmd'],
-  'fridge_cfg_ctrl': ['ctrl_targetDeg', 'ctrl_hystDeg', 'ctrl_smoothAlpha'],
-  'fridge_cfg_adapt': ['adapt_enable', 'adapt_hystMinDeg', 'adapt_hystMaxDeg',
-    'adapt_targetMinSec', 'adapt_targetMaxSec'],
-  'fridge_cfg_comp': ['comp_minOnSec', 'comp_minOffSec', 'comp_maxRunSec', 'comp_freezeCutDeg'],
-  'fridge_cfg_limp': ['limp_enable', 'limp_onSec', 'limp_offSec'],
-  'fridge_cfg_door': ['door_enable', 'door_rateDegMin', 'door_pauseSec'],
-  'fridge_cfg_defr': ['defr_dynEnable', 'defr_dynTrigDeg', 'defr_dynEndDeg', 'defr_dynDwellSec',
-    'defr_schedEnable', 'defr_schedHour', 'defr_schedDurSec'],
-  'fridge_cfg_weld': ['weld_enable', 'weld_waitSec', 'weld_winSec', 'weld_dropDeg',
-    'gas_checkSec', 'gas_failDiff'],
-  'fridge_cfg_sens': ['sens_stuckEnable', 'sens_stuckTimeSec', 'sens_stuckEpsDeg'],
-  'fridge_cfg_alarm': ['alarm_highEnable', 'alarm_highDeg', 'alarm_highDelaySec'],
-  'fridge_cfg_pwr': ['pwr_enable', 'pwr_startMaskSec', 'pwr_runMinW', 'pwr_runMaxW', 'pwr_ghostTripSec', 'pwr_ghostMaxCount'],
-  'fridge_cfg_turbo': ['turbo_enable', 'turbo_targetDeg', 'turbo_hystDeg', 'turbo_maxTimeSec'],
+  'fridge_cfg_ctl': ['ctl_targetDeg', 'ctl_hystDeg', 'ctl_smoothAlpha'],
+  'fridge_cfg_adt': ['adt_enable', 'adt_hystMinDeg', 'adt_hystMaxDeg',
+    'adt_targetMinSec', 'adt_targetMaxSec'],
+  'fridge_cfg_cmp': ['cmp_minOnSec', 'cmp_minOffSec', 'cmp_maxRunSec', 'cmp_freezeCutDeg'],
+  'fridge_cfg_lmp': ['lmp_enable', 'lmp_onSec', 'lmp_offSec'],
+  'fridge_cfg_dor': ['dor_enable', 'dor_rateDegMin', 'dor_pauseSec'],
+  'fridge_cfg_dfr': ['dfr_dynEnable', 'dfr_dynTrigDeg', 'dfr_dynEndDeg', 'dfr_dynDwellSec',
+    'dfr_schedEnable', 'dfr_schedHour', 'dfr_schedDurSec'],
+  'fridge_cfg_wld': ['wld_enable', 'wld_waitSec', 'wld_winSec', 'wld_dropDeg'],
+  'fridge_cfg_sns': ['sns_stuckEnable', 'sns_stuckTimeSec', 'sns_stuckEpsDeg'],
+  'fridge_cfg_alm': ['alm_highEnable', 'alm_highDeg', 'alm_highDelaySec'],
+  'fridge_cfg_pwr': ['pwr_enable', 'pwr_startMaskSec', 'pwr_runMinW', 'pwr_runMaxW', 'pwr_ghostTripSec', 'pwr_ghostMaxCnt'],
+  'fridge_cfg_trb': ['trb_enable', 'trb_targetDeg', 'trb_hystDeg', 'trb_maxTimeSec'],
+  'fridge_cfg_gas': ['gas_checkSec', 'gas_failDiff'],
 }
 
 // ----------------------------------------------------------
-// * CONFIGURATION VALIDATION
-// ? Function-based validation to minimize runtime heap usage.
-// ? Each function is code (not heap data like arrays would be).
+// CONFIGURATION VALIDATION
+// Function-based validation to minimize runtime heap usage.
+// Each function is code (not heap data like arrays would be).
 // ----------------------------------------------------------
 
 /**
- * * validateNumber - Validate a single numeric config field
- * ? Resets to default if value is out of range.
+ * validateNumber - Validate a single numeric config field
+ * Resets to default if value is out of range.
  *
  * @param {string} f - Field name
  * @param {number} min - Minimum allowed value
@@ -149,7 +149,7 @@ function validateNumber(f, min, max, bad) {
 }
 
 /**
- * * validateSystem - Validate system config fields
+ * validateSystem - Validate system config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
 function validateSystem(bad) {
@@ -157,95 +157,95 @@ function validateSystem(bad) {
 }
 
 /**
- * * validateCtrl - Validate control config fields (target, hysteresis)
+ * validateCtl - Validate control config fields (target, hysteresis)
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateCtrl(bad) {
-  validateNumber('ctrl_targetDeg', -5, 15, bad)
-  validateNumber('ctrl_hystDeg', 0.1, 5, bad)
+function validateCtl(bad) {
+  validateNumber('ctl_targetDeg', -5, 15, bad)
+  validateNumber('ctl_hystDeg', 0.1, 5, bad)
 }
 
 /**
- * * validateComp - Validate compressor protection config fields
+ * validateCmp - Validate compressor protection config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateComp(bad) {
-  validateNumber('comp_minOnSec', 60, 600, bad)
-  validateNumber('comp_minOffSec', 60, 900, bad)
-  validateNumber('comp_maxRunSec', 1800, 14400, bad)
-  validateNumber('comp_freezeCutDeg', -2, 2, bad)
+function validateCmp(bad) {
+  validateNumber('cmp_minOnSec', 60, 600, bad)
+  validateNumber('cmp_minOffSec', 60, 900, bad)
+  validateNumber('cmp_maxRunSec', 1800, 14400, bad)
+  validateNumber('cmp_freezeCutDeg', -2, 2, bad)
 }
 
 /**
- * * validateTurbo - Validate turbo mode config fields
+ * validateTrb - Validate turbo mode config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateTurbo(bad) {
-  validateNumber('turbo_maxTimeSec', 1800, 21600, bad)
+function validateTrb(bad) {
+  validateNumber('trb_maxTimeSec', 1800, 21600, bad)
 }
 
 /**
- * * validateAdapt - Validate adaptive hysteresis config fields
+ * validateAdt - Validate adaptive hysteresis config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateAdapt(bad) {
-  validateNumber('adapt_hystMinDeg', 0.1, 5, bad)
-  validateNumber('adapt_hystMaxDeg', 0.1, 5, bad)
-  validateNumber('adapt_targetMinSec', 300, 3600, bad)
-  validateNumber('adapt_targetMaxSec', 600, 7200, bad)
+function validateAdt(bad) {
+  validateNumber('adt_hystMinDeg', 0.1, 5, bad)
+  validateNumber('adt_hystMaxDeg', 0.1, 5, bad)
+  validateNumber('adt_targetMinSec', 300, 3600, bad)
+  validateNumber('adt_targetMaxSec', 600, 7200, bad)
 }
 
 /**
- * * validateDoor - Validate door detection config fields
+ * validateDor - Validate door detection config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateDoor(bad) {
-  validateNumber('door_rateDegMin', 0.5, 20, bad)
-  validateNumber('door_pauseSec', 30, 3600, bad)
+function validateDor(bad) {
+  validateNumber('dor_rateDegMin', 0.5, 20, bad)
+  validateNumber('dor_pauseSec', 30, 3600, bad)
 }
 
 /**
- * * validateDefrost - Validate defrost config fields
+ * validateDfr - Validate defrost config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateDefrost(bad) {
-  validateNumber('defr_dynTrigDeg', -40, 0, bad)
-  validateNumber('defr_dynEndDeg', -20, 5, bad)
-  validateNumber('defr_dynDwellSec', 60, 7200, bad)
-  validateNumber('defr_schedHour', 0, 23, bad)
-  validateNumber('defr_schedDurSec', 300, 14400, bad)
+function validateDfr(bad) {
+  validateNumber('dfr_dynTrigDeg', -40, 0, bad)
+  validateNumber('dfr_dynEndDeg', -20, 5, bad)
+  validateNumber('dfr_dynDwellSec', 60, 7200, bad)
+  validateNumber('dfr_schedHour', 0, 23, bad)
+  validateNumber('dfr_schedDurSec', 300, 14400, bad)
 }
 
 /**
- * * validateWeld - Validate weld detection config fields
+ * validateWld - Validate weld detection config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateWeld(bad) {
-  validateNumber('weld_waitSec', 60, 7200, bad)
-  validateNumber('weld_winSec', 300, 14400, bad)
-  validateNumber('weld_dropDeg', 0.05, 5, bad)
+function validateWld(bad) {
+  validateNumber('wld_waitSec', 60, 7200, bad)
+  validateNumber('wld_winSec', 300, 14400, bad)
+  validateNumber('wld_dropDeg', 0.05, 5, bad)
 }
 
 /**
- * * validateSensors - Validate sensor config fields
+ * validateSns - Validate sensor config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateSensors(bad) {
-  validateNumber('sens_stuckTimeSec', 300, 86400, bad)
-  validateNumber('sens_stuckEpsDeg', 0.05, 5, bad)
+function validateSns(bad) {
+  validateNumber('sns_stuckTimeSec', 300, 86400, bad)
+  validateNumber('sns_stuckEpsDeg', 0.05, 5, bad)
 }
 
 /**
- * * validateAlarm - Validate alarm config fields
+ * validateAlm - Validate alarm config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
-function validateAlarm(bad) {
-  validateNumber('alarm_highDeg', 0, 40, bad)
-  validateNumber('alarm_highDelaySec', 60, 7200, bad)
+function validateAlm(bad) {
+  validateNumber('alm_highDeg', 0, 40, bad)
+  validateNumber('alm_highDelaySec', 60, 7200, bad)
 }
 
 /**
- * * validatePower - Validate power monitoring config fields
+ * validatePower - Validate power monitoring config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
 function validatePower(bad) {
@@ -253,11 +253,11 @@ function validatePower(bad) {
   validateNumber('pwr_runMinW', 1, 1000, bad)
   validateNumber('pwr_runMaxW', 50, 2000, bad)
   validateNumber('pwr_ghostTripSec', 5, 600, bad)
-  validateNumber('pwr_ghostMaxCount', 1, 10, bad)
+  validateNumber('pwr_ghostMaxCnt', 1, 10, bad)
 }
 
 /**
- * * validateGas - Validate gas leak detection config fields
+ * validateGas - Validate gas leak detection config fields
  * @param {string[]} bad - Array to collect invalid field names
  */
 function validateGas(bad) {
@@ -266,67 +266,67 @@ function validateGas(bad) {
 }
 
 /**
- * * validateConfig - Validate and sanitize configuration
- * ? Checks critical config values, reverts invalid to defaults.
+ * validateConfig - Validate and sanitize configuration
+ * Checks critical config values, reverts invalid to defaults.
  *
  * @returns {string[]} - Array of field names that were reverted
  */
 function validateConfig() {
   let bad = []
   validateSystem(bad)
-  validateCtrl(bad)
-  validateComp(bad)
-  validateTurbo(bad)
-  validateAdapt(bad)
-  validateDoor(bad)
-  validateDefrost(bad)
-  validateWeld(bad)
-  validateSensors(bad)
-  validateAlarm(bad)
+  validateCtl(bad)
+  validateCmp(bad)
+  validateTrb(bad)
+  validateAdt(bad)
+  validateDor(bad)
+  validateDfr(bad)
+  validateWld(bad)
+  validateSns(bad)
+  validateAlm(bad)
   validatePower(bad)
   validateGas(bad)
   // Range checks: min must be < max
-  if (C.adapt_hystMinDeg >= C.adapt_hystMaxDeg) {
-    C.adapt_hystMinDeg = DEFAULT.adapt_hystMinDeg
-    C.adapt_hystMaxDeg = DEFAULT.adapt_hystMaxDeg
-    bad.push('adapt_hyst_range')
+  if (C.adt_hystMinDeg >= C.adt_hystMaxDeg) {
+    C.adt_hystMinDeg = DEFAULT.adt_hystMinDeg
+    C.adt_hystMaxDeg = DEFAULT.adt_hystMaxDeg
+    bad.push('adt_hyst_range')
   }
-  if (C.adapt_targetMinSec >= C.adapt_targetMaxSec) {
-    C.adapt_targetMinSec = DEFAULT.adapt_targetMinSec
-    C.adapt_targetMaxSec = DEFAULT.adapt_targetMaxSec
-    bad.push('adapt_target_range')
+  if (C.adt_targetMinSec >= C.adt_targetMaxSec) {
+    C.adt_targetMinSec = DEFAULT.adt_targetMinSec
+    C.adt_targetMaxSec = DEFAULT.adt_targetMaxSec
+    bad.push('adt_target_range')
   }
   if (bad.length > 0) print('⚠️ CONFIG: Reverted: ' + bad.join(','))
   return bad
 }
 
 // ----------------------------------------------------------
-// * LOAD CONFIG FROM KVS
+// LOAD CONFIG FROM KVS
 // ----------------------------------------------------------
 
 /**
- * * loadConfig - Load configuration from KVS
+ * loadConfig - Load configuration from KVS
  *
  * Fetches config chunks from KVS, merges with defaults, validates.
- * ? Smart sync: only writes if schema changed, never overwrites on load failure.
+ * Smart sync: only writes if schema changed, never overwrites on load failure.
  *
  * @param {Function} onComplete - Called when config loading complete
  */
 function loadConfig(onComplete) {
   print('➡️ CONFIG: Loading from KVS...')
 
-  // ? Initialize defaults first
+  // Initialize defaults first
   let keys = Object.keys(DEFAULT)
   for (let i = 0; i < keys.length; i++) {
     let k = keys[i]
     C[k] = DEFAULT[k]
   }
 
-  // ? Load chunks sequentially (reduces peak memory)
+  // Load chunks sequentially (reduces peak memory)
   loadChunksSeq(CFG_KEYS, C, function (cfgChunks) {
     validateConfig()
 
-    // ? Smart sync: preserves KVS on load failure, only syncs schema changes
+    // Smart sync: preserves KVS on load failure, only syncs schema changes
     syncToKvs(CFG_KEYS, DEFAULT, cfgChunks, function () {
       print('✅ CONFIG: Loaded')
       onComplete()
@@ -335,7 +335,7 @@ function loadConfig(onComplete) {
 }
 
 /**
- * * persistConfig - Save current config to KVS
+ * persistConfig - Save current config to KVS
  *
  * Writes all config chunks to KVS using current values in C.
  *
@@ -349,7 +349,7 @@ function persistConfig(onComplete) {
 }
 
 // ----------------------------------------------------------
-// * EXPORTS
+// EXPORTS
 // ----------------------------------------------------------
 
 export { DEFAULT, C, CFG_KEYS, validateConfig, loadConfig, persistConfig }

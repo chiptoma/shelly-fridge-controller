@@ -78,8 +78,8 @@ This will:
 |---------|-------------|
 | `npm run lint` | Run ESLint |
 | `npm run lint:fix` | Run ESLint with auto-fix |
-| `npm run test` | Run unit tests |
-| `npm run test:coverage` | Run tests with coverage |
+| `npm test` | Run unit tests |
+| `npm test:coverage` | Run tests with coverage |
 
 ## Configuration
 

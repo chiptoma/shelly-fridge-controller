@@ -1,6 +1,6 @@
 // ==============================================================================
-// * KVS UTILITIES TESTS
-// ? Validates KVS parsing, merging, sync, and fetch operations.
+// KVS UTILITIES TESTS
+// Validates KVS parsing, merging, sync, and fetch operations.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -39,7 +39,7 @@ describe('KVS Utilities', () => {
   })
 
   // ----------------------------------------------------------
-  // * PICK KEYS TESTS
+  // PICK KEYS TESTS
   // ----------------------------------------------------------
 
   describe('pickKeys', () => {
@@ -63,7 +63,7 @@ describe('KVS Utilities', () => {
   })
 
   // ----------------------------------------------------------
-  // * LOAD CHUNKS SEQ TESTS
+  // LOAD CHUNKS SEQ TESTS
   // ----------------------------------------------------------
 
   describe('loadChunksSeq', () => {
@@ -186,14 +186,14 @@ describe('KVS Utilities', () => {
       mockShelly.call.mock.calls[0][2]({ value: '{"a":1}' }, 0)
       timerCallbacks[1]()
 
-      // ? When onDone is null, no final Timer.set is called (only 2 callbacks)
+      // When onDone is null, no final Timer.set is called (only 2 callbacks)
       expect(timerCallbacks.length).toBe(2)
       expect(target.a).toBe(1)
     })
   })
 
   // ----------------------------------------------------------
-  // * SYNC TO KVS TESTS
+  // SYNC TO KVS TESTS
   // ----------------------------------------------------------
 
   describe('syncToKvs', () => {
@@ -302,7 +302,7 @@ describe('KVS Utilities', () => {
   })
 
   // ----------------------------------------------------------
-  // * SAVE ALL TO KVS TESTS
+  // SAVE ALL TO KVS TESTS
   // ----------------------------------------------------------
 
   describe('saveAllToKvs', () => {
@@ -349,15 +349,15 @@ describe('KVS Utilities', () => {
   })
 
   // ----------------------------------------------------------
-  // * CHUNK NEEDS SYNC TESTS
-  // ? Testing via syncToKvs behavior since chunkNeedsSync is not exported
+  // CHUNK NEEDS SYNC TESTS
+  // Testing via syncToKvs behavior since chunkNeedsSync is not exported
   // ----------------------------------------------------------
 
   describe('chunkNeedsSync behavior', () => {
     it('should detect missing key in loaded chunk', () => {
       const mapping = { chunk1: ['a', 'b', 'c'] }
       const source = { a: 1, b: 2, c: 3 }
-      // ? Missing key 'c' in loaded chunk
+      // Missing key 'c' in loaded chunk
       const loadedChunks = { chunk1: { a: 1, b: 2 } }
 
       syncToKvs(mapping, source, loadedChunks, vi.fn(), null)
@@ -374,7 +374,7 @@ describe('KVS Utilities', () => {
     it('should detect extra key in loaded chunk', () => {
       const mapping = { chunk1: ['a'] }
       const source = { a: 1 }
-      // ? Extra key 'obsoleteKey' in loaded chunk
+      // Extra key 'obsoleteKey' in loaded chunk
       const loadedChunks = { chunk1: { a: 1, obsoleteKey: 'old' } }
 
       syncToKvs(mapping, source, loadedChunks, vi.fn(), null)

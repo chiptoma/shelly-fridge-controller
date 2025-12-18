@@ -1,6 +1,6 @@
 // ==============================================================================
-// * CONTROL TESTS
-// ? Validates decision engine, thermostat logic, and relay switching.
+// CONTROL TESTS
+// Validates decision engine, thermostat logic, and relay switching.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -69,9 +69,9 @@ describe('Control', () => {
     // Create mock config
     mockC = {
       sys_loopSec: 5,
-      ctrl_targetDeg: 4.0,
-      comp_freezeCutDeg: -2.0,
-      comp_maxRunSec: 3600,
+      ctl_targetDeg: 4.0,
+      cmp_freezeCutDeg: -2.0,
+      cmp_maxRunSec: 3600,
     }
 
     // Mock global print
@@ -111,7 +111,7 @@ describe('Control', () => {
       canTurnOff: vi.fn(() => true),
       getTimeUntilOnAllowed: vi.fn(() => 0),
       getTimeUntilOffAllowed: vi.fn(() => 0),
-      isFreezeProtectionActive: vi.fn((tCtrl) => tCtrl < mockC.comp_freezeCutDeg),
+      isFreezeProtectionActive: vi.fn((tCtrl) => tCtrl < mockC.cmp_freezeCutDeg),
       isMaxRunExceeded: vi.fn(() => false),
     }))
     vi.doMock('./features.js', () => ({
@@ -139,7 +139,7 @@ describe('Control', () => {
   })
 
   // ----------------------------------------------------------
-  // * SET IDLE STATE TESTS
+  // SET IDLE STATE TESTS
   // ----------------------------------------------------------
 
   describe('setIdleState', () => {
@@ -160,7 +160,7 @@ describe('Control', () => {
   })
 
   // ----------------------------------------------------------
-  // * EVALUATE THERMOSTAT TESTS
+  // EVALUATE THERMOSTAT TESTS
   // ----------------------------------------------------------
 
   describe('evaluateThermostat', () => {
@@ -188,7 +188,7 @@ describe('Control', () => {
   })
 
   // ----------------------------------------------------------
-  // * SET RELAY TESTS
+  // SET RELAY TESTS
   // ----------------------------------------------------------
 
   describe('setRelay', () => {
@@ -198,7 +198,7 @@ describe('Control', () => {
       expect(global.Shelly.call).toHaveBeenCalledWith(
         'Switch.Set',
         { id: 0, on: true },
-        expect.any(Function),  // ? Verification callback
+        expect.any(Function),  // Verification callback
       )
     })
 
@@ -225,8 +225,8 @@ describe('Control', () => {
       expect(mockS.wld_airSnapDeg).toBe(5.0)
     })
 
-    // ? Design decision: weld snapshot is now captured even on emergency/skipSnap
-    // ? to avoid stale wld_airSnapDeg values (see control.js lines 137-140)
+    // Design decision: weld snapshot is now captured even on emergency/skipSnap
+    // to avoid stale wld_airSnapDeg values (see control.js lines 137-140)
     it('should capture weld snapshot even in limp/emergency mode', () => {
       mockS.sys_isRelayOn = true
       setRelay(false, 2000, 5.0, -10.0, true)
@@ -342,7 +342,7 @@ describe('Control', () => {
   })
 
   // ----------------------------------------------------------
-  // * DETERMINE MODE TESTS
+  // DETERMINE MODE TESTS
   // ----------------------------------------------------------
 
   describe('determineMode', () => {
@@ -403,7 +403,7 @@ describe('Control', () => {
   })
 
   // ----------------------------------------------------------
-  // * DETERMINE MODE - PRIORITY TESTS
+  // DETERMINE MODE - PRIORITY TESTS
   // ----------------------------------------------------------
 
   describe('determineMode - priorities', () => {
@@ -613,7 +613,7 @@ describe('Control', () => {
   })
 
   // ----------------------------------------------------------
-  // * EXECUTE SWITCH DECISION TESTS
+  // EXECUTE SWITCH DECISION TESTS
   // ----------------------------------------------------------
 
   describe('executeSwitchDecision', () => {
@@ -677,7 +677,7 @@ describe('Control', () => {
   })
 
   // ----------------------------------------------------------
-  // * EXECUTE SWITCH DECISION - BLOCKING TESTS
+  // EXECUTE SWITCH DECISION - BLOCKING TESTS
   // ----------------------------------------------------------
 
   describe('executeSwitchDecision - timing guards', () => {

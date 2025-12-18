@@ -1,6 +1,6 @@
 // ==============================================================================
-// * STATE TESTS
-// ? Validates S, V, ST_KEYS structures and persistence functions.
+// STATE TESTS
+// Validates S, V, ST_KEYS structures and persistence functions.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -23,7 +23,7 @@ describe('State', () => {
     })
 
     mockSyncToKvs = vi.fn((m, s, c, cb, name) => { if (cb) cb() })
-    // ? loadChunksSeq captures callback for test control
+    // loadChunksSeq captures callback for test control
     mockLoadChunksSeq = vi.fn((mapping, target, cb) => {
       loadChunksSeqCallback = cb
     })
@@ -47,7 +47,7 @@ describe('State', () => {
   })
 
   // ----------------------------------------------------------
-  // * ST_KEYS TESTS
+  // ST_KEYS TESTS
   // ----------------------------------------------------------
 
   describe('ST_KEYS', () => {
@@ -84,7 +84,7 @@ describe('State', () => {
   })
 
   // ----------------------------------------------------------
-  // * PERSISTED STATE (S) TESTS
+  // PERSISTED STATE (S) TESTS
   // ----------------------------------------------------------
 
   describe('S (Persisted State)', () => {
@@ -95,7 +95,7 @@ describe('State', () => {
     })
 
     it('should have weld snapshot field', () => {
-      // ? weld_snapEvap was removed (dead code - never read)
+      // weld_snapEvap was removed (dead code - never read)
       expect(S.wld_airSnapDeg).toBe(0)
     })
 
@@ -130,7 +130,7 @@ describe('State', () => {
   })
 
   // ----------------------------------------------------------
-  // * VOLATILE STATE (V) TESTS
+  // VOLATILE STATE (V) TESTS
   // ----------------------------------------------------------
 
   describe('V (Volatile State)', () => {
@@ -195,7 +195,7 @@ describe('State', () => {
   })
 
   // ----------------------------------------------------------
-  // * PERSIST STATE TESTS
+  // PERSIST STATE TESTS
   // ----------------------------------------------------------
 
   describe('persistState', () => {
@@ -216,11 +216,11 @@ describe('State', () => {
   })
 
   // ----------------------------------------------------------
-  // * LOAD STATE TESTS
+  // LOAD STATE TESTS
   // ----------------------------------------------------------
 
   describe('loadState', () => {
-    // ? loadChunksSeq loads KVS chunks sequentially for reduced peak memory
+    // loadChunksSeq loads KVS chunks sequentially for reduced peak memory
     it('should call loadChunksSeq with ST_KEYS', () => {
       loadState(() => {})
 
@@ -235,7 +235,7 @@ describe('State', () => {
       let completed = false
       loadState(() => { completed = true })
 
-      // ? loadChunksSeq callback receives parsed chunks object
+      // loadChunksSeq callback receives parsed chunks object
       loadChunksSeqCallback({})
 
       expect(completed).toBe(true)
@@ -264,7 +264,7 @@ describe('State', () => {
       let completed = false
       const futureTime = Date.now() / 1000 + 120 // 2 minutes in future
 
-      // ? loadChunksSeq merges into S directly, so set invalid timestamps before callback
+      // loadChunksSeq merges into S directly, so set invalid timestamps before callback
       S.sys_relayOffTs = futureTime
       S.sys_relayOnTs = futureTime
 
@@ -327,7 +327,7 @@ describe('State', () => {
     })
 
     // ----------------------------------------------------------
-    // * SANITIZE STATS EDGE CASES
+    // SANITIZE STATS EDGE CASES
     // ----------------------------------------------------------
 
     it('should reset sts_dutyHistArr when not an array', () => {

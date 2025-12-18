@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 // ==============================================================================
-// * CONCATENATION BUILD TOOL
-// ? Concatenates all source files in dependency order into a single bundle.
-// ? Strips ES module import/export statements (used only for testing).
-// ? Output: dist/bundle.js (unminified, for debugging)
+// CONCATENATION BUILD TOOL
+// Concatenates all source files in dependency order into a single bundle.
+// Strips ES module import/export statements (used only for testing).
+// Output: dist/bundle.js (unminified, for debugging)
 // ==============================================================================
 
 const fs = require('fs');
 const path = require('path');
 
 // ----------------------------------------------------------
-// * CONFIGURATION
-// ? Paths configurable via environment variables
+// CONFIGURATION
+// Paths configurable via environment variables
 // ----------------------------------------------------------
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
@@ -65,8 +65,8 @@ const FILE_ORDER = [
 ];
 
 // ----------------------------------------------------------
-// * ES MODULE STRIPPING
-// ? Removes import/export statements that are only used for testing.
+// ES MODULE STRIPPING
+// Removes import/export statements that are only used for testing.
 // ----------------------------------------------------------
 function stripEsModules(content) {
   // Remove import statements (single and multi-line)
@@ -108,7 +108,7 @@ function stripEsModules(content) {
 }
 
 // ----------------------------------------------------------
-// * MAIN
+// MAIN
 // ----------------------------------------------------------
 function main() {
   // Ensure dist/ exists

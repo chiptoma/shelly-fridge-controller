@@ -1,6 +1,6 @@
 // ==============================================================================
-// * PROTECTION TESTS
-// ? Validates compressor timing, weld detection, freeze protection, and power monitoring.
+// PROTECTION TESTS
+// Validates compressor timing, weld detection, freeze protection, and power monitoring.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -45,14 +45,14 @@ describe('Protection', () => {
     // Create mock config
     mockC = {
       sys_loopSec: 5,
-      comp_minOffSec: 180,
-      comp_minOnSec: 60,
-      comp_maxRunSec: 3600,
-      comp_freezeCutDeg: -2.0,
-      weld_enable: true,
-      weld_waitSec: 60,
-      weld_winSec: 300,
-      weld_dropDeg: 1.0,
+      cmp_minOffSec: 180,
+      cmp_minOnSec: 60,
+      cmp_maxRunSec: 3600,
+      cmp_freezeCutDeg: -2.0,
+      wld_enable: true,
+      wld_waitSec: 60,
+      wld_winSec: 300,
+      wld_dropDeg: 1.0,
       gas_checkSec: 600,
       gas_failDiff: 5.0,
       pwr_enable: true,
@@ -60,7 +60,7 @@ describe('Protection', () => {
       pwr_runMaxW: 200,
       pwr_runMinW: 20,
       pwr_ghostTripSec: 60,
-      pwr_ghostMaxCount: 3,
+      pwr_ghostMaxCnt: 3,
     }
 
     // Mock global print
@@ -89,7 +89,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * CAN TURN ON TESTS
+  // CAN TURN ON TESTS
   // ----------------------------------------------------------
 
   describe('canTurnOn', () => {
@@ -110,7 +110,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * CAN TURN OFF TESTS
+  // CAN TURN OFF TESTS
   // ----------------------------------------------------------
 
   describe('canTurnOff', () => {
@@ -131,7 +131,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * GET TIME UNTIL ON ALLOWED TESTS
+  // GET TIME UNTIL ON ALLOWED TESTS
   // ----------------------------------------------------------
 
   describe('getTimeUntilOnAllowed', () => {
@@ -152,7 +152,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * GET TIME UNTIL OFF ALLOWED TESTS
+  // GET TIME UNTIL OFF ALLOWED TESTS
   // ----------------------------------------------------------
 
   describe('getTimeUntilOffAllowed', () => {
@@ -173,7 +173,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * IS MAX RUN EXCEEDED TESTS
+  // IS MAX RUN EXCEEDED TESTS
   // ----------------------------------------------------------
 
   describe('isMaxRunExceeded', () => {
@@ -210,7 +210,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * IS FREEZE PROTECTION ACTIVE TESTS
+  // IS FREEZE PROTECTION ACTIVE TESTS
   // ----------------------------------------------------------
 
   describe('isFreezeProtectionActive', () => {
@@ -228,12 +228,12 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * CHECK WELD DETECTION TESTS
+  // CHECK WELD DETECTION TESTS
   // ----------------------------------------------------------
 
   describe('checkWeldDetection', () => {
     it('should return false when disabled', () => {
-      mockC.weld_enable = false
+      mockC.wld_enable = false
       mockS.wld_airSnapDeg = 10.0
       expect(checkWeldDetection(5.0, 100)).toBe(false)
     })
@@ -286,7 +286,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * CHECK COOLING HEALTH TESTS
+  // CHECK COOLING HEALTH TESTS
   // ----------------------------------------------------------
 
   describe('checkCoolingHealth', () => {
@@ -339,7 +339,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * CHECK LOCKED ROTOR TESTS
+  // CHECK LOCKED ROTOR TESTS
   // ----------------------------------------------------------
 
   describe('checkLockedRotor', () => {
@@ -384,7 +384,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * CHECK GHOST RUN TESTS
+  // CHECK GHOST RUN TESTS
   // ----------------------------------------------------------
 
   describe('checkGhostRun', () => {
@@ -451,7 +451,7 @@ describe('Protection', () => {
   })
 
   // ----------------------------------------------------------
-  // * RESET GHOST COUNT TESTS
+  // RESET GHOST COUNT TESTS
   // ----------------------------------------------------------
 
   describe('resetGhostCount', () => {

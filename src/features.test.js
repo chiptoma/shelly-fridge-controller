@@ -1,6 +1,6 @@
 // ==============================================================================
-// * FEATURES TESTS
-// ? Validates door detection, defrost, turbo, limp, and adaptive hysteresis.
+// FEATURES TESTS
+// Validates door detection, defrost, turbo, limp, and adaptive hysteresis.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
@@ -44,7 +44,7 @@ describe('Features', () => {
     }
 
     // Create mock volatile state
-    // ? defr_dwellTimer is now module-local in features.js
+    // defr_dwellTimer is now module-local in features.js
     mockV = {
       trb_isActive: false,
       trb_remSec: 0,
@@ -62,35 +62,35 @@ describe('Features', () => {
     // Create mock config
     mockC = {
       sys_loopSec: 5,
-      ctrl_targetDeg: 4.0,
-      comp_freezeCutDeg: -2.0,
-      adapt_enable: true,
-      adapt_hystMinDeg: 0.3,
-      adapt_hystMaxDeg: 1.5,
-      adapt_targetMinSec: 300,
-      adapt_targetMaxSec: 1800,
-      turbo_enable: true,
-      turbo_maxTimeSec: 3600,
-      turbo_targetDeg: -2.0,
-      turbo_hystDeg: 0.3,
-      door_enable: true,
-      door_rateDegMin: 0.5,
-      door_pauseSec: 180,
-      defr_schedEnable: true,
-      defr_schedHour: 3,
-      defr_schedDurSec: 1800,
-      defr_dynEnable: true,
-      defr_dynTrigDeg: -20.0,
-      defr_dynEndDeg: 0.0,
-      defr_dynDwellSec: 300,
+      ctl_targetDeg: 4.0,
+      cmp_freezeCutDeg: -2.0,
+      adt_enable: true,
+      adt_hystMinDeg: 0.3,
+      adt_hystMaxDeg: 1.5,
+      adt_targetMinSec: 300,
+      adt_targetMaxSec: 1800,
+      trb_enable: true,
+      trb_maxTimeSec: 3600,
+      trb_targetDeg: -2.0,
+      trb_hystDeg: 0.3,
+      dor_enable: true,
+      dor_rateDegMin: 0.5,
+      dor_pauseSec: 180,
+      dfr_schedEnable: true,
+      dfr_schedHour: 3,
+      dfr_schedDurSec: 1800,
+      dfr_dynEnable: true,
+      dfr_dynTrigDeg: -20.0,
+      dfr_dynEndDeg: 0.0,
+      dfr_dynDwellSec: 300,
       pwr_enable: true,
       pwr_startMaskSec: 30,
       pwr_runMaxW: 200,
       pwr_runMinW: 20,
       pwr_ghostTripSec: 60,
-      limp_enable: true,
-      limp_onSec: 900,
-      limp_offSec: 1800,
+      lmp_enable: true,
+      lmp_onSec: 900,
+      lmp_offSec: 1800,
     }
 
     // Mock global print
@@ -124,7 +124,7 @@ describe('Features', () => {
   })
 
   // ----------------------------------------------------------
-  // * ADAPTIVE HYSTERESIS TESTS
+  // ADAPTIVE HYSTERESIS TESTS
   // ----------------------------------------------------------
 
   describe('getEffectiveHysteresis', () => {
@@ -145,17 +145,17 @@ describe('Features', () => {
   })
 
   describe('adaptHysteresis', () => {
-    // ? Trend-Confirmed Cycle-Time Seeking Algorithm with Cycle Count Signal
-    // ? Mock config: minSec=300s, maxSec=1800s
-    // ? minCycle = 300 * 1.8 = 540s (9 min) → widen below (with confirmation)
-    // ? maxCycle = 1800 + 600 = 2400s (40 min) → tighten above (with confirmation)
-    // ? dangerZone = 300 * 1.5 = 450s (7.5 min) → immediate widen +0.3°
-    // ? HIGH CYCLE: cycleCount >= 5 && totalCycle < 1200s → treat as danger zone
-    // ? Steps: widen +0.2° (confirmed), danger +0.3° (immediate), tighten -0.2°
+    // Trend-Confirmed Cycle-Time Seeking Algorithm with Cycle Count Signal
+    // Mock config: minSec=300s, maxSec=1800s
+    // minCycle = 300 * 1.8 = 540s (9 min) → widen below (with confirmation)
+    // maxCycle = 1800 + 600 = 2400s (40 min) → tighten above (with confirmation)
+    // dangerZone = 300 * 1.5 = 450s (7.5 min) → immediate widen +0.3°
+    // HIGH CYCLE: cycleCount >= 5 && totalCycle < 1200s → treat as danger zone
+    // Steps: widen +0.2° (confirmed), danger +0.3° (immediate), tighten -0.2°
 
     it('should widen IMMEDIATELY when below danger zone (<7.5 min)', () => {
-      // ? totalCycle = 200 + 200 = 400s = 6.7 min < 450s (dangerZone)
-      // ? Danger zone bypasses trend confirmation for compressor protection
+      // totalCycle = 200 + 200 = 400s = 6.7 min < 450s (dangerZone)
+      // Danger zone bypasses trend confirmation for compressor protection
       mockS.adt_hystDeg = 0.5
       const result = adaptHysteresis(200, 200, 3)
       expect(result).toBe('widen')
@@ -163,8 +163,8 @@ describe('Features', () => {
     })
 
     it('should widen after trend confirmation (2 consecutive short cycles)', () => {
-      // ? totalCycle = 250 + 250 = 500s > dangerZone (450s), but < minCycle (540s)
-      // ? Needs 2 consecutive triggers for widen
+      // totalCycle = 250 + 250 = 500s > dangerZone (450s), but < minCycle (540s)
+      // Needs 2 consecutive triggers for widen
       mockS.adt_hystDeg = 0.5
       // First call - starts tracking
       let result = adaptHysteresis(250, 250, 3)
@@ -179,16 +179,16 @@ describe('Features', () => {
     })
 
     it('should NOT adapt when total cycle is in stable zone (9-40 min)', () => {
-      // ? totalCycle = 720 + 540 = 1260s = 21 min → STABLE (real device profile)
-      // ? Stable zone is 540s to 2400s (wider than before)
+      // totalCycle = 720 + 540 = 1260s = 21 min → STABLE (real device profile)
+      // Stable zone is 540s to 2400s (wider than before)
       mockS.adt_hystDeg = 1.0
       const result = adaptHysteresis(720, 540, 3) // 12m ON + 9m OFF
       expect(result).toBeNull()
-      // ? Stable zone maintains tracking - doesn't reset direction
+      // Stable zone maintains tracking - doesn't reset direction
     })
 
     it('should maintain tracking direction through stable zone periods', () => {
-      // ? If tracking widen, stable zone shouldn't reset it
+      // If tracking widen, stable zone shouldn't reset it
       mockS.adt_hystDeg = 1.0
       mockV.adt_lastDir = 'widen'
       mockV.adt_consecCnt = 1
@@ -201,8 +201,8 @@ describe('Features', () => {
     })
 
     it('should tighten after trend confirmation (2 consecutive long cycles with idle headroom)', () => {
-      // ? maxCycle = 1680s, totalCycle = 2000s > 1680s, avgOff > avgOn (55% OFF, 45% ON)
-      // ? New logic: only tighten when system has idle headroom (avgOff > avgOn)
+      // maxCycle = 1680s, totalCycle = 2000s > 1680s, avgOff > avgOn (55% OFF, 45% ON)
+      // New logic: only tighten when system has idle headroom (avgOff > avgOn)
       mockS.adt_hystDeg = 1.0
       // First call - starts tracking
       let result = adaptHysteresis(900, 1100, 3) // 45% duty, has idle headroom
@@ -217,15 +217,15 @@ describe('Features', () => {
     })
 
     it('should NOT tighten when duty cycle is too high (system struggling)', () => {
-      // ? totalCycle = 2000 + 500 = 2500s > 2400s, but duty = 80% → no action
+      // totalCycle = 2000 + 500 = 2500s > 2400s, but duty = 80% → no action
       mockS.adt_hystDeg = 1.0
       const result = adaptHysteresis(2000, 500, 3) // 80% duty
       expect(result).toBeNull()
     })
 
     it('should widen immediately on high cycle count (>=5 cycles)', () => {
-      // ? High cycle count indicates short cycling despite averaged data
-      // ? totalCycle = 1000s (16.7 min), but cycleCount = 6 → treat as danger
+      // High cycle count indicates short cycling despite averaged data
+      // totalCycle = 1000s (16.7 min), but cycleCount = 6 → treat as danger
       mockS.adt_hystDeg = 0.5
       const result = adaptHysteresis(600, 400, 6) // totalCycle = 1000s < 1200s, count >= 5
       expect(result).toBe('widen')
@@ -233,9 +233,9 @@ describe('Features', () => {
     })
 
     it('should tighten easier on low cycle count (<=3 cycles) when system has idle headroom', () => {
-      // ? Low cycle count indicates long cycles (efficient), lower maxCycle threshold
-      // ? totalCycle = 1600s (26.7 min), cycleCount = 3 → lower maxCycle to 1500s
-      // ? avgOff > avgOn (62.5% OFF) → system has idle headroom → tighten
+      // Low cycle count indicates long cycles (efficient), lower maxCycle threshold
+      // totalCycle = 1600s (26.7 min), cycleCount = 3 → lower maxCycle to 1500s
+      // avgOff > avgOn (62.5% OFF) → system has idle headroom → tighten
       mockS.adt_hystDeg = 1.0
       mockV.adt_lastDir = 'tighten'
       mockV.adt_consecCnt = 1  // Already tracking
@@ -252,17 +252,17 @@ describe('Features', () => {
       mockV.adt_consecCnt = 1
 
       // Now get a cycle between danger and min (wants widen tracking)
-      // ? totalCycle = 500s > dangerZone (450s), < minCycle (540s)
+      // totalCycle = 500s > dangerZone (450s), < minCycle (540s)
       adaptHysteresis(250, 250, 3)
       expect(mockV.adt_lastDir).toBe('widen')
       expect(mockV.adt_consecCnt).toBe(1) // Reset to 1, not 2
     })
 
     it('should block widen near freeze limit', () => {
-      // ? Short cycle in danger zone, but freeze guard blocks widening
+      // Short cycle in danger zone, but freeze guard blocks widening
       mockS.adt_hystDeg = 1.4
-      mockC.ctrl_targetDeg = -1.0
-      mockC.comp_freezeCutDeg = -2.0
+      mockC.ctl_targetDeg = -1.0
+      mockC.cmp_freezeCutDeg = -2.0
       const result = adaptHysteresis(130, 130, 3) // totalCycle = 260s < 360s
       expect(result).toBe('blocked')
     })
@@ -274,7 +274,7 @@ describe('Features', () => {
     })
 
     it('should return null when disabled', () => {
-      mockC.adapt_enable = false
+      mockC.adt_enable = false
       const result = adaptHysteresis(200, 500, 3)
       expect(result).toBeNull()
     })
@@ -286,7 +286,7 @@ describe('Features', () => {
   })
 
   // ----------------------------------------------------------
-  // * TURBO MODE TESTS
+  // TURBO MODE TESTS
   // ----------------------------------------------------------
 
   describe('checkTurboSwitch', () => {
@@ -308,7 +308,7 @@ describe('Features', () => {
     })
 
     it('should not activate when disabled', () => {
-      mockC.turbo_enable = false
+      mockC.trb_enable = false
       const result = checkTurboSwitch(true)
 
       expect(result).toBe(false)
@@ -348,7 +348,7 @@ describe('Features', () => {
   })
 
   // ----------------------------------------------------------
-  // * DOOR DETECTION TESTS
+  // DOOR DETECTION TESTS
   // ----------------------------------------------------------
 
   describe('detectDoorOpen', () => {
@@ -389,19 +389,19 @@ describe('Features', () => {
     })
 
     it('should return false when disabled', () => {
-      mockC.door_enable = false
+      mockC.dor_enable = false
       const result = detectDoorOpen(10.0, 100)
 
       expect(result).toBe(false)
     })
 
     it('should ignore small dt values to prevent false positives', () => {
-      // ? This guards against timer overlap or clock jitter causing false door events.
-      // ? With sys_loopSec = 5, dt must be >= 2.5 seconds.
+      // This guards against timer overlap or clock jitter causing false door events.
+      // With sys_loopSec = 5, dt must be >= 2.5 seconds.
       mockV.dor_refDeg = 2.0
       mockV.dor_refTs = 100
-      // ? dt = 0.1 seconds (too small), rate would be (2.1 - 2.0) / 0.1 * 60 = 60 deg/min
-      // ? But this should be ignored because dt < sys_loopSec * 0.5 (2.5s)
+      // dt = 0.1 seconds (too small), rate would be (2.1 - 2.0) / 0.1 * 60 = 60 deg/min
+      // But this should be ignored because dt < sys_loopSec * 0.5 (2.5s)
       const result = detectDoorOpen(2.1, 100.1)
 
       expect(result).toBe(false)
@@ -409,8 +409,8 @@ describe('Features', () => {
     })
 
     it('should accept dt values at minimum threshold', () => {
-      // ? dt = 2.5 seconds (exactly at threshold: sys_loopSec * 0.5)
-      // ? rate = (10.0 - 4.0) / 2.5 * 60 = 144 deg/min > 0.5 threshold
+      // dt = 2.5 seconds (exactly at threshold: sys_loopSec * 0.5)
+      // rate = (10.0 - 4.0) / 2.5 * 60 = 144 deg/min > 0.5 threshold
       mockV.dor_refDeg = 4.0
       mockV.dor_refTs = 100
       const result = detectDoorOpen(10.0, 102.5)
@@ -433,7 +433,7 @@ describe('Features', () => {
   })
 
   // ----------------------------------------------------------
-  // * DEFROST TESTS
+  // DEFROST TESTS
   // ----------------------------------------------------------
 
   describe('isScheduledDefrost', () => {
@@ -459,7 +459,7 @@ describe('Features', () => {
     })
 
     it('should return false when disabled', () => {
-      mockC.defr_schedEnable = false
+      mockC.dfr_schedEnable = false
       vi.useFakeTimers()
       vi.setSystemTime(new Date(2024, 0, 1, 3, 15, 0))
       expect(isScheduledDefrost()).toBe(false)
@@ -483,7 +483,7 @@ describe('Features', () => {
     })
 
     it('should not trigger when disabled', () => {
-      mockC.defr_dynEnable = false
+      mockC.dfr_dynEnable = false
       const result = checkDefrostTrigger(-22.0)
 
       expect(result).toBe(false)
@@ -505,7 +505,7 @@ describe('Features', () => {
   })
 
   describe('handleDynamicDefrost', () => {
-    // ? defr_dwellTimer is now module-local, so tests verify behavior via multiple calls
+    // defr_dwellTimer is now module-local, so tests verify behavior via multiple calls
     beforeEach(() => {
       mockS.dfr_isActive = true
     })
@@ -523,8 +523,8 @@ describe('Features', () => {
     })
 
     it('should complete defrost after dwell via multiple calls', () => {
-      // ? mockC.defr_dynDwellSec = 300, sys_loopSec = 5
-      // ? 60 calls * 5s = 300s = threshold, defrost completes at 60th call (>= condition)
+      // mockC.defr_dynDwellSec = 300, sys_loopSec = 5
+      // 60 calls * 5s = 300s = threshold, defrost completes at 60th call (>= condition)
       for (let i = 0; i < 59; i++) {
         handleDynamicDefrost(1.0)
       }
@@ -543,8 +543,8 @@ describe('Features', () => {
       // Evap cools - timer resets
       handleDynamicDefrost(-5.0)
 
-      // ? Need full dwell again (>= 300s threshold to complete)
-      // ? 60 calls * 5s = 300s = threshold, completes at 60th call
+      // Need full dwell again (>= 300s threshold to complete)
+      // 60 calls * 5s = 300s = threshold, completes at 60th call
       for (let i = 0; i < 59; i++) {
         handleDynamicDefrost(1.0)
       }
@@ -562,7 +562,7 @@ describe('Features', () => {
   })
 
   // ----------------------------------------------------------
-  // * LIMP MODE TESTS
+  // LIMP MODE TESTS
   // ----------------------------------------------------------
 
   describe('handleLimpMode', () => {
@@ -583,7 +583,7 @@ describe('Features', () => {
     })
 
     it('should return disabled when not enabled', () => {
-      mockC.limp_enable = false
+      mockC.lmp_enable = false
       const result = handleLimpMode()
 
       expect(result.wantOn).toBe(false)

@@ -1,14 +1,14 @@
 // ==============================================================================
-// * EDGE CASE SIMULATION TESTS
-// ? Tests rare but critical failure scenarios and edge conditions.
-// ? Covers sensor malfunctions, relay failures, and extreme conditions.
+// EDGE CASE SIMULATION TESTS
+// Tests rare but critical failure scenarios and edge conditions.
+// Covers sensor malfunctions, relay failures, and extreme conditions.
 // ==============================================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ShellyRuntime } from '../utils/shelly-simulator.js'
 
 // ----------------------------------------------------------
-// * LOCAL HELPERS
+// LOCAL HELPERS
 // ----------------------------------------------------------
 
 function advanceTime(runtime, seconds) {
@@ -16,7 +16,7 @@ function advanceTime(runtime, seconds) {
 }
 
 // ----------------------------------------------------------
-// * SETUP HELPERS
+// SETUP HELPERS
 // ----------------------------------------------------------
 
 async function setupController(runtime, options = {}) {
@@ -64,8 +64,8 @@ async function setupController(runtime, options = {}) {
 }
 
 // ----------------------------------------------------------
-// * SENSOR STUCK SCENARIOS
-// ? Tests for sensors that report the same value continuously.
+// SENSOR STUCK SCENARIOS
+// Tests for sensors that report the same value continuously.
 // ----------------------------------------------------------
 
 describe('Sensor Stuck: Air Sensor Frozen Value', () => {
@@ -79,9 +79,9 @@ describe('Sensor Stuck: Air Sensor Frozen Value', () => {
   it('should detect air sensor stuck after threshold period', async () => {
     const script = await setupController(runtime, {
       config: {
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 300,   // 5 minutes stuck threshold
-        sens_stuckEpsDeg: 0.1,    // Must change by at least 0.1C
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 300,   // 5 minutes stuck threshold
+        sns_stuckEpsDeg: 0.1,    // Must change by at least 0.1C
         sys_loopSec: 5,
       },
       volatile: {
@@ -106,9 +106,9 @@ describe('Sensor Stuck: Air Sensor Frozen Value', () => {
   it('should NOT trigger stuck if sensor value changes slightly', async () => {
     const script = await setupController(runtime, {
       config: {
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 300,
-        sens_stuckEpsDeg: 0.1,
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 300,
+        sns_stuckEpsDeg: 0.1,
         sys_loopSec: 5,
       },
       volatile: {
@@ -164,9 +164,9 @@ describe('Sensor Stuck: Evaporator Sensor Frozen Value', () => {
   it('should detect evap sensor stuck independently from air', async () => {
     const script = await setupController(runtime, {
       config: {
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 300,
-        sens_stuckEpsDeg: 0.1,
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 300,
+        sns_stuckEpsDeg: 0.1,
       },
       volatile: {
         sns_evpStuckRefDeg: null,
@@ -190,9 +190,9 @@ describe('Sensor Stuck: Evaporator Sensor Frozen Value', () => {
   it('should handle both sensors stuck simultaneously', async () => {
     const script = await setupController(runtime, {
       config: {
-        sens_stuckEnable: true,
-        sens_stuckTimeSec: 300,
-        sens_stuckEpsDeg: 0.1,
+        sns_stuckEnable: true,
+        sns_stuckTimeSec: 300,
+        sns_stuckEpsDeg: 0.1,
       },
       volatile: {
         sns_airStuckRefDeg: null,
@@ -220,8 +220,8 @@ describe('Sensor Stuck: Evaporator Sensor Frozen Value', () => {
 })
 
 // ----------------------------------------------------------
-// * SENSOR INTERMITTENT FAILURE (FLAPPING)
-// ? Tests for sensors that fail and recover repeatedly.
+// SENSOR INTERMITTENT FAILURE (FLAPPING)
+// Tests for sensors that fail and recover repeatedly.
 // ----------------------------------------------------------
 
 describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
@@ -304,8 +304,8 @@ describe('Sensor Failure: Intermittent (Flapping) Behavior', () => {
 })
 
 // ----------------------------------------------------------
-// * RELAY WELD: FULL DETECTION SEQUENCE
-// ? Tests complete weld detection from trigger through system response.
+// RELAY WELD: FULL DETECTION SEQUENCE
+// Tests complete weld detection from trigger through system response.
 // ----------------------------------------------------------
 
 describe('Relay Weld: Complete Detection Sequence', () => {
@@ -319,10 +319,10 @@ describe('Relay Weld: Complete Detection Sequence', () => {
   it('should execute full weld detection sequence', async () => {
     const script = await setupController(runtime, {
       config: {
-        weld_enable: true,
-        weld_waitSec: 30,    // Start checking 30s after OFF
-        weld_winSec: 180,    // Check until 3 min after OFF
-        weld_dropDeg: 0.5,   // Alarm if drops 0.5C
+        wld_enable: true,
+        wld_waitSec: 30,    // Start checking 30s after OFF
+        wld_winSec: 180,    // Check until 3 min after OFF
+        wld_dropDeg: 0.5,   // Alarm if drops 0.5C
       },
       state: {
         sys_isRelayOn: false,
@@ -378,10 +378,10 @@ describe('Relay Weld: Complete Detection Sequence', () => {
   it('should log fault when weld detected', async () => {
     const script = await setupController(runtime, {
       config: {
-        weld_enable: true,
-        weld_waitSec: 30,
-        weld_winSec: 180,
-        weld_dropDeg: 0.5,
+        wld_enable: true,
+        wld_waitSec: 30,
+        wld_winSec: 180,
+        wld_dropDeg: 0.5,
       },
       state: {
         sys_isRelayOn: false,
@@ -405,8 +405,8 @@ describe('Relay Weld: Complete Detection Sequence', () => {
 })
 
 // ----------------------------------------------------------
-// * COOLING SYSTEM FAILURE (GAS LEAK)
-// ? Tests for detection of refrigerant loss or valve failure.
+// COOLING SYSTEM FAILURE (GAS LEAK)
+// Tests for detection of refrigerant loss or valve failure.
 // ----------------------------------------------------------
 
 describe('Cooling Failure: Gas Leak Detection', () => {
@@ -496,8 +496,8 @@ describe('Cooling Failure: Gas Leak Detection', () => {
 })
 
 // ----------------------------------------------------------
-// * CONCURRENT ALARMS
-// ? Tests for multiple alarm conditions occurring simultaneously.
+// CONCURRENT ALARMS
+// Tests for multiple alarm conditions occurring simultaneously.
 // ----------------------------------------------------------
 
 describe('Concurrent Alarms: Priority Handling', () => {
@@ -587,8 +587,8 @@ describe('Concurrent Alarms: Priority Handling', () => {
 })
 
 // ----------------------------------------------------------
-// * EXTREME ENVIRONMENT SCENARIOS
-// ? Tests for unusual ambient conditions.
+// EXTREME ENVIRONMENT SCENARIOS
+// Tests for unusual ambient conditions.
 // ----------------------------------------------------------
 
 describe('Extreme Environment: Very Hot Ambient', () => {
@@ -602,10 +602,10 @@ describe('Extreme Environment: Very Hot Ambient', () => {
   it('should continue cooling even with very high ambient temp', async () => {
     const script = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
-        ctrl_hystOnDeg: 1.0,
-        comp_maxRunSec: 7200, // 2 hours
-        comp_minOffSec: 180,
+        ctl_targetDeg: 4.0,
+        ctl_hystOnDeg: 1.0,
+        cmp_maxRunSec: 7200, // 2 hours
+        cmp_minOffSec: 180,
       },
       state: {
         sys_isRelayOn: false,
@@ -630,20 +630,20 @@ describe('Extreme Environment: Very Hot Ambient', () => {
   it('should trigger high temp alarm when very warm for extended period', async () => {
     const script = await setupController(runtime, {
       config: {
-        alarm_highEnable: true,
-        alarm_highDeg: 15.0,
-        alarm_highDelaySec: 300,
+        alm_highEnable: true,
+        alm_highDeg: 15.0,
+        alm_highDelaySec: 300,
         sys_loopSec: 5,
       },
       volatile: {
         sys_alarm: 'NONE',
-        // ? alarm_highTimer is now module-local in alarms.js
+        // alarm_highTimer is now module-local in alarms.js
         trb_isActive: false,
       },
     })
 
     // Increment timer by calling repeatedly (simulating loop ticks)
-    // Need to accumulate > alarm_highDelaySec (300s)
+    // Need to accumulate > alm_highDelaySec (300s)
     for (let i = 0; i < 70; i++) { // 70 * 5s = 350s
       script.alarms.checkHighTempAlarm(20.0, false)
     }
@@ -663,8 +663,8 @@ describe('Extreme Environment: Very Cold Ambient', () => {
   it('should not cool below freeze threshold', async () => {
     const script = await setupController(runtime, {
       config: {
-        ctrl_targetDeg: 4.0,
-        comp_freezeCutDeg: 0.5,  // Correct config key
+        ctl_targetDeg: 4.0,
+        cmp_freezeCutDeg: 0.5,  // Correct config key
       },
       state: {
         sys_isRelayOn: true,
@@ -706,8 +706,8 @@ describe('Extreme Environment: Very Cold Ambient', () => {
 })
 
 // ----------------------------------------------------------
-// * POWER ANOMALIES
-// ? Tests for unusual power consumption patterns.
+// POWER ANOMALIES
+// Tests for unusual power consumption patterns.
 // ----------------------------------------------------------
 
 describe('Power Anomalies: Fluctuating Power Draw', () => {
@@ -786,8 +786,8 @@ describe('Power Anomalies: Fluctuating Power Draw', () => {
 })
 
 // ----------------------------------------------------------
-// * TIMING EDGE CASES
-// ? Tests for boundary conditions in timing guards.
+// TIMING EDGE CASES
+// Tests for boundary conditions in timing guards.
 // ----------------------------------------------------------
 
 describe('Timing Edge Cases: Boundary Conditions', () => {
@@ -801,7 +801,7 @@ describe('Timing Edge Cases: Boundary Conditions', () => {
   it('should handle exactly at min-on boundary', async () => {
     const script = await setupController(runtime, {
       config: {
-        comp_minOnSec: 60,
+        cmp_minOnSec: 60,
       },
       state: {
         sys_isRelayOn: true,
@@ -821,7 +821,7 @@ describe('Timing Edge Cases: Boundary Conditions', () => {
   it('should handle exactly at min-off boundary', async () => {
     const script = await setupController(runtime, {
       config: {
-        comp_minOffSec: 180,
+        cmp_minOffSec: 180,
       },
       state: {
         sys_isRelayOn: false,
@@ -841,7 +841,7 @@ describe('Timing Edge Cases: Boundary Conditions', () => {
   it('should handle max run exactly at limit', async () => {
     const script = await setupController(runtime, {
       config: {
-        comp_maxRunSec: 3600,
+        cmp_maxRunSec: 3600,
       },
       state: {
         sys_isRelayOn: true,
@@ -863,8 +863,8 @@ describe('Timing Edge Cases: Boundary Conditions', () => {
 })
 
 // ----------------------------------------------------------
-// * LONG IDLE SCENARIOS
-// ? Tests for fridge unused for extended periods.
+// LONG IDLE SCENARIOS
+// Tests for fridge unused for extended periods.
 // ----------------------------------------------------------
 
 describe('Long Idle: Extended Off Period', () => {
@@ -907,7 +907,7 @@ describe('Long Idle: Extended Off Period', () => {
       config: {
         temp_setpoint: 4.0,
         temp_hystOn: 1.0,
-        comp_minOffSec: 180,
+        cmp_minOffSec: 180,
       },
       state: {
         sys_isRelayOn: false,
@@ -927,8 +927,8 @@ describe('Long Idle: Extended Off Period', () => {
 })
 
 // ----------------------------------------------------------
-// * RAPID CYCLING PREVENTION
-// ? Tests for short-cycle protection.
+// RAPID CYCLING PREVENTION
+// Tests for short-cycle protection.
 // ----------------------------------------------------------
 
 describe('Rapid Cycling: Prevention Mechanisms', () => {
@@ -942,10 +942,10 @@ describe('Rapid Cycling: Prevention Mechanisms', () => {
   it('should prevent rapid on/off cycling', async () => {
     const script = await setupController(runtime, {
       config: {
-        comp_minOnSec: 60,
-        comp_minOffSec: 180,
-        ctrl_targetDeg: 4.0,
-        ctrl_hystOnDeg: 0.5,
+        cmp_minOnSec: 60,
+        cmp_minOffSec: 180,
+        ctl_targetDeg: 4.0,
+        ctl_hystOnDeg: 0.5,
         ctrl_hystOffDeg: 0.5,
       },
       state: {
@@ -978,8 +978,8 @@ describe('Rapid Cycling: Prevention Mechanisms', () => {
   it('should allow cycling after timing guards satisfied', async () => {
     const script = await setupController(runtime, {
       config: {
-        comp_minOnSec: 60,
-        comp_minOffSec: 180,
+        cmp_minOnSec: 60,
+        cmp_minOffSec: 180,
       },
       state: {
         sys_isRelayOn: true,
