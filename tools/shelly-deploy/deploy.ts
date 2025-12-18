@@ -4,18 +4,14 @@
  * Builds and deploys scripts to Shelly devices
  */
 
-import { spawn } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
 
 import chalk from 'chalk'
 import { program } from 'commander'
-import { minify } from 'terser'
 
 import { ShellyRPCClient } from './client'
-import { getConfig } from './config'
-import { ConfigManager } from './config'
-import { unwrapBundle } from './unwrap'
+import { ConfigManager, getConfig } from './config'
 
 // Parse command line arguments
 program
@@ -61,166 +57,6 @@ class ShellyDeployer {
     this.client = new ShellyRPCClient({
       ip: this.config.shellyIp,
       auth: this.config.shellyAuth,
-    })
-  }
-
-  /**
-   * Build the script using esbuild
-   */
-  private async buildScript(): Promise<string> {
-    // Check if source file exists
-    const sourcePath = path.resolve(process.cwd(), this.config.sourcePath)
-    if (!fs.existsSync(sourcePath)) {
-      throw new Error(`Source file not found: ${sourcePath}`)
-    }
-
-    // Create output directory
-    const outputPath = path.resolve(process.cwd(), this.config.outputPath)
-    const outputDir = path.dirname(outputPath)
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true })
-    }
-
-    // Build with esbuild (bundling only, no minification)
-    const esbuildArgs = [
-      sourcePath,
-      '--bundle',
-      '--outfile=' + outputPath + '.tmp',
-      '--format=iife',
-      '--platform=neutral',
-      '--target=es2015',
-      '--supported:arrow=false',
-      '--supported:destructuring=false',
-      '--supported:template-literal=false',  // Transpile to .concat() calls, polyfill added in main.ts
-      '--supported:for-of=false',
-      '--supported:object-rest-spread=false',
-      '--supported:class=false',
-      '--charset=utf8',
-      '--drop:debugger',
-      '--legal-comments=none',
-      '--tree-shaking=true',
-    ]
-
-    // Run esbuild for bundling
-    await this.runCommand('npx', ['esbuild', ...esbuildArgs])
-
-    // Unwrap IIFE bundle (required for Shelly compatibility)
-    try {
-      unwrapBundle(outputPath + '.tmp', outputPath)
-      fs.unlinkSync(outputPath + '.tmp')
-    } catch (_error: any) {
-      // If unwrap fails, try to use the file as-is
-      if (!quiet) console.warn(chalk.yellow('Warning: Could not unwrap bundle'))
-      fs.renameSync(outputPath + '.tmp', outputPath)
-    }
-
-    // Read the bundled code
-    let scriptCode = fs.readFileSync(outputPath, 'utf-8')
-
-    // Minify with terser if enabled (ES5-safe, no shorthand properties)
-    // ? Aggressive minification for Shelly's 25KB limit
-    if (this.config.minify) {
-      const result = await minify(scriptCode, {
-        ecma: 5,  // ES5 output - no shorthand properties { key } → { key: key }
-        compress: {
-          dead_code: true,
-          drop_debugger: true,
-          conditionals: true,
-          evaluate: true,
-          booleans: true,
-          loops: true,
-          unused: true,
-          hoist_funs: true,
-          keep_fargs: false,
-          hoist_vars: false,
-          if_return: true,
-          join_vars: true,
-          side_effects: true,
-          // ? Additional aggressive optimizations
-          passes: 3,           // Multiple compression passes
-          reduce_vars: true,   // Inline single-use variables
-          reduce_funcs: true,  // Inline single-use functions
-          collapse_vars: true, // Collapse consecutive var statements
-          pure_getters: true,  // Optimize property access
-          toplevel: true,      // Allow top-level optimizations
-          negate_iife: false,  // Don't negate IIFEs (Shelly compat)
-          // ? Even more aggressive
-          sequences: true,     // Join consecutive statements with comma
-          properties: true,    // Optimize property access (a.b → a["b"] when shorter)
-          comparisons: true,   // Optimize comparisons
-          inline: 1,           // ! Level 1 only - level 2 caused bugs with function inlining
-          drop_console: false, // Keep console for Shelly print() wrapper
-          ecma: 5,
-          module: false,
-          arrows: false,       // Don't use arrow functions
-          typeofs: true,       // Optimize typeof comparisons
-        },
-        mangle: {
-          toplevel: true,  // ! Mangle ALL names - major size savings
-          reserved: [
-            // Shelly global APIs that must NOT be mangled
-            'Shelly', 'Timer', 'MQTT', 'HTTP', 'BLE', 'Bluetooth',
-            'Math', 'JSON', 'String', 'Array', 'Object', 'Number',
-            'Date', 'Error', 'console', 'print',
-            // Entry point
-            'bootstrap',
-          ],
-          properties: {
-            // ! Property mangling - significant savings but must exclude KVS keys
-            // Volatile state properties (never persisted):
-            // Plus internal function parameters and return object properties
-            // ! avgRun|avgOff removed - caused inconsistent mangling between object literal and access
-            // ? DI properties (shellyCall, timerSet, etc.) added for ~500 byte savings
-            regex: /^(hw_|pwr_ghost|sens_buf|sens_stuck|sens_raw|sens_err|sens_was|sens_smooth|door_ref|door_timer|alarm_high|turbo_rem|turbo_last|turbo_active|fault_pending|health_|defr_dwell|lastSave|sys_scr|sys_status|sys_reason|sys_alarm|sys_statusDetail|airRaw|evapRaw|airMedian|switchWatts|switchTemp|alarmFail|alarmStuck|wantOn|blockCooling|stateChanged|doorDetected|remainingSec|newTimer|defrostEnded|alarmTriggered|effectiveHyst|scriptUptimeMs|hadErrors|revertedFields|shellyCall|shellyGetComponentStatus|shellyGetUptimeMs|timerSet|timerClear|timerCallbacks|saveState|setConfig|dateNow|getDate|getCurrentTime|mqttSubscribe|mqttPublish|onBootComplete|loopSec|deltaSec|relayOn|sensorFail|sensorStuck|alarmBefore|currentTemp|currentHyst|hourRun|hourTime|cycleCount|turboActive|evapTemp|uptimeSec|offDurationSec|isBlocked|timerSec|deviceTemp|powerW|tRaw|tEvap|reading|newHyst|allowed|performed|dutyCycleStored|avgOnSec|avgOffSec|shortOn|shortOff|longOn|skipSnap|recovered|doorOpen|pauseRemaining|shouldPause)/,
-          },
-        },
-        output: {
-          ecma: 5,
-          comments: false,
-          beautify: false,
-        },
-      })
-      if (result.code) {
-        scriptCode = result.code
-      }
-    }
-
-    // Write final code (polyfills removed - no .concat() or .shift() in output)
-    fs.writeFileSync(outputPath, scriptCode)
-
-    // Display build summary
-    const sizeKB = (scriptCode.length / 1024).toFixed(2)
-    console.log(chalk.green('[BUILD]   ✓ Compiled'))
-    console.log(chalk.gray(`          Source: ${this.config.sourcePath}`))
-    console.log(chalk.gray(`          Output: ${this.config.outputPath} (${sizeKB} KB)`))
-    return scriptCode
-  }
-
-  /**
-   * Run a command and wait for completion
-   */
-  private runCommand(command: string, args: string[]): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(command, args, {
-        stdio: 'pipe',
-        shell: process.platform === 'win32',
-      })
-
-      let stderr = ''
-
-      proc.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      proc.on('close', (code) => {
-        if (code !== 0) {
-          reject(new Error(`Command failed: ${command} ${args.join(' ')}\n${stderr}`))
-        } else {
-          resolve()
-        }
-      })
-
-      proc.on('error', reject)
     })
   }
 
@@ -458,21 +294,14 @@ class ShellyDeployer {
       } else if (options.startOnly) {
         await this.startScriptOnly()
       } else {
-        // Default: build and deploy
-        let scriptCode: string
-
-        if (options.skipBuild) {
-          // Use existing file
-          const outputPath = path.resolve(process.cwd(), this.config.outputPath)
-          if (!fs.existsSync(outputPath)) {
-            throw new Error(`Output file not found: ${outputPath}`)
-          }
-          scriptCode = fs.readFileSync(outputPath, 'utf-8')
-          if (!quiet) console.log(chalk.blue(`[BUILD] Using cached: ${(scriptCode.length / 1024).toFixed(2)} KB`))
-        } else {
-          // Build the script
-          scriptCode = await this.buildScript()
+        // Default: deploy from pre-built file
+        // Build is handled by `npm run build` (concat + minify)
+        const outputPath = path.resolve(process.cwd(), this.config.outputPath)
+        if (!fs.existsSync(outputPath)) {
+          throw new Error(`Output file not found: ${outputPath}\nRun "npm run build" first.`)
         }
+        const scriptCode = fs.readFileSync(outputPath, 'utf-8')
+        if (!quiet) console.log(chalk.blue(`[BUILD] Using: ${outputPath} (${(scriptCode.length / 1024).toFixed(2)} KB)`))
 
         // Upload if requested
         if (options.upload !== false) {

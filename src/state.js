@@ -135,7 +135,7 @@ function sanitizeLoadedState(now) {
  */
 function sanitizeTimestamps(now) {
   if (isTimestampInvalid(S.sys_tsRelayOff, now) || isTimestampInvalid(S.sys_tsRelayOn, now)) {
-    print('⚠️ STATE : Invalid relay timestamps: forcing relay OFF and clearing timers')
+    print('⚠️ STATE : Invalid relay timestamps, resetting state to OFF')
     S.sys_tsRelayOff = 0
     S.sys_tsRelayOn = 0
     S.sys_relayState = false

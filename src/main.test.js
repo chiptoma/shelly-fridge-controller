@@ -159,7 +159,7 @@ describe('Main', () => {
 
       recoverBootState()
 
-      // ? Actual format: "BOOT ⚠️ State mismatch: HW=ON but state=OFF, syncing to hardware"
+      // ? Actual format: "⚠️ BOOT  : State mismatch, Relay is ON but State is OFF, updating State to ON"
       expect(global.print).toHaveBeenCalledWith(expect.stringContaining('State mismatch'))
       expect(mockS.sys_relayState).toBe(true)
       expect(mockS.sys_tsRelayOn).toBe(Math.floor(now))

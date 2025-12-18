@@ -6,26 +6,14 @@
 
 // ----------------------------------------------------------
 // * JSON TYPES
+// ? Internal types for JSON-RPC communication
 // ----------------------------------------------------------
 
-/**
- * JSON-compatible primitive types
- */
-export type JSONPrimitive = string | number | boolean | null
+type JSONPrimitive = string | number | boolean | null
+type JSONArray = JSONValue[]
+interface JSONObject { [key: string]: JSONValue }
 
-/**
- * JSON-compatible array
- */
-export type JSONArray = JSONValue[]
-
-/**
- * JSON-compatible object
- */
-export interface JSONObject { [key: string]: JSONValue }
-
-/**
- * Any JSON-compatible value
- */
+/** Any JSON-compatible value (used by RPC client) */
 export type JSONValue = JSONPrimitive | JSONArray | JSONObject
 
 // ----------------------------------------------------------

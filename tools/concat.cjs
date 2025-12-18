@@ -8,14 +8,61 @@
 
 const fs = require('fs');
 const path = require('path');
-const order = require('./concat-order.cjs');
 
 // ----------------------------------------------------------
 // * CONFIGURATION
+// ? Paths configurable via environment variables
 // ----------------------------------------------------------
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
-const OUTPUT = path.join(DIST, 'bundle.js');
+const BUNDLE_PATH = process.env.BUNDLE_PATH || path.join(DIST, 'bundle.js');
+
+// File concatenation order - MUST respect dependency hierarchy
+// Later files may depend on earlier ones. ES imports/exports are stripped.
+const FILE_ORDER = [
+  // Tier 0: Pure data (no dependencies)
+  'src/constants.js',
+
+  // Tier 1: Configuration (depends on nothing)
+  'src/config.js',
+
+  // Tier 2: Pure utilities (no dependencies)
+  'src/utils/math.js',
+  'src/utils/kvs.js',
+
+  // Tier 3: State (depends on constants, config)
+  'src/state.js',
+
+  // Tier 4: Sensors (depends on math, state)
+  'src/sensors.js',
+
+  // Tier 5: Alarms (depends on constants, state, config)
+  'src/alarms.js',
+
+  // Tier 6: Protection (depends on constants, state, config, alarms)
+  'src/protection.js',
+
+  // Tier 7: Features (depends on all above)
+  'src/features.js',
+
+  // Tier 8: Metrics (depends on state, config)
+  'src/metrics.js',
+
+  // Tier 9: Reporting (depends on state, config, constants, metrics, features)
+  'src/reporting.js',
+
+  // Tier 10: Control (depends on constants, state, config, protection, features, metrics)
+  'src/control.js',
+
+  // Tier 11: Loop (depends on everything)
+  'src/loop.js',
+
+  // Tier 12: MQTT (depends on constants, config, state)
+  'src/mqtt.js',
+
+  // Tier 13: Entry point (depends on everything)
+  'src/main.js',
+];
 
 // ----------------------------------------------------------
 // * ES MODULE STRIPPING
@@ -71,7 +118,7 @@ function main() {
 
   // Check all files exist
   const missing = [];
-  for (const file of order) {
+  for (const file of FILE_ORDER) {
     const fullPath = path.join(ROOT, file);
     if (!fs.existsSync(fullPath)) {
       missing.push(file);
@@ -95,7 +142,7 @@ function main() {
   parts.push(' */');
   parts.push('');
 
-  for (const file of order) {
+  for (const file of FILE_ORDER) {
     const fullPath = path.join(ROOT, file);
     let content = fs.readFileSync(fullPath, 'utf-8');
 
@@ -109,9 +156,9 @@ function main() {
   }
 
   const output = parts.join('\n');
-  fs.writeFileSync(OUTPUT, output);
+  fs.writeFileSync(BUNDLE_PATH, output);
 
-  console.log('Concatenated ' + order.length + ' files -> dist/bundle.js');
+  console.log('Concatenated ' + FILE_ORDER.length + ' files -> ' + BUNDLE_PATH);
   console.log('Size: ' + output.length + ' bytes');
 }
 
