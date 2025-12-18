@@ -1,21 +1,59 @@
+# ==============================================================================
+# SECURITY WORKFLOW
+# Runs security audits weekly and on-demand. Checks for vulnerabilities and secrets.
+# ==============================================================================
 name: Security
 
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sunday
+    - cron: '0 0 * * 0'  # Weekly on Sunday at midnight
+  pull_request:
+    branches: [main, dev]
   workflow_dispatch:
 
 jobs:
   audit:
+    name: Dependency Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm audit --audit-level=high
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check for vulnerabilities
+        run: pnpm audit --audit-level=high
+
+  secrets:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Review dependencies
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
