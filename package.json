@@ -48,8 +48,8 @@
   "author": "Ciprian Toma",
   "license": "SEE LICENSE IN LICENSE",
   "devDependencies": {
-    "@stryker-mutator/core": "^8.7.1",
-    "@stryker-mutator/vitest-runner": "^8.7.1",
+    "@stryker-mutator/core": "^9.4.0",
+    "@stryker-mutator/vitest-runner": "^9.4.0",
     "@stylistic/eslint-plugin": "^5.6.1",
     "@types/node": "^25.0.0",
     "@types/ws": "^8.18.1",
