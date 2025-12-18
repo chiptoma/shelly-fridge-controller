@@ -39,3 +39,6 @@ logs/
 *.backup.*
 *.old.*
 .stryker-tmp/
+
+# Mutation testing reports
+reports/
