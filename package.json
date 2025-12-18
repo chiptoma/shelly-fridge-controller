@@ -1,6 +1,6 @@
 {
   "name": "shelly-fridge-controller",
-  "version": "3.0.0",
+  "version": "1.1.0",
   "description": "Production-grade thermostat controller for Shelly Plus 1/1PM",
   "type": "module",
   "main": "dist/main.js",

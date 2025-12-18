@@ -21,7 +21,6 @@ npm run shelly:monitor
 ## Tool Files
 
 - `concat.cjs` - Concatenates source files in dependency order
-- `concat-order.cjs` - Defines file concatenation order
-- `minify.cjs` - Terser minification with ES5 output
+- `minify.cjs` - Terser minification with Shelly-safe settings
 - `validate-bundle.cjs` - Bundle validation (patterns, syntax, VM)
 - `shelly-deploy/` - TypeScript deployment and monitoring tools

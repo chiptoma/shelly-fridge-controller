@@ -34,9 +34,7 @@ export interface DeployConfig {
   enableDebug: boolean
 
   // Build settings
-  sourcePath: string
   outputPath: string
-  minify: boolean
 
   // Upload settings
   chunkSize: number
@@ -73,9 +71,8 @@ class ConfigManager {
       enableDebug: process.env.ENABLE_DEBUG === 'true',
 
       // Build settings
-      sourcePath: process.env.SOURCE_PATH || 'src/main.ts',
+      // ? Note: Build is handled by tools/*.cjs pipeline, deploy just reads OUTPUT_PATH
       outputPath: process.env.OUTPUT_PATH || 'dist/main.js',
-      minify: process.env.MINIFY !== 'false',
 
       // Upload settings
       chunkSize: parseInt(process.env.CHUNK_SIZE || '1024'),
@@ -139,55 +136,51 @@ class ConfigManager {
     return { ...this.config }
   }
 
-  getShellyUrl(): string {
-    return `http://${this.config.shellyIp}`
-  }
-
-  getWebsocketUrl(): string {
-    return `ws://${this.config.shellyIp}/debug/log`
-  }
-
-  getRpcUrl(): string {
-    return `http://${this.config.shellyIp}/rpc`
-  }
-
   /**
    * Create a configuration file if it doesn't exist
    */
   static createEnvExample(): void {
     const envExamplePath = path.resolve(__dirname, '../../.env.example')
+
+    // Skip if .env.example already exists (manually maintained)
+    if (fs.existsSync(envExamplePath)) {
+      return
+    }
+
     const envContent = `# Shelly Device Configuration
-SHELLY_IP=192.168.1.100        # IP address of your Shelly device
+SHELLY_IP=192.168.1.100           # IP address of your Shelly device
 
 # Authentication (optional, if device has authentication enabled)
 # SHELLY_USER=admin
 # SHELLY_PASSWORD=your-password
 
 # Script Configuration
-SCRIPT_NAME=fridge-controller   # Name of the script on the device
-# SCRIPT_ID=1                   # Fixed script ID (optional, auto-detected by name)
-AUTO_START=true                 # Start script automatically after upload
-ENABLE_DEBUG=true               # Enable debug logging
+SCRIPT_NAME=fridge-controller     # Name of the script on the device
+# SCRIPT_ID=1                     # Fixed script ID (optional, auto-detected by name)
+AUTO_START=true                   # Start script automatically after upload
+ENABLE_DEBUG=true                 # Enable debug logging
 
 # Build Configuration
-SOURCE_PATH=src/main.ts         # Path to your main TypeScript file
-OUTPUT_PATH=dist/main.js # Output path for built script
-MINIFY=true                     # Minify the script
+# Used by: concat.cjs, minify.cjs, validate-bundle.cjs, deploy.ts
+BUNDLE_PATH=dist/bundle.js        # Intermediate concatenated bundle (unminified)
+OUTPUT_PATH=dist/main.js          # Final minified output for deployment
 
 # Upload Configuration
-CHUNK_SIZE=1024                 # Size of chunks for uploading (bytes)
-UPLOAD_DELAY=50                 # Delay between chunks (ms)
+CHUNK_SIZE=1024                   # Size of chunks for uploading (bytes)
+UPLOAD_DELAY=50                   # Delay between chunks (ms)
 
 # Monitor Configuration
-WS_RECONNECT_INTERVAL=3000      # WebSocket reconnect interval (ms)
-LOG_TO_FILE=false               # Save logs to file
-# LOG_FILE_PATH=logs/script.log # Path for log file
+WS_RECONNECT_INTERVAL=3000        # WebSocket reconnect interval (ms)
+LOG_TO_FILE=false                 # Save logs to file
+# LOG_FILE_PATH=logs/script.log   # Path for log file
+
+# Safety Settings
+KILL_EXISTING_MONITORS=true       # Kill existing monitor processes on start
+STOP_EXISTING_SCRIPTS=true        # Stop other running scripts on device before deploy
 `
 
-    if (!fs.existsSync(envExamplePath)) {
-      fs.writeFileSync(envExamplePath, envContent)
-      console.log('Created .env.example file')
-    }
+    fs.writeFileSync(envExamplePath, envContent)
+    console.log('Created .env.example file')
   }
 }
 

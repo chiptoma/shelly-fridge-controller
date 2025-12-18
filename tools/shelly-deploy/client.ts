@@ -134,10 +134,6 @@ export class ShellyRPCClient {
     })
   }
 
-  async getCode(id: number): Promise<{ data: string }> {
-    return this.sendRequest<{ data: string }>('Script.GetCode', { id })
-  }
-
   async setConfig(
     id: number,
     config: Partial<ScriptConfig>,
@@ -159,13 +155,6 @@ export class ShellyRPCClient {
 
   async stopScript(id: number): Promise<null> {
     return this.sendRequest<null>('Script.Stop', { id })
-  }
-
-  async evalCode(id: number, code: string): Promise<{ result: JSONValue }> {
-    return this.sendRequest<{ result: JSONValue }>('Script.Eval', {
-      id,
-      code,
-    })
   }
 
   /**

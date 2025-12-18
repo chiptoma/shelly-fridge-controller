@@ -97,8 +97,8 @@ All settings are configured via environment variables in `.env`:
 - `ENABLE_DEBUG`: Enable debug websocket (default: true)
 
 ### Build Settings
-- `OUTPUT_PATH`: Output path for built script (default: dist/main.js)
-- `SOURCE_PATH`: Source entry point (default: src/main.js)
+- `BUNDLE_PATH`: Intermediate bundle path (default: dist/bundle.js)
+- `OUTPUT_PATH`: Final minified output path (default: dist/main.js)
 
 ### Upload Settings
 - `CHUNK_SIZE`: Size of upload chunks in bytes (default: 1024)
@@ -115,7 +115,7 @@ All settings are configured via environment variables in `.env`:
 
 1. **Concatenation Phase** (`tools/concat.cjs`):
    - Source files concatenated in dependency order
-   - Order defined in `tools/concat-order.cjs`
+   - Order defined in `FILE_ORDER` array within concat.cjs
    - ES module imports/exports stripped
 
 2. **Minification Phase** (`tools/minify.cjs`):
@@ -130,28 +130,19 @@ All settings are configured via environment variables in `.env`:
 
 ### Concatenation Order
 
-Files are concatenated in a specific order to ensure dependencies are met:
+Files are concatenated in dependency order defined in `FILE_ORDER` within `tools/concat.cjs`. The order follows a tiered approach:
 
-```javascript
-// tools/concat-order.cjs
-module.exports = [
-  'src/constants.js',    // No dependencies
-  'src/config.js',       // Depends on constants
-  'src/utils/math.js',   // Utility functions
-  'src/utils/kvs.js',    // KVS utilities
-  'src/state.js',        // State management
-  'src/sensors.js',      // Sensor reading
-  'src/alarms.js',       // Alarm system
-  'src/protection.js',   // Safety protections
-  'src/features.js',     // Optional features
-  'src/metrics.js',      // Metrics collection
-  'src/reporting.js',    // Status reporting
-  'src/control.js',      // Thermostat control
-  'src/loop.js',         // Main loop
-  'src/mqtt.js',         // MQTT handlers
-  'src/main.js',         // Entry point
-]
-```
+1. **Tier 0**: Pure data (constants)
+2. **Tier 1**: Configuration
+3. **Tier 2**: Utilities (math, KVS)
+4. **Tier 3**: State management
+5. **Tier 4**: Hardware (sensors)
+6. **Tier 5**: Business logic (alarms, protection, features, metrics)
+7. **Tier 6**: Reporting
+8. **Tier 7**: Control logic
+9. **Tier 8**: Main loop
+10. **Tier 9**: External interfaces (MQTT)
+11. **Tier 10**: Entry point (main)
 
 ## Development Workflow
 
@@ -234,18 +225,16 @@ npm run shelly:monitor -- --save --timestamp
 ```
 tools/
 ├── concat.cjs           # Concatenates source files in dependency order
-├── concat-order.cjs     # Defines file concatenation order
 ├── minify.cjs           # Terser minification with ES5 output
 ├── validate-bundle.cjs  # Bundle validation (patterns, syntax, VM)
 └── shelly-deploy/
     ├── client.ts        # Shelly RPC client (HTTP API wrapper)
     ├── config.ts        # Configuration management
-    ├── deploy.ts        # Build and deployment script
+    ├── deploy.ts        # Deployment orchestrator
     ├── monitor.ts       # WebSocket log monitor
     ├── status.ts        # Device status display
     ├── logs.ts          # Error log viewer
-    ├── types.ts         # TypeScript type definitions
-    └── unwrap.ts        # IIFE bundle unwrapper
+    └── types.ts         # TypeScript type definitions
 ```
 
 ## API Reference
@@ -268,9 +257,8 @@ await client.startScript(id)
 await client.stopScript(id)
 await client.getStatus(id)
 
-// Code management
+// Code upload
 await client.putCode(id, code, append)
-await client.getCode(id)
 await client.uploadScript(id, code, chunkSize)
 ```
 

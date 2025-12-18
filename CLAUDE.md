@@ -55,14 +55,13 @@ fridge/
 │   ├── bundle/                 # Bundle validation tests
 │   └── utils/                  # Test utilities (Shelly simulator)
 ├── tools/                      # Build tooling
-│   ├── concat.cjs              # Bundle concatenation
-│   ├── concat-order.cjs        # File ordering for concatenation
+│   ├── concat.cjs              # Bundle concatenation (includes FILE_ORDER)
 │   ├── minify.cjs              # Terser minification with reserved names
 │   ├── validate-bundle.cjs     # Bundle syntax validation
 │   └── shelly-deploy/          # Deployment CLI (TypeScript)
 ├── dist/                       # Build output
-│   ├── bundle.js               # Concatenated bundle
-│   └── bundle.min.js           # Minified bundle for deployment
+│   ├── bundle.js               # Concatenated bundle (intermediate)
+│   └── main.js                 # Minified bundle for deployment
 ├── vitest.config.ts            # Test configuration
 ├── eslint.config.ts            # Linting configuration
 └── package.json                # Scripts and dependencies
@@ -268,27 +267,21 @@ pnpm run build:minify    # Steps 2 + 3
 
 ### File Concatenation Order
 
-Defined in `tools/concat-order.cjs`:
+Defined in `FILE_ORDER` array within `tools/concat.cjs`. Files are ordered in dependency tiers:
 
-```javascript
-module.exports = [
-  'src/constants.js',      // Tier 0: Pure data (no deps)
-  'src/config.js',         // Tier 1: Configuration
-  'src/utils/math.js',     // Tier 2: Pure utilities
-  'src/utils/kvs.js',      // Tier 2: KVS utilities
-  'src/state.js',          // Tier 3: State (depends on kvs, math)
-  'src/sensors.js',        // Tier 4: Sensors
-  'src/alarms.js',         // Tier 5: Alarms
-  'src/protection.js',     // Tier 6: Protection
-  'src/features.js',       // Tier 7: Features
-  'src/metrics.js',        // Tier 8: Metrics
-  'src/reporting.js',      // Tier 9: Reporting
-  'src/control.js',        // Tier 10: Control
-  'src/loop.js',           // Tier 11: Loop
-  'src/mqtt.js',           // Tier 12: MQTT
-  'src/main.js',           // Tier 13: Entry point (must be last)
-]
-```
+| Tier | Files | Purpose |
+|------|-------|---------|
+| 0 | constants.js | Pure data (no deps) |
+| 1 | config.js | Configuration |
+| 2 | utils/math.js, utils/kvs.js | Pure utilities |
+| 3 | state.js | State (depends on kvs, math) |
+| 4 | sensors.js | Hardware sensors |
+| 5-8 | alarms, protection, features, metrics | Business logic |
+| 9 | reporting.js | Status reporting |
+| 10 | control.js | Thermostat control |
+| 11 | loop.js | Main loop |
+| 12 | mqtt.js | MQTT handlers |
+| 13 | main.js | Entry point (must be last) |
 
 ### Minification Reserved Names
 

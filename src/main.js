@@ -57,7 +57,7 @@ function recoverBootState() {
   } else if (hwOn && !S.sys_relayState) {
     // ? Hardware ON but state says OFF - unexpected state
     // ? Don't trust stale timestamps, sync to hardware and start fresh
-    print('⚠️ BOOT  : State mismatch: HW=ON but state=OFF, syncing to hardware')
+    print('⚠️ BOOT  : State mismatch, Relay is ON but State is OFF, updating State to ON')
     S.sys_relayState = true
     S.sys_tsRelayOn = ri(now)
     persistState()
